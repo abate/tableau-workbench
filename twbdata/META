@@ -1,0 +1,6 @@
+name = "twbdata"
+version = "3.0"
+description = "user data structure"
+archive(byte) = "twbdata.cma"
+archive(native) = "twbdata.cmxa"
+
