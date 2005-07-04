@@ -1,7 +1,6 @@
 
 open Llist
 
-
 module type S =
     sig
         type node 
@@ -9,7 +8,6 @@ module type S =
             |Tree of node llist
             |Leaf of node
     end
-
 
 module Make(N : sig type node end) = 
     struct

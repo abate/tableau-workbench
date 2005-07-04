@@ -4,11 +4,8 @@ SOURCES := \
 	basictype.ml \
       	listobj.ml \
 	sets.ml \
-	fmap.ml \
-	setofsets.ml  \
-     	setoftupleset.ml \
 	comptypes.ml \
-	partition.ml \
+	fmap.ml \
 
 RESULT := twbdata
 PACKS := twblib

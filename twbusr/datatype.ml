@@ -1,24 +1,39 @@
 
 (* define all basic data types *)
 
-module Type : Data.S =
+module Type =
     struct
-        type type_t = Comptypes.mixlist
-        type substlist = type_t Data.Substlist.t
+        type t = Comptypes.mixlist
+        type sbl = t Data.Substlist.t
     end
 
-module Pattern = Pattern.Make(struct type pattern = Comptypes.mixlist_p end)
-module Node = Node.Make(struct type store = Comptypes.mixlist end)
+module Fmap = Fmap.Make(struct type t = Basictype.mixtype end)
 
-module MatchType = 
+module Match =
     struct
-        type store = Comptypes.mixlist
-        type pattern = Pattern.pattern
-        type basictype = Basictype.mixtype
-        let match_type = Partition.match_fmap
+        type t = Comptypes.mixlist
+        let get_list s i = match s with
+            |#Comptypes.mixlist as s' -> failwith "ddd"
+            |`FMap(s) -> s#get i
     end
 
-module MatchNode = Matchnode.Make(MatchType)(Pattern)
+module Store =
+    struct
+        type store = [
+            | Comptypes.mixlist 
+            |`FMap of Fmap.fmap
+            ]
+        let copy = function
+            |#Comptypes.mixlist as t -> Comptypes.copy t
+            |`FMap(s) -> `FMap(s#copy)
+    end
+    
+module Node = Node.Make(Store)
+
+module NodePattern = NodePattern.Make(Type)
+
+module Partition = Partition.Make(NodePattern)
+
 module Tree = Tree.Make(Node)
 module Rule = Rule.Make(Node)(Tree)
 module Strategy = Strategy.Make(Rule)

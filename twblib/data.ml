@@ -8,7 +8,7 @@ module Substlist = Map.Make(
 
 module type S =
     sig
-        type type_t
-        type substlist = type_t Substlist.t 
+        type t
+        type sbl = t Substlist.t 
     end
 

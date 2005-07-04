@@ -41,13 +41,13 @@ module Make (N:Node.S) (T:Tree.S with type node = N.node) =
 
     (* generic function that gets a condition and a merge function and
     * return the synthtized result *)
-    let synth_func f m = function 
+    let synth_func cond merge = function 
         |Empty -> failwith "synth_exists: empty llist"
         |l ->
-                let rec check l = f (fun a -> synth_rec_int a l) (Llist.hd l)
+                let rec check l = cond (fun a -> synth_rec_int a l) (Llist.hd l)
                 and synth_rec_int acc = function
                     |Empty -> acc
-                    |l -> m acc (check l)
+                    |l -> merge acc (check l)
                 in check l
     ;;
         

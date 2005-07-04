@@ -1,72 +1,44 @@
 
 open Basictype
 open Listobj
-open Sets
-open Fmap
-open Setofsets
-open Setoftupleset
+
+module Set = Sets.Make(struct type t = Basictype.mixtype end)
+
+module Setofsets = Sets.Make(
+    struct type t = [
+        |Basictype.mixtype 
+        |`Set of Set.set
+    ]
+    end
+)
+
+module Setoftupleset = Sets.Make(
+    struct type t = [
+        |Basictype.mixtype 
+        |`TupleofSet of (Set.set * Set.set)
+    ]
+    end
+)
 
 type mixlist = [
     |`L of mixtype listobj
-    |`S of set
-    |`SS of setofset
-    |`SoTS of setoftupleset
-    |`FMap of fmap
+    |`S of Set.set
+    |`SS of Setofsets.set
+    |`SoTS of Setoftupleset.set
     |mixtype
 ]
 
-type 'a patt = Var__p of string | Const__p of 'a
-type 'a listobj_p = List of 'a patt * 'a listobj_p | Empty
+let copy s = 
+    match s with
+    |`L(l) -> `L(l#copy)
+    |`S(s) -> `S(s#copy)
+    |`SS(s) -> `SS(s#copy)
+    |`SoTS(s) -> `SoTS(s#copy)
+    |#mixtype as mt -> Basictype.copy mt
 
-type mixlist_p = [
-    |`L_p of (Basictype.mixtype_p listobj_p) patt
-    |`S_p of set patt
-    |`SS_p of setofset patt
-    |`SoTS_p of setoftupleset patt
-    |`FMap_p of Basictype.mixtype_p
-    |mixtype_p
-]
-
-let match_type_fmap set pattern =
-    match set,pattern with
-    |`FMap(s), (#mixtype_p as p) -> s#get p
-    |#mixlist, #mixlist_p -> raise FailedMatch 
-    | _ -> raise FailedMatch
-
-(* FIXME: type matter match here is too loose.
- * the signature should be more succinct *)
-let rec match_mixtype_listobj sbl set pattern = 
-    match set,pattern with
-(*    |s,List(Const__p(c), Empty) when ->  *)
-    |s,List(Const__p(c), p) ->
-            match_mixtype_listobj sbl s#tail p ; sbl
-            
-(*    |s,List(Var__p(v), Empty) when -> *)
-
-(* !!! XXX: !!! here I coerce the value of s#head (that is
- * of type mixtype) to its supertype mixlist *)
-    |s,List(Var__p(v), p) ->
-            match_mixtype_listobj 
-            (Substlist.add v (s#head :> mixlist) sbl)
-            s#tail p
-            
-    | _ -> raise FailedMatch
-
-(* This function is a proxy that returns a sbl from a store *)
-let match_type sbl set pattern =
-    match set,pattern with
-    |`L(s),`L_p(Const__p(c)) -> match_mixtype_listobj sbl s c
-    |`L(s),`L_p(Var__p(v)) -> Substlist.add v set sbl
-    
-    |`S(s),`S_p(Const__p(c)) -> raise FailedMatch
-    |`S(s),`S_p(Var__p(c)) -> raise FailedMatch
-    |`SS(s),`SS_p(Const__p(c)) -> raise FailedMatch
-    |`SS(s),`SS_p(Var__p(c)) -> raise FailedMatch
-    |`SoTS(s),`SoTS_p(Const__p(c)) -> raise FailedMatch
-    |`SoTS(s),`SoTS_p(Var__p(c)) -> raise FailedMatch
-
-    |#mixtype, #mixtype_p -> Basictype.match_type sbl set pattern
-    |#mixlist, #mixlist_p -> raise FailedMatch 
-    
-    | _ -> raise FailedMatch
-;;
+let string_of_mixlist = function
+    |`L(l) -> l#string_of Basictype.string_of_mixtype 
+    |`S(s) -> s#string_of Basictype.string_of_mixtype
+    |`SS(s) -> s#string_of Set.string_of
+    |`SoTS(s) -> s#string_of Setoftupleset.string_of
+    |#mixtype as mt -> Basictype.string_of_mixtype mt
