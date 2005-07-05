@@ -93,7 +93,7 @@ let action_a4 sbl =
 let a1 = newact 0 action_a1
 let a2 = newact 0 action_a2
 let a3 = newact 0 action_a3
-let a4 = newact 4 action_a3
+let a4 = newact 4 action_a4
 
 let nodeaction = { aname = "One"; action = [a1;a2;a3;a4] }
 
@@ -113,9 +113,9 @@ class or_rule =
          * is empty, then strategy will try an other rule. 
          * *)
         method check node =
-(*            let enum = match_node node nodepattern in
+            let enum = match_node node nodepattern in
             if Enum.is_empty enum then print_endline "bugger"
-            else print_endline "ok !!" ; *)
+            else print_endline "ok !!" ; 
             new rule_context
         method down node = Leaf(node)
         method up nodelist = failwith ""
