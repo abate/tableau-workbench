@@ -3,7 +3,6 @@ OCAMLMAKEFILE = /usr/share/ocaml-tools/OCamlMakefile
 SOURCES := \
 	llist.ml \
 	data.ml \
-	store.ml \
 	node.ml \
 	tree.ml \
 	rule.ml \

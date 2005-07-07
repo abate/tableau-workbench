@@ -4,10 +4,14 @@
 module Type =
     struct
         type t = Comptypes.mixlist
-        type sbl = t Data.Substlist.t
     end
 
-module Fmap = Fmap.Make(struct type t = Basictype.mixtype end)
+module Fmap = Fmap.Make(
+    struct
+        type t = Basictype.mixtype
+        type c = Comptypes.Set.set
+        let make () = new Comptypes.Set.set
+    end)
 
 module Store =
     struct
@@ -25,6 +29,7 @@ module Node = Node.Make(Store)
 module NodePattern = NodePattern.Make(Type)
 
 module Partition = Partition.Make(NodePattern)
+module Build = Build.Make(NodePattern)
 
 module Tree = Tree.Make(Node)
 module Rule = Rule.Make(Node)(Tree)

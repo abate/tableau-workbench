@@ -1,9 +1,10 @@
 
 module type S =
     sig
-        type 'a sbl = ('a list) Data.Substlist.t
-        type 'a pattern = { pid : int ; pmatch : 'a sbl -> 'a list -> 'a sbl }
-        type 'a action  = { aid : int ; paction : 'a sbl -> 'a list }
+        type t
+        type sbl = (t list) Data.Substlist.t
+        type 'a pattern = { pid : int ; pmatch : sbl -> 'a list -> sbl }
+        type 'a action  = { aid : int ; paction : sbl -> 'a list }
         type 'a nodepattern =
             { pname : string;
               chained : 'a pattern list;
@@ -15,9 +16,10 @@ module type S =
 
 module Make (T : Data.S) =
     struct
-        type 'a sbl = ('a list) Data.Substlist.t
-        type 'a pattern = { pid : int ; pmatch : 'a sbl -> 'a list -> 'a sbl }
-        type 'a action  = { aid : int ; paction : 'a sbl -> 'a list }
+        type t = T.t
+        type sbl = (t list) Data.Substlist.t
+        type 'a pattern = { pid : int ; pmatch : sbl -> 'a list -> sbl }
+        type 'a action  = { aid : int ; paction : sbl -> 'a list }
         type 'a nodepattern =
               { pname : string;
                 chained : 'a pattern list;

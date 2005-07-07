@@ -1,27 +1,41 @@
 
 open Basictype
-open Listobj
 
-module Set = Sets.Make(struct type t = Basictype.mixtype end)
+module Set = Sets.Make(
+    struct
+        type t = Basictype.mixtype
+        let copy = Basictype.copy
+        let to_string = Basictype.string_of_mixtype
+    end
+)
 
 module Setofsets = Sets.Make(
-    struct type t = [
-        |Basictype.mixtype 
-        |`Set of Set.set
-    ]
+    struct
+        type t = Set.set
+        let copy s = s#copy 
+        let to_string v = v#to_string
     end
 )
 
 module Setoftupleset = Sets.Make(
-    struct type t = [
-        |Basictype.mixtype 
-        |`TupleofSet of (Set.set * Set.set)
-    ]
+    struct
+        type t = (Set.set * Set.set)
+        let copy (s1,s2) = (s1#copy, s2#copy)
+        let to_string (v1,v2) =
+            Printf.sprintf "(%s,%s)" v1#to_string v2#to_string
     end
 )
 
+module Mtlist = Listobj.Make(
+     struct
+        type t = Basictype.mixtype
+        let copy = Basictype.copy
+        let to_string = Basictype.string_of_mixtype
+    end   
+)
+
 type mixlist = [
-    |`L of mixtype listobj
+    |`L of Mtlist.listobj
     |`S of Set.set
     |`SS of Setofsets.set
     |`SoTS of Setoftupleset.set
@@ -37,8 +51,8 @@ let copy s =
     |#mixtype as mt -> Basictype.copy mt
 
 let string_of_mixlist = function
-    |`L(l) -> l#string_of Basictype.string_of_mixtype 
-    |`S(s) -> s#string_of Basictype.string_of_mixtype
-    |`SS(s) -> s#string_of Set.string_of
-    |`SoTS(s) -> s#string_of Setoftupleset.string_of
+    |`L(l) -> l#to_string 
+    |`S(s) -> s#to_string
+    |`SS(s) -> s#to_string
+    |`SoTS(s) -> s#to_string
     |#mixtype as mt -> Basictype.string_of_mixtype mt

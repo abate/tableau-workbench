@@ -6,9 +6,5 @@ module Substlist = Map.Make(
     end)
 
 
-module type S =
-    sig
-        type t
-        type sbl = t Substlist.t 
-    end
+module type S = sig type t end
 

@@ -2,12 +2,13 @@
 
 module Make(P: NodePattern.S) =
     struct
-        open P
+        open P (* this one is need to access the NodePattern record *)
         open ExtLib    
         module Substlist = Data.Substlist
 
         exception NodeFailedMatch
         exception FailedMatch
+        exception TypeMisMatch
 
         let check (sbl,htbl) pmatch f =
             if not(Hashtbl.mem htbl f) then
@@ -56,24 +57,38 @@ module Make(P: NodePattern.S) =
         (* Return an enumeration with all possible nodes *)
         let match_node node = function
             { pname = name ; chained = pl ; strict = sl; loose = ll } ->
-            match node#get name with
-            |`FMap(store) ->
-                begin try
-                    Enum.map (
-                        fun (subsl,htbl) ->
-                                    let tmpsl =
+                match node#get name with
+                |`FMap(store) ->
+                    begin try
+                        Enum.map (
+                            fun (subsl,htbl) ->
+                                        let tmpsl =
+                                            List.fold_left (
+                                                fun subl patt ->
+                                                    getset store subl htbl patt
+                                            ) subsl sl
+                                        in
                                         List.fold_left (
                                             fun subl patt ->
-                                                getset store subl htbl patt
-                                        ) subsl sl
-                                    in
-                                    List.fold_left (
-                                        fun subl patt ->
-                                                getset store subl htbl patt
-                                    ) tmpsl ll
-                    ) (enum store pl)
-                with FailedMatch -> Enum.empty ()
-                end
-            |#Comptypes.mixlist -> failwith "ooo"
+                                                    getset store subl htbl patt
+                                        ) tmpsl ll
+                        ) (enum store pl)
+                    with FailedMatch -> Enum.empty ()
+                    end
+                |#Comptypes.mixlist -> failwith "match_node"
 
+        let match_set enum node = function
+            { pname = name ; chained = p::[]} ->
+                begin
+                    match Enum.get enum with
+                    |Some(sbl) -> 
+                            (match node#get name with
+                            |`FMap(_) -> failwith "match_set"
+                            |#Basictype.mixtype -> failwith "match_set"
+                            |#Comptypes.mixlist as s -> p.pmatch sbl [s]
+                            )
+                    |None -> Substlist.empty
+                end
+            |_ -> failwith "match_set"
+                
     end
