@@ -1,12 +1,18 @@
 
-open Basictype
-
 module Set = Sets.Make(
     struct
         type t = Basictype.mixtype
         let copy = Basictype.copy
         let to_string = Basictype.string_of_mixtype
     end
+)
+
+module Mtlist = Listobj.Make(
+     struct
+        type t = Basictype.mixtype
+        let copy = Basictype.copy
+        let to_string = Basictype.string_of_mixtype
+    end   
 )
 
 module Setofsets = Sets.Make(
@@ -26,33 +32,32 @@ module Setoftupleset = Sets.Make(
     end
 )
 
-module Mtlist = Listobj.Make(
+module Listofsets = Listobj.Make(
      struct
-        type t = Basictype.mixtype
-        let copy = Basictype.copy
-        let to_string = Basictype.string_of_mixtype
+        type t = Set.set
+        let copy s = s#copy 
+        let to_string v = v#to_string
     end   
 )
 
 type mixlist = [
     |`L of Mtlist.listobj
+    |`LS of Listofsets.listobj
     |`S of Set.set
     |`SS of Setofsets.set
     |`SoTS of Setoftupleset.set
-    |mixtype
 ]
 
-let copy s = 
-    match s with
+let copy : mixlist -> mixlist = function 
     |`L(l) -> `L(l#copy)
+    |`LS(l) -> `LS(l#copy)
     |`S(s) -> `S(s#copy)
     |`SS(s) -> `SS(s#copy)
     |`SoTS(s) -> `SoTS(s#copy)
-    |#mixtype as mt -> Basictype.copy mt
 
-let string_of_mixlist = function
+let string_of_mixlist : mixlist -> string = function
     |`L(l) -> l#to_string 
+    |`LS(l) -> l#to_string 
     |`S(s) -> s#to_string
     |`SS(s) -> s#to_string
     |`SoTS(s) -> s#to_string
-    |#mixtype as mt -> Basictype.string_of_mixtype mt

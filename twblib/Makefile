@@ -6,7 +6,6 @@ SOURCES := \
 	node.ml \
 	tree.ml \
 	rule.ml \
-	zipper.ml \
 	strategy.ml \
 	visit.ml \
 	

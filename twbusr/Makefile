@@ -5,6 +5,7 @@ SOURCES := \
 	partition.ml \
 	build.ml \
 	datatype.ml \
+	substlist.ml \
 	user.ml \
 	
 RESULT := twbusr

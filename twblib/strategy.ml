@@ -1,65 +1,132 @@
 (** this module return the the rule to apply and a new context *)
 
-open Zipper
+type 'a tree =
+    |Star of 'a tree
+    |Seq of 'a tree list
+    |Choice of 'a tree list
+    |Rule of 'a
 
 module type S =
     sig
         type rule
         type node
-        type rule_context
+        type context
+        type state
+        exception NoMoreRules
         val init : rule tree -> unit
-        val next : node -> rule * rule_context
-        val last : unit -> unit
+        val next : state -> node -> rule * context * state
     end
  
-module Make (R:Rule.S) : S =
-    struct
+module Make (R:Rule.S) (* :
+    sig
+        type rule = R.rule
+        type node = R.node
+        type context = R.context
+        type state
+        exception NoMoreRules
+        val init : rule tree -> unit
+        val next : state -> node -> rule * context * state
+    end *)
+= struct
+
+    module Map = Map.Make (
+        struct
+            type t = string
+            let compare = compare
+        end
+    )
+
+    exception NoMoreRules
 
     type rule = R.rule
-    type rule_context = R.rule_context
     type node = R.node
+    type context = R.context
+    type state = { id : string; context : int Map.t }
     
-    (* the content strategy contains a stack of pointers to the
-     * zipper *)
-    class ['a] strategy_context = object
-        val mutable context : 'a list = []
-        method del =
-            try context <- List.tl context
-            with Failure "tl" -> failwith "del in strategy"
-        method peek =
-            try List.hd context 
-            with Failure "hd" -> failwith "peek in strategy"
-        method push h = context <- h::context
-    end
-    
-    let context = ref (new strategy_context)
-    let init s = (!context)#push (s,Top)
-    
-    (* visit navigate the strategy tree looking for the next rule to
-     * apply. Visit calls rule#check node and return a rule, a rule context 
-     * and the strategy_context *)
-    let visit ((t,p) as pointer) node =
-        match t with
-        |Tree(Rule(rule),[]) ->
-                (* let _ = (!context)#push pointer in*)
-                let rule_context = rule#check node in
-                (rule, rule_context)
-        |_ -> failwith "to be implemented"
+    type input = Succ | Failed;;
+    type s =
+        |S          (* star *)
+        |SS of rule (* single state star *)
+        |R  of rule (* rule *)
+        |E          (* exit *)
 
-    (* next calls rule#check, that returns a enumeration of the node 
-     * If the enumeration is not empty, then next return the rule and
-     * the enumeration (the rule_context) to the visit. The visit will
-     * then use the context to build a new node. If the enumeration is 
-     * empty then we'll select an other rule. The rule context is 
-     * implicitely stored on the stack in the lazy list inside the 
-     * visit structure.
-     * *)
-    let next node =
-        let pointer = (!context)#peek in
-        let (r,pen) = visit pointer node in
-        ((r, pen) :> (R.rule * R.rule_context))
+    (* the fsa *)
+    let automata = Hashtbl.create 15
 
-    let last () = (!context)#del
+    let init t = ()
+    
+    (* add an element to the fsa *)
+    let add id t n1 n2 = Hashtbl.add automata id (t,n1,n2)
+
+    (* create a fresh state initialized to v *)
+    let newstate id = { id = id ; context = Map.empty }
         
+    (* return a new state / context *)
+    let nextcxt n ?(v=0) = function
+    |Some({id = i ; context = g}) -> { id = n ; context = Map.add i v g }
+    |None -> { id = n ; context = Map.empty }
+
+    (* check if the context associated to the state is equal to v *)
+    let check v state =
+            try (Map.find state.id state.context) = v
+            with Not_found -> true
+
+    (* given a state returns the next state. On success, reset the
+     * state context. *)
+    let rec seq inp state local next =
+      match inp with
+      |Succ -> move inp (nextcxt next None)
+      |Failed -> move inp (nextcxt next (Some(state)))
+
+    (* given a state returns the same state and resets the
+     * state context. On Failure, depending upon the state
+     * context return the same state or move the next state *)
+    and star inp state back out =
+      match inp with
+      |Succ -> move inp (nextcxt back None)
+      |Failed when (check 0 state) -> move inp (nextcxt back ~v:1 (Some(state)))
+      |Failed when (check 1 state) -> move inp (nextcxt out ~v:1 (Some(state)))
+      |_ -> failwith "star"
+
+    (* given a state returns the same state on success and
+     * resets the state context or move to the next state on 
+     * failure *)
+    and singlestar inp state back out =
+      match inp with
+      |Succ -> move inp (nextcxt back None)
+      |Failed -> move inp (nextcxt out ~v:1 (Some(state)))
+
+    (* given a state makes a many move as possible 
+     * to the next (non star) state *)
+    and move inp state =
+            try begin
+                match Hashtbl.find automata state.id with
+                |(S,n1,n2) -> move inp (star inp state n1 n2)
+                |(SS(_),_,_) -> state
+                |(R(_),_,_) -> state
+                |(E,_,_) -> state
+            end with Not_found -> failwith "strategy : move"
+
+    (* make a transition in the fs from (non star) 
+     * state to (non star) state *)
+    let rec next state node =
+            try begin
+                match Hashtbl.find automata state.id with
+                |(R(r),n1,n2) ->
+                        let (enum,sbl) = r#check node in
+                        if Data.Substlist.is_empty sbl then
+                            (* the rule failed, we try the next one *)
+                            next (seq Failed state n1 n2) node
+                        else (r,(enum,sbl),seq Succ state n1 n2)
+                |(SS(r),n1,n2) -> 
+                        let (enum,sbl) = r#check node in
+                        if Data.Substlist.is_empty sbl then
+                            (* the rule failed, we try the next one *)
+                            next (singlestar Failed state n1 n2) node
+                        else (r,(enum,sbl),singlestar Succ state n1 n2)
+                |(S,_,_) -> failwith "strategy : step"
+                |(E,_,_) -> raise NoMoreRules
+            end with Not_found -> failwith "strategy : step"
+
     end
 

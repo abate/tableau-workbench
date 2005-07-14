@@ -2,53 +2,42 @@
 open Llist
 open Node
 open Tree
+open ExtLib
 
 module type S =
     sig
+        type t
         type node
-        type tree
-        class rule_context : object val context : 'a list end
+        type tree = node Tree.tree
+        type context = (t Data.Substlist.t Enum.t * t Data.Substlist.t)
         
         class virtual rule :
             object
-                method virtual check : node -> rule_context
-                method virtual down : node -> tree
+                method virtual check : node -> context
+                method virtual down : node -> context -> tree
                 method virtual up : tree Llist.llist -> tree
             end
-            
-        class virtual forall_rule :
-            object
-                method virtual check : node -> rule_context
-                method virtual down : node -> tree
-                method virtual up : tree Llist.llist -> tree
-            end
-            
-        class virtual exist_rule :
-            object
-                method virtual check : node -> rule_context
-                method virtual down : node -> tree
-                method virtual up : tree Llist.llist -> tree
-            end
-
       end
 
-module Make (N:Node.S) (T:Tree.S with type node = N.node) =
+module Make (T:Data.S) (N:Node.S) =
     struct
-    
-    type node = T.node
-    type tree = T.tree
-    open T
+        
+    type t = T.t
+    type context = (T.t Data.Substlist.t Enum.t * T.t Data.Substlist.t)
+    type node = N.node
+    type tree = node Tree.tree
 
     (* generic function that gets a condition and a merge function and
     * return the synthtized result *)
     let synth_func cond merge = function 
         |Empty -> failwith "synth_exists: empty llist"
-        |l ->
-                let rec check l = cond (fun a -> synth_rec_int a l) (Llist.hd l)
+        |ll ->
+                let rec check l' =
+                    cond (fun a -> synth_rec_int a (Llist.tl l')) (Llist.hd l')
                 and synth_rec_int acc = function
                     |Empty -> acc
                     |l -> merge acc (check l)
-                in check l
+                in check ll
     ;;
         
     (* check when I should stop or go on in the visit *)
@@ -75,16 +64,10 @@ module Make (N:Node.S) (T:Tree.S with type node = N.node) =
     (* universal branching *)
     let synth_func_forall = synth_func synth_cond_forall synth_merge_forall;;
 
-    (* this is the rule context and contains the substitution list *)
-    class rule_context =
-        object
-            val context = []
-        end
-
     class virtual rule =
         object
-            method virtual check : node -> rule_context
-            method virtual down : node -> tree
+            method virtual check : node -> context
+            method virtual down : node -> context -> tree
             method virtual up : tree Llist.llist -> tree
         end
 
@@ -98,6 +81,12 @@ module Make (N:Node.S) (T:Tree.S with type node = N.node) =
         object
             inherit rule
             method up = synth_func_forall
+        end
+
+    class virtual linear_rule =
+        object
+            inherit rule
+            method up tl = Llist.hd tl
         end
 
 end

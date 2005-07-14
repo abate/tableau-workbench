@@ -2,10 +2,11 @@
 
 SOURCES := \
 	basictype.ml \
-      	listobj.ml \
 	sets.ml \
+      	listobj.ml \
 	comptypes.ml \
-	fmap.ml \
+	gmap.ml \
+	hmap.ml \
 
 RESULT := twbdata
 PACKS := twblib

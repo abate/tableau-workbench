@@ -39,7 +39,7 @@ let rec string_of_formula = function
     |Not(c,f) -> Printf.sprintf "(Not %s)" (string_of_formula f)
     |Atom(c,s) -> s
                 
-let string_of_mixtype = function
+let string_of_mixtype : mixtype -> string = function
     |`Int(i) -> string_of_int i
     |`Bool(b) -> string_of_bool b
     |`Formula(f) -> string_of_formula f

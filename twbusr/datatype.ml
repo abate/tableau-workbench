@@ -6,32 +6,70 @@ module Type =
         type t = Comptypes.mixlist
     end
 
-module Fmap = Fmap.Make(
+module Fmap = Gmap.Make(
     struct
         type t = Basictype.mixtype
-        type c = Comptypes.Set.set
-        let make () = new Comptypes.Set.set
+        type c = Comptypes.Mtlist.listobj
+        let make () = new Comptypes.Mtlist.listobj
     end)
+
+module Hmap = Hmap.Make(
+    struct
+        type t = Type.t
+        let copy = Comptypes.copy
+    end
+)
 
 module Store =
     struct
-        type store = [
-            |`FMap of Fmap.fmap
-            |Comptypes.mixlist 
-            ]
-        let copy = function
-            |`FMap(s) -> `FMap(s#copy)
-            |#Comptypes.mixlist as t -> Comptypes.copy t
+        type store = Fmap.map
+        let copy s = s#copy
+        let make () = new Fmap.map
     end
     
-module Node = Node.Make(Store)
+module History =
+    struct
+        type store = Hmap.map
+        let copy s = s#copy
+        let make () = new Hmap.map 
+    end
 
-module NodePattern = NodePattern.Make(Type)
+module NodeType1 = 
+    struct
+        type elt = { map : Store.store; hist : History.store }
+        let copy e = { map = Store.copy e.map; hist = History.copy e.hist }
+    end
+    
+module NodeType = 
+    struct
+        type elt = ( Store.store * History.store)
+        let copy (m,h) = ( Store.copy m, History.copy h )
+    end
 
-module Partition = Partition.Make(NodePattern)
+module NodeI = Node.Make(NodeType)
+
+module NodePatternFunc = NodePattern
+
+module NodePattern = NodePatternFunc.Make(
+    struct
+        type bt = Basictype.mixtype
+        type t = Type.t
+        type key = int
+    end
+)
+
+module HistPattern =  NodePatternFunc.Make(
+     struct
+        type bt = Type.t
+        type t = Type.t
+        type key = string
+    end
+)
+
+module Partition = Partition.Make(NodePattern)(HistPattern)
 module Build = Build.Make(NodePattern)
 
-module Tree = Tree.Make(Node)
-module Rule = Rule.Make(Node)(Tree)
+module Rule = Rule.Make(Type)(NodeI)
 module Strategy = Strategy.Make(Rule)
-module Visit = Visit.Make(Tree)(Strategy)
+module Visit = Visit.Make(Rule)(Strategy)
+

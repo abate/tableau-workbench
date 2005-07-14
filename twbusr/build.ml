@@ -1,15 +1,13 @@
 
-module Make(P: NodePattern.S) = struct
-    open P
-
-    let build_node node sbl nodeaction = function
-        { aname = name ; action = al } ->
-            match node#get name with
-            |`FMap(store) ->
-                let newstore =
-                    List.fold_left (fun s a ->
-                        s#addlist ~id:a.aid (a.paction sbl)
-                    ) store al
-                in node#set name (`FMap(newstore))
-            |#Comptypes.mixlist -> failwith "build_node"
+module Make(P: NodePattern.S) :
+    sig
+        val build_node : (P.bt, P.bt Sets.st) Gmap.mt -> P.sbl ->
+            P.action list -> (P.bt, P.bt Sets.st) Gmap.mt
+    end
+= struct
+    
+    let build_node (map : (P.bt, P.bt Sets.st) Gmap.mt ) sbl al = 
+                    List.fold_left (fun (m : (P.bt, P.bt Sets.st) Gmap.mt ) a ->
+                        m#addlist ~id:a.P.aid (a.P.paction sbl)
+                    ) map al 
 end

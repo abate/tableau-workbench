@@ -1,32 +1,20 @@
 
 module type S =
     sig
-        type t
-        type sbl = (t list) Data.Substlist.t
-        type 'a pattern = { pid : int ; pmatch : sbl -> 'a list -> sbl }
-        type 'a action  = { aid : int ; paction : sbl -> 'a list }
-        type 'a nodepattern =
-            { pname : string;
-              chained : 'a pattern list;
-              strict : 'a pattern list;
-              loose : 'a pattern list
-            }
-        type 'a nodeaction = { aname : string; action : 'a action list }
+        type t 
+        type bt 
+        type sbl = t Data.Substlist.t
+        type pattern = { pid : string ; pmatch : sbl -> bt list -> sbl }
+        type action  = { aid : string ; paction : sbl -> bt list }
     end
 
-module Make (T : Data.S) =
+module Make (T : sig type t type bt end) =
     struct
         type t = T.t
-        type sbl = (t list) Data.Substlist.t
-        type 'a pattern = { pid : int ; pmatch : sbl -> 'a list -> sbl }
-        type 'a action  = { aid : int ; paction : sbl -> 'a list }
-        type 'a nodepattern =
-              { pname : string;
-                chained : 'a pattern list;
-                strict : 'a pattern list;
-                loose : 'a pattern list
-              }
-        type 'a nodeaction = { aname : string; action : 'a action list }
+        type bt = T.bt
+        type sbl = t Data.Substlist.t
+        type pattern = { pid : string ; pmatch : sbl -> bt list -> sbl }
+        type action  = { aid : string ; paction : sbl -> bt list }
         let newpatt id pmatch = { pid = id ; pmatch = pmatch }
         let newact id paction = { aid = id ; paction = paction }
     end

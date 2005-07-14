@@ -4,6 +4,7 @@ type status =
     | Closed
     | User of string (** User defined status *)
 
+(*
 module NMap = Map.Make (
     struct
         type t = string
@@ -12,43 +13,49 @@ module NMap = Map.Make (
 )
 
 let copy_NMap copy m = NMap.fold (
-    fun k v m' -> NMap.add k (copy v) m' 
+        fun k v m' -> NMap.add k (copy v) m' 
     ) m NMap.empty
+    *)
 
 module type S =
     sig
-      type store
-      class node :
+      type elt
+      class node : elt -> 
           object ('node)
-              method get : NMap.key -> store
-              method set : NMap.key -> store -> 'node
+              method get : elt
+              method set : elt -> 'node
               method copy : 'node
               method status : status
+              method set_status : status -> 'node
           end
     end
-    
-module Make (S: sig type store val copy : store -> store end) =
-    struct
-        type store = S.store
-        let copy = S.copy
+
+module type ValType = 
+    sig
+        type elt
+        val copy : elt -> elt
+    end
+
+module Make (T: ValType) = struct
+
+        type elt  = T.elt
+        let copy = T.copy 
         
-        class node =
+        class node elt =
             object
                 val status = Open
-                val mutable map : store NMap.t = NMap.empty
+                val map = elt
 
-                method get name =
-                    try NMap.find name map
-                    with Not_found -> failwith "node#get store not found"
-                   
-                method set name store = {< map = NMap.add name store map >}
-                    
-                method copy = {< map = (copy_NMap copy map) >}
+                method get = map
+                method set s = {< map = s >}
+                
+                method copy = {< map = copy map >}
 
                 (** return the status of the node *)
                 method status = status
 
+                (** set the status *)
+                method set_status s = {< status = s >}
+
             end
     end
-
-
