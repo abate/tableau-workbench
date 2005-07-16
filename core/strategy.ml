@@ -10,8 +10,8 @@ module type S =
     sig
         type rule
         type node
-        type context
         type state
+        type context
         exception NoMoreRules
         val init : rule tree -> unit
         val next : state -> node -> rule * context * state
@@ -26,7 +26,8 @@ module Make (R:Rule.S) (* :
         exception NoMoreRules
         val init : rule tree -> unit
         val next : state -> node -> rule * context * state
-    end *)
+    end 
+*)
 = struct
 
     module Map = Map.Make (
@@ -113,17 +114,15 @@ module Make (R:Rule.S) (* :
             try begin
                 match Hashtbl.find automata state.id with
                 |(R(r),n1,n2) ->
-                        let (enum,sbl) = r#check node in
-                        if Data.Substlist.is_empty sbl then
-                            (* the rule failed, we try the next one *)
+                        let c = r#check node in
+                        if c#is_valid then (r,c,seq Succ state n1 n2)
+                        else (* the rule failed, we try the next one *)
                             next (seq Failed state n1 n2) node
-                        else (r,(enum,sbl),seq Succ state n1 n2)
                 |(SS(r),n1,n2) -> 
-                        let (enum,sbl) = r#check node in
-                        if Data.Substlist.is_empty sbl then
-                            (* the rule failed, we try the next one *)
+                        let c = r#check node in
+                        if c#is_valid then (r,c,singlestar Succ state n1 n2)
+                        else (* the rule failed, we try the next one *)
                             next (singlestar Failed state n1 n2) node
-                        else (r,(enum,sbl),singlestar Succ state n1 n2)
                 |(S,_,_) -> failwith "strategy : step"
                 |(E,_,_) -> raise NoMoreRules
             end with Not_found -> failwith "strategy : step"

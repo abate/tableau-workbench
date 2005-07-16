@@ -1,22 +1,4 @@
 
-type status =
-    | Open
-    | Closed
-    | User of string (** User defined status *)
-
-(*
-module NMap = Map.Make (
-    struct
-        type t = string
-        let compare = compare
-    end
-)
-
-let copy_NMap copy m = NMap.fold (
-        fun k v m' -> NMap.add k (copy v) m' 
-    ) m NMap.empty
-    *)
-
 module type S =
     sig
       type elt
@@ -25,8 +7,8 @@ module type S =
               method get : elt
               method set : elt -> 'node
               method copy : 'node
-              method status : status
-              method set_status : status -> 'node
+              method status : Data.status
+              method set_status : Data.status -> 'node
           end
     end
 
@@ -43,7 +25,7 @@ module Make (T: ValType) = struct
         
         class node elt =
             object
-                val status = Open
+                val status = Data.Open
                 val map = elt
 
                 method get = map

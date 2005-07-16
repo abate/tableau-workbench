@@ -8,8 +8,8 @@ SOURCES := \
 	gmap.ml \
 	hmap.ml \
 
-RESULT := twbdata
-PACKS := twblib
+RESULT := twbtypes
+LIBDIRS := ../twb
 
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)

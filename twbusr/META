@@ -1,7 +1,0 @@
-name = "twbusr"
-version = "3.0"
-description = "user stuff"
-requires = "twblib twbdata"
-archive(byte) = "twbusr.cma"
-archive(native) = "twbusr.cmxa"
-

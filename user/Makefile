@@ -1,15 +1,11 @@
 -include ../Makefile.conf
 
 SOURCES := \
-	nodePattern.ml \
-	partition.ml \
-	build.ml \
 	datatype.ml \
-	substlist.ml \
 	user.ml \
 	
 RESULT := twbusr
-PACKS := twblib twbdata
+PACKS := twb.core twb.types twb.sequent
 
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)

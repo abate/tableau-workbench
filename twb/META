@@ -1,0 +1,28 @@
+
+requires = ""
+version = "3.0"
+description = "Base for Camlp4 syntax extensions"
+browse_interfaces = "Llist Data"
+
+package "core" (
+	version = "[distributed with TWB]"
+	description = "twb core"
+	requires = "extlib"
+	browse_interfaces = "Llist Data"
+	archive(byte) = "twbcore.cma"
+	archive(native) = "twbcore.cmxa"
+)
+
+package "types" (
+	version = "[distributed with TWB]"
+	description = "twb data structures"
+	archive(byte) = "twbtypes.cma"
+	archive(native) = "twbtypes.cmxa"
+)
+
+package "sequent" (
+	version = "[distributed with TWB]"
+	description = "twb sequent/tableau library"
+	archive(byte) = "twbseq.cma"
+	archive(native) = "twbseq.cmxa"
+)

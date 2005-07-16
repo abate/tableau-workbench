@@ -9,7 +9,7 @@ SOURCES := \
 	strategy.ml \
 	visit.ml \
 	
-RESULT := twblib
+RESULT := twbcore
 
 PACKS := extlib
 

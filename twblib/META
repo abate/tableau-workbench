@@ -1,7 +1,0 @@
-name = "twblib"
-version = "3.0"
-description = "twb prover"
-requires = "extlib"
-archive(byte) = "twblib.cma"
-archive(native) = "twblib.cmxa"
-

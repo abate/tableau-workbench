@@ -8,7 +8,7 @@ open Comptypes
 open Datatype
 open Datatype.NodeType
 open Node
-open Datatype.NodeI
+open Datatype.Node
 
 open Datatype.NodePattern
 open Datatype.HistPattern
@@ -18,6 +18,11 @@ open Tree
 open Datatype.Rule
 open Datatype.Strategy
 open Datatype.Visit
+
+open UserRule
+open Datatype.RuleContext
+
+let nc = Basictype.newcore 1 [|0|]
 
 let open_mt v = (v : mixtype list :> [> mixtype] list )
 type sbl = Comptypes.mixlist Data.Substlist.t
@@ -121,7 +126,6 @@ let notp = NodePattern.newpatt "4" not_p
 
 let histp = HistPattern.newpatt "H" hist_p
 
-let nc = Basictype.newcore 1 [|0|]
 
 let na1_a sbl = 
     try
@@ -147,6 +151,7 @@ let na2_a a sbl =
 let na1 = NodePattern.newact "2" na1_a
 let na2 = NodePattern.newact "" (na2_a "A")
 let na3 = NodePattern.newact "" (na2_a "B")
+let na4 = NodePattern.newact "" (na2_a "X")
 
 let matchpatt : Basictype.mixtype -> string = function
   |`Formula(And(_,Or(_,_,_),_)) -> "1"
@@ -161,9 +166,15 @@ let matchpatt : Basictype.mixtype -> string = function
  * is empty or the sbl is empty, the strategy will try an other rule. *)
 let match_all node (pl,sl,ll) hl =
     let (map,hist) = node#get in
-    let enum = match_node map (pl,sl,ll)  in
-    let sbl = match_hist enum hist hl in
-    (enum,sbl)
+    let enum = match_node map (pl,sl,ll) in
+    let (sbl,newmap) = match_hist enum hist map hl in
+    let newnode = node#set (newmap,hist) in
+    let _ = print_endline (map#to_string) in
+    let _ = print_endline "---------------" in
+    let _ = print_endline (newmap#to_string) in
+    let _ = print_endline "---------------" in
+    let _ = print_sbl sbl in
+    new context (enum,sbl,newnode)
 
 let action_all node sbl al =
     let (map,hist) = node#get in
@@ -174,6 +185,7 @@ let action_all node sbl al =
 let rec make_llist sbl = function
     |[] -> Empty
     |(node,al)::t -> LList(action_all node sbl al, lazy(make_llist sbl t))
+
     
 class and_rule =
     object
@@ -181,11 +193,12 @@ class and_rule =
 
         method check node = 
             print_endline "check and" ;
-            match_all node ([andp],[varp],[]) [histp]
+            match_all node ([andp],[varp],[]) []
             
-        method down node (enum,sbl) = 
+        method down node context = 
             print_endline "down and" ;
-            let ll = make_llist sbl [(node,[na3;na2])] in
+            let (enum,sbl,newnode) = context#get in
+            let ll = make_llist sbl [(newnode,[na3;na2;na4])] in
             Tree(ll)
     end
 ;;
@@ -196,11 +209,12 @@ class or_rule =
 
         method check node =
             print_endline "check or" ;
-            match_all node ([orp],[varp],[]) [histp]
+            match_all node ([orp],[varp],[]) []
             
-        method down node (enum,sbl) =
+        method down node context =
             print_endline "down or" ;
-            let ll = make_llist sbl [(node,[na2]);(node#copy,[na3])]
+            let (enum,sbl,newnode) = context#get in
+            let ll = make_llist sbl [(newnode,[na2;na4]);(newnode#copy,[na3;na4])]
             in Tree(ll)
     end
 ;;
@@ -214,10 +228,11 @@ class closed_axiom =
             print_endline "check axiom" ;
             match_all node ([pp;notp],[varp],[]) []
             
-        method down node (enum,sbl) =
+        method down node context =
             print_endline "down axiom" ;
+            let (enum,sbl,newnode) = context#get in
             print_sbl sbl;
-            Leaf(node#set_status Closed)
+            Leaf(newnode#set_status Data.Closed)
     end
 ;;
 
@@ -250,3 +265,4 @@ Strategy.add "end" E "end" "end" ;;
 
 let start = Strategy.newstate "start" ;;
 Visit.visit start n;;
+

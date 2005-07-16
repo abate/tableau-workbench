@@ -34,19 +34,13 @@ module History =
         let make () = new Hmap.map 
     end
 
-module NodeType1 = 
-    struct
-        type elt = { map : Store.store; hist : History.store }
-        let copy e = { map = Store.copy e.map; hist = History.copy e.hist }
-    end
-    
 module NodeType = 
     struct
         type elt = ( Store.store * History.store)
         let copy (m,h) = ( Store.copy m, History.copy h )
     end
 
-module NodeI = Node.Make(NodeType)
+module Node = Node.Make(NodeType)
 
 module NodePatternFunc = NodePattern
 
@@ -69,7 +63,22 @@ module HistPattern =  NodePatternFunc.Make(
 module Partition = Partition.Make(NodePattern)(HistPattern)
 module Build = Build.Make(NodePattern)
 
-module Rule = Rule.Make(Type)(NodeI)
+module RuleContext =
+    struct
+    type t = (HistPattern.sbl *
+                (NodePattern.bt, NodePattern.bt Sets.st) Gmap.mt) Enum.t * 
+                    HistPattern.sbl * Node.node
+
+    class context ((e,s,n) : t) = 
+        object
+            val data = (e,s,n)
+            method set e = {< data = e >}
+            method get = data
+            method is_valid = true
+        end
+    end
+
+module Rule = UserRule.Make(Type)(Node)(struct type t = RuleContext.t end)
 module Strategy = Strategy.Make(Rule)
 module Visit = Visit.Make(Rule)(Strategy)
 
