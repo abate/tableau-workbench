@@ -32,8 +32,6 @@ let print_sbl sbl =
         print_endline k ;
         print_endline (Comptypes.string_of_mixlist e)
     ) sbl 
-;;
-
 
 let add (sbl : sbl) l =
   List.fold_left (
@@ -48,6 +46,8 @@ let add (sbl : sbl) l =
               with Not_found ->  (
                   Data.Substlist.add k (`L((new Mtlist.listobj)#addlist v)) s )
       ) sbl l
+
+let find sbl p = Data.Substlist.find p sbl
 
 (* return true if the pattern p is not in the sbl or if
  * the pattern p is in the sbl and the formula f matches
@@ -73,6 +73,23 @@ let match_binary sbl f a b l =
         ) ([],[]) l
     in add sbl [(a,l1);(b,l2)]
 
+let expand_set sbl fl =
+  let __rec =
+    function
+      `Formula (And (_, Or (_, a, b), c)) ->
+        `Formula a, `Formula b, `Formula c
+    | `Formula _ -> raise FailedMatch
+    | _ -> failwith ("__reserved9" ^ ": type mismatch")
+  in
+  let (la, lb, lc) =
+    List.fold_left
+      (fun (la, lb, lc) el ->
+         let (a, b, c) = __rec el in a :: la, b :: lb, c :: lc)
+      ([], [], []) fl
+  in
+  add sbl ["A", la; "B", lb; "C", lc]
+
+    
 (* A v B *)
 let or_p sbl fl =
     let and_rec = function
@@ -103,6 +120,22 @@ let not_p sbl fl =
         |_ -> failwith "and_p: type mismatch"
     in add sbl [("P",not_rec (List.hd fl))]
 
+let imp_p sbl fl =
+    let __rec = function
+        |`Formula(Imp(_,a,b)) ->
+                begin
+                    let l = [(`Formula a);(`Formula b)] in
+                    List.map2 (fun f s ->
+                        try if mem sbl s f then []
+                            else raise FailedMatch
+                        with Not_found -> [f]
+                    ) l ["P";"B"]
+                end
+        |`Formula(_) -> raise FailedMatch
+        |_ -> failwith "and_p: type mismatch"
+    in add sbl (List.combine ["P";"B"] (__rec (List.hd fl)))
+;;
+
 let p_p sbl fl = 
     let p_rec = function
         |`Formula(a) ->
@@ -115,6 +148,24 @@ let p_p sbl fl =
         |_ -> failwith "and_p: type mismatch"
     in add sbl [("P",p_rec (List.hd fl))]
 
+let __exp_single1 sbl fl =
+  let __rec =
+    function
+      `Formula (Dia (_, a)) ->
+        List.map2
+          (fun f s ->
+             try 
+                 if mem sbl s f then []
+                 else raise FailedMatch
+             with Not_found -> [f])
+          [`Formula a] ["P"]
+    | `Formula _ -> raise FailedMatch
+    | _ -> failwith ("__exp_single1" ^ ": type mismatch")
+  in
+  add sbl (List.combine ["P"] (__rec (List.hd fl)))
+let diap = NodePattern.newpatt "7" __exp_single1
+
+    
 let var_p sbl fl = add sbl [("X",fl)]
 let hist_p sbl s = Data.Substlist.add "H" (List.hd s) sbl
 
@@ -123,9 +174,10 @@ let orp = NodePattern.newpatt "3" or_p
 let varp = NodePattern.newpatt "" var_p
 let pp = NodePattern.newpatt "" p_p
 let notp = NodePattern.newpatt "4" not_p
+let impp = NodePattern.newpatt "6" imp_p
+let trip = NodePattern.newpatt "1" expand_set 
 
 let histp = HistPattern.newpatt "H" hist_p
-
 
 let na1_a sbl = 
     try
@@ -148,6 +200,16 @@ let na2_a a sbl =
         |_ -> failwith "na2 type node allowed"
     with Not_found -> failwith "na2"
 
+let __exp_action7 sbl =
+  try
+    match Data.Substlist.find "P" sbl with
+      `L l -> l#elements
+    | _ -> failwith ("__exp_action7" ^ " type node allowed")
+  with
+    Not_found -> failwith ("__exp_action7" ^ " type node allowed")
+let diaa = NodePattern.newact "" __exp_action7
+
+
 let na1 = NodePattern.newact "2" na1_a
 let na2 = NodePattern.newact "" (na2_a "A")
 let na3 = NodePattern.newact "" (na2_a "B")
@@ -156,11 +218,14 @@ let na4 = NodePattern.newact "" (na2_a "X")
 let matchpatt : Basictype.mixtype -> string = function
   |`Formula(And(_,Or(_,_,_),_)) -> "1"
   |`Formula(And(_,_,_)) -> "2"
+  |`Formula(Imp(_,_,_)) -> "6"
   |`Formula(Or(_,_,_)) -> "3"
   |`Formula(Not(_,_)) -> "4"
+  |`Formula(Dia(_,_)) -> "7"
   |`Formula(Atom(_)) -> "5"
   |_ -> failwith "this formula is not mached by any pattern"
 ;;
+
 
 (* return an enumeration (the rule context). If the enumeration
  * is empty or the sbl is empty, the strategy will try an other rule. *)
@@ -186,7 +251,6 @@ let rec make_llist sbl = function
     |[] -> Empty
     |(node,al)::t -> LList(action_all node sbl al, lazy(make_llist sbl t))
 
-    
 class and_rule =
     object
         inherit linear_rule
@@ -195,7 +259,7 @@ class and_rule =
             print_endline "check and" ;
             match_all node ([andp],[varp],[]) []
             
-        method down node context = 
+        method down context = 
             print_endline "down and" ;
             let (enum,sbl,newnode) = context#get in
             let ll = make_llist sbl [(newnode,[na3;na2;na4])] in
@@ -211,7 +275,7 @@ class or_rule =
             print_endline "check or" ;
             match_all node ([orp],[varp],[]) []
             
-        method down node context =
+        method down context =
             print_endline "down or" ;
             let (enum,sbl,newnode) = context#get in
             let ll = make_llist sbl [(newnode,[na2;na4]);(newnode#copy,[na3;na4])]
@@ -219,6 +283,35 @@ class or_rule =
     end
 ;;
 
+class k_rule =
+    object
+        inherit exist_rule
+
+        method check node =
+            print_endline "check k" ;
+            match_all node ([diap],[varp],[]) []
+            
+        method down context =
+            let rec make_llist = function
+                |Empty -> Empty
+                |LList((node,sbl,al),t) ->
+                        LList(action_all node sbl al,
+                        lazy(make_llist (Lazy.force t)))
+            in
+            let rec next context =
+                let (enum,sbl,node) = context#get in
+                let (map,hist) = node#get in
+                let (newsbl,newmap) = match_hist enum hist map [] in
+                let newnode = node#set (newmap,hist) in
+                if Data.Substlist.is_empty newsbl then
+                    LList((node,sbl,[diaa]),lazy(Empty))
+                else
+                    LList((node,sbl,[diaa]),
+                    lazy(next (context#set (enum,newsbl,newnode))))
+            in
+            Tree(make_llist ( next context ))
+    end
+;;
 
 class closed_axiom =
     object
@@ -228,38 +321,48 @@ class closed_axiom =
             print_endline "check axiom" ;
             match_all node ([pp;notp],[varp],[]) []
             
-        method down node context =
+        method down context =
             print_endline "down axiom" ;
             let (enum,sbl,newnode) = context#get in
             print_sbl sbl;
-            Leaf(newnode#set_status Data.Closed)
+            Leaf(newnode#set_status Data.Open)
     end
 ;;
 
 let input1 = open_mt [
     (`Formula(And(nc, Atom(nc,"a"), Atom(nc,"b"))));
-    (`Formula(Or(nc, Atom(nc,"a"), Atom(nc,"b"))))
+    (`Formula(Or(nc, Atom(nc,"a"), Atom(nc,"b"))));
+    (`Formula(Imp(nc, Atom(nc,"xx"), Atom(nc,"5"))))
             ] ;;
 
 let input2 = open_mt [
     (`Formula(Not(nc,Atom(nc,"a"))));
+    (`Formula(Dia(nc,Atom(nc,"a1"))));
+    (`Formula(Dia(nc,Atom(nc,"a2"))));
     (`Formula(Atom(nc,"a")));
+    (`Formula(Atom(nc,"xx")));
     (`Formula(Atom(nc,"b")));
     (`Formula(Atom(nc,"a")));
     (`Formula(Atom(nc,"c")))
             ] ;;
 
+let input3 = open_mt [
+    (`Formula(And(nc, Or (nc, Atom(nc,"1"),Atom(nc,"2")), Atom(nc,"3"))));
+    (`Formula(Or(nc, Atom(nc,"a"), Atom(nc,"b"))))
+            ] ;;
+
 let andr = new and_rule ;;
 let orr = new or_rule ;;
 let cla = new closed_axiom;;
+let kr = new k_rule;;
 
-let m1 = (new Fmap.map matchpatt)#addlist (input2@input1) ;;
+let m1 = (new Fmap.map matchpatt)#addlist (input2@input1@input3) ;;
 let h1 = (new Hmap.map)#add "H" (`S((new Set.set)#addlist input1)) ;;
 
 let n = new node (m1,h1) ;;
 
 Strategy.add "start" (R(andr)) "start" "a";;
-Strategy.add "a" (R(orr)) "a" "b" ;;
+Strategy.add "a" (R(kr)) "a" "b" ;;
 Strategy.add "b" (R(cla)) "b" "end" ;;
 Strategy.add "end" E "end" "end" ;;
 

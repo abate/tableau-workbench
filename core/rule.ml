@@ -22,7 +22,7 @@ module type S =
         class virtual rule :
             object
                 method virtual check : node -> context
-                method virtual down : node -> context -> tree
+                method virtual down : context -> tree
                 method virtual up : tree Llist.llist -> tree
             end
       end

@@ -4,6 +4,7 @@ all:
 	cd core && make && cp twbcore.* *.cmi ../twb/
 	cd types && make && cp twbtypes* *.cmi ../twb/
 	cd sequent && make && cp twbseq* *.cmi ../twb/
+	cd syntax && make && cp twbintf* *.cmi ../twb/
 	cd user && make 
 
 nc:

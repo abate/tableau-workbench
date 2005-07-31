@@ -1,4 +1,4 @@
--include ../Makefile.conf
+include ../Makefile.conf
 
 SOURCES := \
 	basictype.ml \
@@ -16,4 +16,4 @@ DOC_FILES := $(SOURCES)
 
 all: byte-code-library
 
--include $(OCAMLMAKEFILE)
+include $(OCAMLMAKEFILE)

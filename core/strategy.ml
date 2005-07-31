@@ -1,11 +1,5 @@
 (** this module return the the rule to apply and a new context *)
 
-type 'a tree =
-    |Star of 'a tree
-    |Seq of 'a tree list
-    |Choice of 'a tree list
-    |Rule of 'a
-
 module type S =
     sig
         type rule
@@ -13,18 +7,17 @@ module type S =
         type state
         type context
         exception NoMoreRules
-        val init : rule tree -> unit
         val next : state -> node -> rule * context * state
     end
  
-module Make (R:Rule.S) (* :
+module Make (R:Rule.S)
+(* :
     sig
         type rule = R.rule
         type node = R.node
         type context = R.context
         type state
         exception NoMoreRules
-        val init : rule tree -> unit
         val next : state -> node -> rule * context * state
     end 
 *)
@@ -54,8 +47,6 @@ module Make (R:Rule.S) (* :
     (* the fsa *)
     let automata = Hashtbl.create 15
 
-    let init t = ()
-    
     (* add an element to the fsa *)
     let add id t n1 n2 = Hashtbl.add automata id (t,n1,n2)
 

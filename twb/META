@@ -26,3 +26,10 @@ package "sequent" (
 	archive(byte) = "twbseq.cma"
 	archive(native) = "twbseq.cmxa"
 )
+
+package "syntax" (
+	version = "[distributed with TWB]"
+	description = "generic parser"
+	archive(byte) = "twbintf.cma"
+	archive(native) = "twbintf.cmxa"
+)

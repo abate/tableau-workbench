@@ -1,10 +1,11 @@
--include ../Makefile.conf
+include ../Makefile.conf
 
 SOURCES := \
 	nodePattern.ml \
 	build.ml \
 	partition.ml \
 	userRule.ml \
+	sbl.ml
 	
 RESULT := twbseq
 PACKS := twb.core twb.types
@@ -14,4 +15,4 @@ DOC_FILES := $(SOURCES)
 
 all: byte-code-library
 
--include $(OCAMLMAKEFILE)
+include $(OCAMLMAKEFILE)

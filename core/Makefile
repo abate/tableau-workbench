@@ -1,4 +1,4 @@
-OCAMLMAKEFILE = /usr/share/ocaml-tools/OCamlMakefile
+include ../Makefile.conf
 
 SOURCES := \
 	llist.ml \

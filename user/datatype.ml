@@ -74,7 +74,7 @@ module RuleContext =
             val data = (e,s,n)
             method set e = {< data = e >}
             method get = data
-            method is_valid = true
+            method is_valid = not(Data.Substlist.is_empty s)
         end
     end
 

@@ -5,11 +5,15 @@ type core = {
 }
 
 let newcore id star = { id = id; star = star }
+let nc = newcore 1 [|0|]
 
 type formula =
     |And of core * formula * formula
     |Or of core * formula * formula
+    |Imp of core * formula * formula
     |Not of core * formula
+    |Dia of core * formula
+    |Box of core * formula
     |Atom of core * string 
 
 type mixtype = [
@@ -21,6 +25,8 @@ type mixtype = [
     |`FormulaTuple of (formula * formula)
     |`FormulaTriple of (formula * formula * formula)
 ]
+
+let open_mt v = (v : mixtype list :> [> mixtype] list )
 
 (* FIXME: this doesn't copy anything !!! *)
 (* XXX: copy of formulae might be expensive ... *)
@@ -36,7 +42,13 @@ let rec string_of_formula = function
             Printf.sprintf "(%s Or %s)"
             (string_of_formula f1)
             (string_of_formula f2)
+    |Imp(c,f1,f2) ->
+            Printf.sprintf "(%s Imp %s)"
+            (string_of_formula f1)
+            (string_of_formula f2)
     |Not(c,f) -> Printf.sprintf "(Not %s)" (string_of_formula f)
+    |Dia(c,f) -> Printf.sprintf "(Dia %s)" (string_of_formula f)
+    |Box(c,f) -> Printf.sprintf "(Box %s)" (string_of_formula f)
     |Atom(c,s) -> s
                 
 let string_of_mixtype : mixtype -> string = function

@@ -15,7 +15,7 @@ module Make (R:Rule.S) (S: Strategy.S
         let rec visit state node =
             try
                 let (rule,context,newstate) = S.next state node in
-                match rule#down node context with
+                match rule#down context with
                 |Tree(l) -> rule#up (Llist.map (visit newstate) l)
                 |Leaf(_) as n -> rule#up (LList(n,lazy(Empty)))
             with S.NoMoreRules -> Leaf(node)
