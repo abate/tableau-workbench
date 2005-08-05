@@ -1,10 +1,10 @@
 include ../Makefile.conf
 
 SOURCES := \
-	aa.ml \
+	twb.ml
 	
-RESULT := twbusr
-PACKS := twb.core twb.types twb.sequent twb.syntax 
+RESULT := twb
+PACKS := twb.core twb.types twb.sequent twb.syntax dynlink unix extlib
 
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)

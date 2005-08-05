@@ -11,5 +11,9 @@ type status =
     | User of string (** User defined status *)
 
 
-module type S = sig type t end
+module type S =
+    sig
+    type t
+    type bt
+    end
 

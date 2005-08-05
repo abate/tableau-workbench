@@ -30,6 +30,7 @@ package "sequent" (
 package "syntax" (
 	version = "[distributed with TWB]"
 	description = "generic parser"
+	requires = "camlp4.gramlib"
 	archive(byte) = "twbintf.cma"
 	archive(native) = "twbintf.cmxa"
 )

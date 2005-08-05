@@ -16,10 +16,13 @@ type formula =
     |Box of core * formula
     |Atom of core * string 
 
+type label = int list
+
 type mixtype = [
     |`Int of int
     |`Bool of bool
     |`Formula of formula
+    |`LabeledFormula of (label * formula)
     |`Tuple of (int * int)
     |`Triple of (int * int * int)
     |`FormulaTuple of (formula * formula)
@@ -55,6 +58,11 @@ let string_of_mixtype : mixtype -> string = function
     |`Int(i) -> string_of_int i
     |`Bool(b) -> string_of_bool b
     |`Formula(f) -> string_of_formula f
+    |`LabeledFormula(il, f) ->
+            let label = 
+                List.fold_left (fun s i -> s^(string_of_int i) ) "" il in
+            let formula = string_of_formula f in
+            Printf.sprintf "%s : %s" label formula
     |`Tuple(i1,i2) ->
             Printf.sprintf "(%d,%d)" i1 i2
             

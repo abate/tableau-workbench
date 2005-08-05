@@ -4,11 +4,12 @@
 module Type =
     struct
         type t = Comptypes.mixlist
+        type bt = Basictype.mixtype
     end
 
 module Fmap = Gmap.Make(
     struct
-        type t = Basictype.mixtype
+        type t = Type.bt
         type c = Comptypes.Mtlist.listobj
         let make () = new Comptypes.Mtlist.listobj
     end)
@@ -24,6 +25,7 @@ module Store =
     struct
         type store = Fmap.map
         let copy s = s#copy
+        let to_string s = s#to_string
         let make () = new Fmap.map
     end
     
@@ -31,6 +33,7 @@ module History =
     struct
         type store = Hmap.map
         let copy s = s#copy
+        let to_string s = s#to_string
         let make () = new Hmap.map 
     end
 
@@ -38,6 +41,10 @@ module NodeType =
     struct
         type elt = ( Store.store * History.store)
         let copy (m,h) = ( Store.copy m, History.copy h )
+        let to_string (m,h) =
+            Printf.sprintf "%s%s"
+            (Store.to_string m)
+            (History.to_string h)
     end
 
 module Node = Node.Make(NodeType)
@@ -46,7 +53,7 @@ module NodePatternFunc = NodePattern
 
 module NodePattern = NodePatternFunc.Make(
     struct
-        type bt = Basictype.mixtype
+        type bt = Type.bt
         type t = Type.t
         type key = int
     end

@@ -5,6 +5,7 @@ open Genlex
 
 let gram = Grammar.gcreate (Plexer.gmake ());;
 let expr_term = Grammar.Entry.create gram "expr_term";;
+let input_line = Grammar.Entry.create gram "input_line";;
 
 let add_uconn op co =
     EXTEND
@@ -21,24 +22,31 @@ let add_biconn lev op co =
 ;;
 
 EXTEND
-GLOBAL : expr_term;
+GLOBAL : expr_term input_line;
+
+  input_head: [[ r = LIST1 expr_term SEP ";" -> (r,r,r) ]];
+
+  input_line: [[ id = LIDENT; ":"; i = input_head -> i ]];
+ 
   expr_term:
     [ "One" LEFTA [ ]
     | "Two" RIGHTA [ ]
     | "Simple" NONA
       [ x = LIDENT -> Atom(Basictype.nc,x)
-      | "("; p = expr_term; ")" -> p
-      ]
+      | "("; p = expr_term; ")" -> p ]
     ];
 
 END
 
-let buildParser table =
-    List.iter(function
-    |"Simple",op,co -> add_uconn op co
-    |lev,op,co -> add_biconn lev op co
-    ) table;
-    fun s ->
-        Grammar.Entry.parse expr_term (Stream.of_string s)
+let buildParser table s =
+    let parse s =
+        Grammar.Entry.parse input_line (Stream.of_string s)
+    in
+    let _ =
+        List.iter(function
+            |"Simple",op,co -> add_uconn op co
+            |lev,op,co -> add_biconn lev op co
+        ) table
+    in parse s
 ;;
 

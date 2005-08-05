@@ -35,5 +35,6 @@ clean:
 	cd core && make clean
 	cd types && make clean
 	cd sequent && make clean
+	cd syntax && make clean
 	cd twb && rm *.cm*
 	cd user && make clean
