@@ -10,16 +10,24 @@ let input_line = Grammar.Entry.create gram "input_line";;
 let add_uconn op co =
     EXTEND
       expr_term: LEVEL "Simple"
-      [[ $op$; x = expr_term -> co Basictype.nc [x] ]];
+      [[ $op$; x = expr_term -> co x ]];
     END
 ;;
 
 let add_biconn lev op co =
     EXTEND
       expr_term: LEVEL $lev$
-      [[ x = expr_term; $op$; y = expr_term -> co Basictype.nc [x;y] ]];
+      [[ x = expr_term; $op$; y = expr_term -> co (x,y) ]];
     END
 ;;
+
+let add_muconn op1 op2 co =
+    EXTEND
+      expr_term: LEVEL "Simple"
+      [[ $op1$; i = INT; $op2$; x = expr_term -> co (int_of_string i,x) ]];
+    END
+;;
+
 
 EXTEND
 GLOBAL : expr_term input_line;
@@ -44,8 +52,10 @@ let buildParser table s =
     in
     let _ =
         List.iter(function
-            |"Simple",op,co -> add_uconn op co
-            |lev,op,co -> add_biconn lev op co
+             "Simple",[op],`Uconn(co) -> add_uconn op co
+            |lev,[op],`Biconn(co) -> add_biconn lev op co
+            |"Simple",[op1;op2],`Muconn(co) -> add_muconn op1 op2 co
+            |_ -> failwith "buildParser"
         ) table
     in parse s
 ;;

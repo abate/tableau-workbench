@@ -2,6 +2,9 @@
 
 type 'a llist = LList of 'a * 'a llist Lazy.t | Empty ;;
 
+let empty = Empty
+let push hd tl = LList (hd, lazy(tl))
+
 let hd = function
     | Empty -> failwith "hd: empty list"
     | LList (x, _) -> x

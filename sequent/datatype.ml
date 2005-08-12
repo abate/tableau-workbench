@@ -18,6 +18,7 @@ module Hmap = Hmap.Make(
     struct
         type t = Type.t
         let copy = Comptypes.copy
+        let to_string = Comptypes.string_of_mixlist
     end
 )
 

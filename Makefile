@@ -6,6 +6,7 @@ all:
 	cd sequent && make && cp twbseq* *.cmi ../twb/
 	cd syntax && make && cp twbintf* *.cmi ../twb/
 	cd user && make 
+	cd cli && make
 
 nc:
 	cd core && make ncl && cp twbcore.* *.cmi ../twb/
@@ -38,3 +39,4 @@ clean:
 	cd syntax && make clean
 	cd twb && rm *.cm*
 	cd user && make clean
+	cd cli && make clean

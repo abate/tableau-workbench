@@ -65,7 +65,7 @@ module Make (R:Rule.S)
 
     (* given a state returns the next state. On success, reset the
      * state context. *)
-    let rec seq inp state local next =
+    let rec seq inp state next =
       match inp with
       |Succ -> move inp (nextcxt next None)
       |Failed -> move inp (nextcxt next (Some(state)))
@@ -93,7 +93,7 @@ module Make (R:Rule.S)
     and move inp state =
             try begin
                 match Hashtbl.find automata state.id with
-                |(S,n1,n2) -> move inp (star inp state n1 n2)
+                |(S,back,out) -> move inp (star inp state back out)
                 |(SS(_),_,_) -> state
                 |(R(_),_,_) -> state
                 |(E,_,_) -> state
@@ -104,16 +104,16 @@ module Make (R:Rule.S)
     let rec next state node =
             try begin
                 match Hashtbl.find automata state.id with
-                |(R(r),n1,n2) ->
+                |(R(r),_,n) ->
                         let c = r#check node in
-                        if c#is_valid then (r,c,seq Succ state n1 n2)
+                        if c#is_valid then (r,c,seq Succ state n)
                         else (* the rule failed, we try the next one *)
-                            next (seq Failed state n1 n2) node
-                |(SS(r),n1,n2) -> 
+                            next (seq Failed state n) node
+                |(SS(r),back,out) -> 
                         let c = r#check node in
-                        if c#is_valid then (r,c,singlestar Succ state n1 n2)
+                        if c#is_valid then (r,c,singlestar Succ state back out)
                         else (* the rule failed, we try the next one *)
-                            next (singlestar Failed state n1 n2) node
+                            next (singlestar Failed state back out) node
                 |(S,_,_) -> failwith "strategy : step"
                 |(E,_,_) -> raise NoMoreRules
             end with Not_found -> failwith "strategy : step"

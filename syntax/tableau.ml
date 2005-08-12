@@ -14,20 +14,48 @@ let new_id =
       "__" ^s^ string_of_int !counter
 ;;
 
+(*
+let insert_this () =
+    let loc = Token.dummy_loc in
+    let stl = [
+        "Llist";"Data";"Basictype";"Comptypes";
+        "Datatype";"Datatype.NodeType";"Datatype.Node";
+        "Datatype.NodePattern";"Datatype.HistPattern";
+        "Datatype.Partition";"Datatype.Rule";"Datatype.RuleContext";
+        "Datatype.Strategy";"Datatype.Visit";"UserRule";"Tree"]
+    in
+    let stl = List.map (fun s -> <:str_item< open $uid:s$ >> ) stl in
+    (<:str_item< declare $list:stl$ end >>, loc)
+
+let _ =
+  let first = ref true in
+  let parse strm =
+    let (l, stopped) = Grammar.Entry.parse Pcaml.implem strm in
+    let l' = 
+      if !first then
+        insert_this () :: l
+      else l in
+    (l', stopped) in
+  Pcaml.parse_implem := parse
+  *)
 
 (* given a patter, returns an pattern where all lid as
  * substituted with _ *)
 let rec remove_lid = 
     let loc = Token.dummy_loc in 
     function
+    | <:patt< Atom(_,_) >> -> <:patt< _ >>
     | <:patt< $uid:s$ ( $list:pl$ ) >> ->
         let l = List.map (remove_lid) pl in
         <:patt< $uid:s$ ( $list:l$ ) >>
     | <:patt< $lid:s$ >> -> <:patt< _ >>
-    | <:patt< Atom(_,_) >> -> <:patt< _ >>
+    | <:patt< $int:i$ >> -> <:patt< _ >>
     | <:patt< _ >> -> <:patt< _ >>
     | _ as p -> failwith "remove_lid : parsing error" 
 ;;
+
+let hist_table = ref [];;
+let add_hist_table e = hist_table := e::!hist_table;;
 
 (* XXX: big enough ?? *)
 let patt_table = Hashtbl.create 300 ;;
@@ -82,14 +110,28 @@ let add_uconn op co =
     END
 ;;
 
+let add_muconn op1 op2 co =
+    EXTEND
+      patt_term: LEVEL "Simple"
+      [[ $op1$; i = INT; $op2$; (lx,x) = patt_term ->
+            (lx,<:patt< $uid:co$($int:i$,_,$x$) >> )
+        ]];
+      expr_term: LEVEL "Simple"
+      [[ $op1$; i = INT; $op2$; (lx,x) = expr_term ->
+            let nc = <:expr<  Basictype.newcore 1 [|0|] >> in
+            (lx,<:expr< $uid:co$($int:i$,nc,$x$) >> )
+        ]];
+    END
+;;
+
 let (=~) s re = Str.string_match (Str.regexp re) s 0;;
-let get_match s = Str.matched_group 1 s
+let get_match i s = Str.matched_group i s
 
 (* binary connective. ei.: A & B *)
 let bi_re = "_\\([^_]+\\)_";;
 
 (* multi modal connective. ie: <a>B *)
-let mm_re = "\\([^_]+\\)_\\([^_]+\\)_";;
+let mu_re = "\\([^_]+\\)_\\([^_]+\\)_";;
 
 (* unary connective. ie: <> B *)
 let u_re =  "\\([^_]+\\)_";;
@@ -104,20 +146,6 @@ let test_sep strm =
     | _ -> raise Stream.Failure
 ;;
 let test_sep = Grammar.Entry.of_parser Pcaml.gram "test_sep" test_sep ;;
-
-(*
-let add_pconn op1 op2 =
-    EXTEND
-      pattern: LEVEL "Simple"
-          [[ $op1$; p = modal ; $op2$; x = pattern ->
-            <:expr< $lid:op$($x$) >> 
-      ]];
-      modal:
-          [[
-      ]]
-    END
-;;
-*)
 
 (* generate the code pattern match a set of formulae *)
 let expand_set loc formula l =
@@ -138,7 +166,7 @@ let expand_set loc formula l =
         let l = List.map (
             function 
             |a when a =~ "atom___\\(.*\\)" ->
-                    <:expr< `Formula (Atom (nc,$lid:get_match a$)) >>
+                    <:expr< `Formula (Atom (nc,$lid:get_match 1 a$)) >>
             |a -> <:expr< `Formula $lid:a$ >>
         ) l 
         in <:expr< ( $list:l$ ) >>
@@ -157,7 +185,7 @@ let expand_set loc formula l =
         let l = List.map (
             function
             |a when a =~ "atom___\\(.*\\)" ->
-                    let b = [<:expr<$str:String.uppercase (get_match a)$>>;
+                    let b = [<:expr<$str:String.uppercase (get_match 1 a)$>>;
                     <:expr<$lid:("l"^a)$ >>] in
                     <:expr< ( $list:b$ ) >>
             |a -> 
@@ -199,7 +227,7 @@ let expand_single loc formula l =
         let l = List.map (
             function 
             |a when a =~ "atom___\\(.*\\)" ->
-                    <:expr< `Formula (Atom (nc,$lid:get_match a$)) >>
+                    <:expr< `Formula (Atom (nc,$lid:get_match 1 a$)) >>
             |a -> <:expr< `Formula $lid:a$ >>
         ) l 
         in list_to_exprlist loc l
@@ -208,7 +236,7 @@ let expand_single loc formula l =
         let l = List.map (
             function
             |a when a =~ "atom___\\(.*\\)" ->
-                    <:expr< $str:String.uppercase (get_match a)$ >>
+                    <:expr< $str:String.uppercase (get_match 1 a)$ >>
             |a -> <:expr< $str:String.uppercase a$>>
         ) l
         in list_to_exprlist loc l
@@ -549,25 +577,28 @@ let expand_matchpatt loc =
         <:expr< failwith "this formula is not mached by any pattern" >>
     )
     in
-    <:str_item<
-    value matchpatt : Basictype.mixtype -> string = 
-        fun [ $list:l@[atom;fail]$ ]
+    <:str_item< Logic.__matchpatt.val := 
+        ((fun [ $list:l@[atom;fail]$ ]) : Basictype.mixtype -> string )
     >>
 ;;
 
 let expand_parser loc connlist =
     let l = List.map(function
+    | (v,s,r) when s =~ mu_re ->
+            <:expr< ( $str:r$,[$str:(get_match 1 s)$;$str:(get_match 2 s)$], `Muconn (
+            fun [ (i,a) -> $lid:v$(i,Basictype.nc,a) ]) ) >>
     | (v,s,r) when s =~ u_re ->
-            <:expr< ( $str:r$,$str:(get_match s)$, 
-            fun [ nc -> fun [ l -> $lid:v$(nc,List.hd l) ]] ) >>
+            <:expr< ( $str:r$,[$str:(get_match 1 s)$], `Uconn (
+            fun [ a -> $lid:v$(Basictype.nc,a) ]) ) >>
     | (v,s,r) when s =~ bi_re ->
-            <:expr< ( $str:r$,$str:(get_match s)$,
-            fun [ nc -> fun [ l -> $lid:v$(nc,List.hd l,List.hd (List.tl l)) ]] ) >>
-    |(_,s,_) -> failwith (s^" is not a valid pattern")
+            <:expr< ( $str:r$,[$str:(get_match 1 s)$], `Biconn ( 
+            fun [ (a,b) -> $lid:v$(Basictype.nc,a,b) ]) ) >>
+
+    | (_,s,_) -> failwith (s^" is not a valid pattern")
     ) connlist
     in 
     let l = list_to_exprlist loc l in
-    <:str_item< value inputparser = InputParser.buildParser $l$ >>
+    <:str_item< Logic.__inputparser.val := InputParser.buildParser $l$ >>
 
 type 'a tree =
     |Star of 'a tree
@@ -578,27 +609,67 @@ type 'a tree =
 
 let expand_strategy loc tree = []
 
+(*
+let expand_userfun loc = function
+     (sl, <:expr $lid:a$ >> -> if history a then .. else ..
+    |(sl, expr ->
+            *)
+
+let expand_history loc l =
+    let (idlist,expr_list) = List.split l in
+    List.iter (fun e -> add_hist_table e) idlist;
+    list_to_exprlist loc expr_list
+
+let hist_type loc = function
+    "Set" -> <:expr< `S(new Set.set) >>
+    |_ -> assert(false)
+;;
+
+let expand_preamble loc =
+    let stl = [
+        "Llist";"Data";"Basictype";"Comptypes";
+        "Datatype";"Datatype.NodeType";"Datatype.Node";
+        "Datatype.NodePattern";"Datatype.HistPattern";
+        "Datatype.Partition";"Datatype.Rule";"Datatype.RuleContext";
+        "Datatype.Strategy";"Datatype.Visit";"UserRule";"Tree"]
+    in
+    let stl = List.map (fun s -> <:str_item< open $uid:s$ >> ) stl in
+    <:str_item< declare $list:stl$ end >>
+;;
+
 EXTEND
 GLOBAL : Pcaml.str_item patt_term expr_term; 
   Pcaml.str_item: [[
     "CONNECTIVES"; clist = LIST1 connective SEP ";"; "END" ->
       List.iter (function
-          |(v,s,r) when s =~ bi_re -> add_biconn r (get_match s) v
-          |(v,s,r) when s =~ u_re ->  add_uconn (get_match s) v
+          |(v,s,r) when s =~ bi_re -> add_biconn r (get_match 1 s) v
+          |(v,s,r) when s =~ mu_re -> 
+                  add_muconn (get_match 1 s) (get_match 2 s) v
+          |(v,s,r) when s =~ u_re -> add_uconn (get_match 1 s) v
           |(_,s,_) -> failwith (s^" is not a valid pattern")
       ) clist ;
-      expand_parser loc clist
+      let preamble = expand_preamble loc in
+      let pa = expand_parser loc clist in
+      <:str_item< declare $list:[preamble;pa]$ end >>
+    |"HISTORIES"; hlist = LIST1 history SEP ";"; "END" ->
+            let l = expand_history loc hlist in
+            <:str_item< Logic.__history_list.val := $l$ >>
     |"TABLEAU"; l = LIST1 rule; "END" ->
             let l = (expand_matchpatt loc)::l in 
             <:str_item< declare $list:l$ end >> 
     |"STRATEGY"; s = strategy ->
-            <:str_item< declare $list:expand_strategy loc s$ end >>
+            (* <:str_item< declare $list:expand_strategy loc s$ end >> *)
+            <:str_item< Logic.__strategy.val := Strategy.newstate "start" >>
   ]];
 
   connective: [[
       v = UIDENT; ","; s = STRING; ","; r = UIDENT -> (v,s,r)
   ]];
 
+  history: [[
+      v = UIDENT; ":"; t = UIDENT -> (v,<:expr< ($str:v$,$hist_type loc t$) >>)
+  ]];
+  
   strategy:
   [ "One" LEFTA
       [ s1 = strategy LEVEL "Simple"; ";";
@@ -684,7 +755,7 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
   
   numformula: [[
        "{"; (s,p) = patt_term; "}" -> (s,(p,Single))  (* single formula *)
-      |"["; (s,p) = patt_term; "]" -> (s,(p,NoCond))  (* not empty set *)
+ (*     |"["; (s,p) = patt_term; "]" -> (s,(p,NoCond))  (* not empty set *) *)
       |"<"; (s,p) = patt_term; ">" -> (s,(p,NoCond))  (* empty set *)
       |c = LIDENT; OPT "("; (s,p) = patt_term; OPT ")" -> (s,(p,NoCond)) 
       |(s,p) = patt_term           -> (s,(p,NoCond))  (* no conditions *)
