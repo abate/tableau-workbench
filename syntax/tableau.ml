@@ -14,31 +14,6 @@ let new_id =
       "__" ^s^ string_of_int !counter
 ;;
 
-(*
-let insert_this () =
-    let loc = Token.dummy_loc in
-    let stl = [
-        "Llist";"Data";"Basictype";"Comptypes";
-        "Datatype";"Datatype.NodeType";"Datatype.Node";
-        "Datatype.NodePattern";"Datatype.HistPattern";
-        "Datatype.Partition";"Datatype.Rule";"Datatype.RuleContext";
-        "Datatype.Strategy";"Datatype.Visit";"UserRule";"Tree"]
-    in
-    let stl = List.map (fun s -> <:str_item< open $uid:s$ >> ) stl in
-    (<:str_item< declare $list:stl$ end >>, loc)
-
-let _ =
-  let first = ref true in
-  let parse strm =
-    let (l, stopped) = Grammar.Entry.parse Pcaml.implem strm in
-    let l' = 
-      if !first then
-        insert_this () :: l
-      else l in
-    (l', stopped) in
-  Pcaml.parse_implem := parse
-  *)
-
 (* given a patter, returns an pattern where all lid as
  * substituted with _ *)
 let rec remove_lid = 
@@ -376,7 +351,7 @@ let expand_action loc sl formula =
         ) sl in <:patt< ( $list:l$ ) >>
     in
     let pa4 = 
-        let l = List.map (fun a -> <:patt< $lid:a$ >>
+        let l = List.map (fun a -> <:patt< `Formula $lid:a$ >>
         ) sl in <:patt< ( $list:l$ ) >>
     in
     let pa5 = (* tuple of empty lists *)
@@ -578,7 +553,7 @@ let expand_matchpatt loc =
     )
     in
     <:str_item< Logic.__matchpatt.val := 
-        ((fun [ $list:l@[atom;fail]$ ]) : Basictype.mixtype -> string )
+            Some(((fun [ $list:l@[atom;fail]$ ]) : Basictype.mixtype -> string ))
     >>
 ;;
 
@@ -598,7 +573,8 @@ let expand_parser loc connlist =
     ) connlist
     in 
     let l = list_to_exprlist loc l in
-    <:str_item< Logic.__inputparser.val := InputParser.buildParser $l$ >>
+    <:str_item< Logic.__inputparser.val :=
+        Some(InputParser.buildParser $l$) >>
 
 type 'a tree =
     |Star of 'a tree
@@ -653,13 +629,14 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
       <:str_item< declare $list:[preamble;pa]$ end >>
     |"HISTORIES"; hlist = LIST1 history SEP ";"; "END" ->
             let l = expand_history loc hlist in
-            <:str_item< Logic.__history_list.val := $l$ >>
+            <:str_item< Logic.__history_list.val := Some($l$) >>
     |"TABLEAU"; l = LIST1 rule; "END" ->
             let l = (expand_matchpatt loc)::l in 
             <:str_item< declare $list:l$ end >> 
     |"STRATEGY"; s = strategy ->
             (* <:str_item< declare $list:expand_strategy loc s$ end >> *)
-            <:str_item< Logic.__strategy.val := Strategy.newstate "start" >>
+            <:str_item< Logic.__strategy.val := 
+                Some(Strategy.newstate "start") >>
   ]];
 
   connective: [[
@@ -677,6 +654,7 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
       | s1 = strategy LEVEL "Simple"; "|";
         s = LIST1 strategy LEVEL "Simple" SEP "|" -> Choice (s1::s)
       | s = strategy LEVEL "Simple"; "*" -> Star ( s )
+      | s1 = strategy LEVEL "Simple" -> Seq([s1])
       ]
   | "Simple" NONA
       [ "("; s = strategy; ")" -> s

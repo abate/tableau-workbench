@@ -6,11 +6,12 @@ SOURCES := \
 	twb.ml
 	
 RESULT := twb
-PACKS := twb.core twb.types twb.sequent twb.syntax dynlink unix extlib str camlp4
-
+PACKS := dynlink unix extlib str twb.core twb.types twb.sequent twb.syntax	
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)
 
-all: byte-code
+all:	byte-code
+	
+#nc:	native-code
 
 include $(OCAMLMAKEFILE)

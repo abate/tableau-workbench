@@ -1,7 +1,6 @@
 include ../Makefile.conf
 
-SOURCES := \
-	aa.ml \
+SOURCES := 
 	
 RESULT := twbusr
 PACKS := twb.core twb.types twb.sequent twb.syntax 

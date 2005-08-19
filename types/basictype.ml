@@ -11,6 +11,7 @@ type formula =
     |And of core * formula * formula
     |Or of core * formula * formula
     |Imp of core * formula * formula
+    |DImp of core * formula * formula
     |Not of core * formula
     |Dia of int * core * formula
     |Box of int * core * formula
@@ -29,7 +30,8 @@ type mixtype = [
     |`FormulaTriple of (formula * formula * formula)
 ]
 
-let open_mt v = (v : mixtype list :> [> mixtype] list )
+let open_bt v = (v : mixtype :> [> mixtype] )
+let open_bt_list v = (v : mixtype list :> [> mixtype] list )
 
 (* FIXME: this doesn't copy anything !!! *)
 (* XXX: copy of formulae might be expensive ... *)
@@ -47,6 +49,10 @@ let rec string_of_formula = function
             (string_of_formula f2)
     |Imp(c,f1,f2) ->
             Printf.sprintf "(%s Imp %s)"
+            (string_of_formula f1)
+            (string_of_formula f2)
+    |DImp(c,f1,f2) ->
+            Printf.sprintf "(%s DImp %s)"
             (string_of_formula f1)
             (string_of_formula f2)
     |Not(c,f) -> Printf.sprintf "(Not %s)" (string_of_formula f)

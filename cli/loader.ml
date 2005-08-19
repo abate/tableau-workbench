@@ -1,11 +1,9 @@
 
 let modules = Hashtbl.create 17;;
 let are_loading = Hashtbl.create 17;;
-let twb_modules = ["twbcore";"twbtypes";"twbseq";"twbintf"];;
 
-let find_in_path path name ext =
-    let filename = ((String.uncapitalize name) ^ ext) in
-    print_string filename;
+let find_in_path path name =
+    let filename = ((String.uncapitalize name) ^ ".cmo") in
     if not (Filename.is_implicit filename) then
         if Sys.file_exists filename then filename else raise Not_found
         else
@@ -19,7 +17,7 @@ let find_in_path path name ext =
                 in try_dir path
             end
 
-let rec load_module modname path ext =
+let rec load_module modname path =
     try
         Hashtbl.find modules modname
     with
@@ -27,8 +25,9 @@ let rec load_module modname path ext =
             try
                 Hashtbl.add modules modname ();
                 Hashtbl.add are_loading modname ();
-                Printf.printf "Loading: %s\n" modname;
+                Printf.printf "Loading: %s ..." modname;
                 Dynlink.loadfile (modname);
+                print_endline "done.";
                 Hashtbl.remove are_loading modname
             with
             | Dynlink.Error(Dynlink.Unavailable_unit(depend))
@@ -39,54 +38,59 @@ let rec load_module modname path ext =
                         try
                             if Hashtbl.mem are_loading depend
                             then failwith ("Crossing with "^depend);
-                            load_module (find_in_path path depend ext) path ext;
+                            load_module (find_in_path path depend) path;
                             Hashtbl.remove modules modname;
-                            load_module modname path ext
+                            load_module modname path
                         with Not_found ->
                             failwith ("Cannot find "
-                            ^String.lowercase(depend)^ext^" in "^
+                            ^String.lowercase(depend)^" in "^
                             (List.fold_left (fun s x -> s^x) " " path))
                     end
+            | Dynlink.Error(e) -> failwith (Dynlink.error_message e)
 ;;
 
 let load_camlp4 () =
     let version = Sys.ocaml_version in
+    let stdlib = "/usr/lib/ocaml/"^version^"/stdlib.cma" in
+    let camlp4_modules = ["odyl";"camlp4"] in
     try
-        let stdlib = "/usr/lib/ocaml/"^version^"/stdlib.cma" in
-        let gramlib = "/usr/lib/ocaml/"^version^"/camlp4/gramlib.cma" in
         Printf.printf "Loading: %s ..." stdlib;
-(*        Dynlink.loadfile (stdlib); *)
+        Dynlink.loadfile (stdlib);
         print_endline "done.";
-        Printf.printf "Loading: %s ..." gramlib;
-        Dynlink.loadfile (gramlib);
-        print_endline "done.";
+        List.iter (fun m ->
+            let file = Printf.sprintf "/usr/lib/ocaml/%s/camlp4/%s.cma" version m in
+            Printf.printf "Loading: %s ..." file;
+            Dynlink.loadfile(file);
+            print_endline "done."
+        ) camlp4_modules
     with
-    | Dynlink.Error(Dynlink.Unavailable_unit(depend))
-    | Dynlink.Error(
-        Dynlink.Linking_error(_,Dynlink.Undefined_global(depend))
-        ) -> failwith ("Cannot find "^String.lowercase(depend))
+    Dynlink.Error(e) -> failwith (Dynlink.error_message e)
 ;;
 
 let load_library twblib =
+    let twb_modules = [(* "twbcore";"twbtypes";*)"twbseq";"twbintf"] in
     try
         List.iter (fun m ->
-            load_module
-            (find_in_path [twblib] m ".cma") 
-            [twblib] ".cma"
+            let file = Printf.sprintf "%s/%s.cma" twblib m in
+            Printf.printf "Loading: %s ..." file;
+            Dynlink.loadfile(file);
+            print_endline "done."
         ) twb_modules
-    with Not_found -> failwith ("Load Twb Library in "^twblib^" failed")
+    with
+    Dynlink.Error(e) -> failwith (Dynlink.error_message e)
 ;;
 
 let load_logic logiclib logicname =
-    load_module
-    (find_in_path [logiclib] logicname ".cmo")
-    [logiclib] ".cmo"
+    try
+        load_module (find_in_path [logiclib] logicname) [logiclib]
+    with Not_found -> failwith "Loading error"
 ;;
-
 let load twblib logiclib logicname =
         Dynlink.init();
+        Dynlink.allow_unsafe_modules true;
         load_camlp4 ();
-        load_library twblib;
-        load_logic logiclib logicname
+        Dynlink.allow_unsafe_modules false;
+        load_library twblib; 
+        load_logic logiclib logicname 
 ;;
 

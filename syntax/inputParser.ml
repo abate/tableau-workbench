@@ -48,7 +48,7 @@ END
 
 let buildParser table s =
     let parse s =
-        Grammar.Entry.parse input_line (Stream.of_string s)
+        Grammar.Entry.parse expr_term (Stream.of_string s)
     in
     let _ =
         List.iter(function
@@ -57,6 +57,6 @@ let buildParser table s =
             |"Simple",[op1;op2],`Muconn(co) -> add_muconn op1 op2 co
             |_ -> failwith "buildParser"
         ) table
-    in parse s
+    in [`Formula(parse s)]
 ;;
 

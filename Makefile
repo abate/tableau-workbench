@@ -5,14 +5,14 @@ all:
 	cd types && make && cp twbtypes* *.cmi ../twb/
 	cd sequent && make && cp twbseq* *.cmi ../twb/
 	cd syntax && make && cp twbintf* *.cmi ../twb/
-	cd user && make 
 	cd cli && make
 
 nc:
 	cd core && make ncl && cp twbcore.* *.cmi ../twb/
 	cd types && make ncl && cp twbtypes.* *.cmi ../twb/
-	cd sequent && make && cp twbseq* *.cmi ../twb/
-	cd user && make nc
+	cd sequent && make ncl && cp twbseq* *.cmi ../twb/
+	cd syntax && make ncl && cp twbintf* *.cmi ../twb/
+	cd cli && make nc
 
 pnc:
 	cd core && make pncl && cp twbcore.* *.cmi ../twb/
@@ -38,5 +38,4 @@ clean:
 	cd sequent && make clean
 	cd syntax && make clean
 	cd twb && rm *.cm*
-	cd user && make clean
 	cd cli && make clean
