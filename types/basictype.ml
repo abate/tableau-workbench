@@ -13,8 +13,11 @@ type formula =
     |Imp of core * formula * formula
     |DImp of core * formula * formula
     |Not of core * formula
-    |Dia of int * core * formula
-    |Box of int * core * formula
+    |Dia of core * formula
+    |Box of core * formula
+    |Diai of int * core * formula
+    |Boxi of int * core * formula
+
     |Atom of core * string 
 
 type label = int list
@@ -56,8 +59,10 @@ let rec string_of_formula = function
             (string_of_formula f1)
             (string_of_formula f2)
     |Not(c,f) -> Printf.sprintf "(Not %s)" (string_of_formula f)
-    |Dia(i,c,f) -> Printf.sprintf "(Dia[%d] %s)" i (string_of_formula f)
-    |Box(i,c,f) -> Printf.sprintf "(Box[%d] %s)" i (string_of_formula f)
+    |Diai(i,c,f) -> Printf.sprintf "(Dia[%d] %s)" i (string_of_formula f)
+    |Boxi(i,c,f) -> Printf.sprintf "(Box[%d] %s)" i (string_of_formula f)
+    |Dia(c,f) -> Printf.sprintf "(Dia %s)" (string_of_formula f)
+    |Box(c,f) -> Printf.sprintf "(Box %s)" (string_of_formula f)
     |Atom(c,s) -> s
                 
 let string_of_mixtype : mixtype -> string = function

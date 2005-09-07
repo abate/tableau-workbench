@@ -5,8 +5,9 @@ CONNECTIVES
   Imp, "_->_", One;
   DImp, "_<->_", One;
   Not, "~_",   Simple;
-  Box, "[_]_", Simple;
-  Dia, "<_>_", Simple
+  Dia, "<>_", Simple;
+  Boxi, "[_]_", Simple;
+  Diai, "<_>_", Simple
 END
 
 
@@ -24,6 +25,7 @@ let is_empty = function [] -> true | _ -> false
 let is_not_empty = function [] -> false | _ -> true
 let notin f l = List.mem f l
 
+let not_starred : ( formula -> bool ) = true
 *)
 
 TABLEAU
@@ -36,14 +38,6 @@ TABLEAU
   BRANCH empty(Dia Y)
   END
 
-  RULE T 
-     { Box A } ; Z
-  ----------------------
-     A ; Box A; Z
-      
-  COND not_starred(Box A)
-  ACTION [ star(Box A) ]
-  END
 
   RULE S4 
   { Dia A } ; Box X; Dia Y ; Z
@@ -63,6 +57,25 @@ TABLEAU
   BRANCH [ empty(Dia Y) ] 
   END
   *)
+
+(*
+  RULE K forall(i)
+  { <i>A } ; [i]X ; Z
+  =====================
+    A ; X
+  END
+*)
+
+  RULE T 
+     { [1] A } ; Z
+  ----------------------
+     A ; [1] A; Z
+      
+  COND not_starred([1] A)
+  (* ACTION [ star(Box A) ] *)
+
+  END
+
   RULE K
   { <1>A } ; [1]X ; Z
   =====================

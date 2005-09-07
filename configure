@@ -55,7 +55,7 @@ echo
 rm -f Makefile.conf
 echo "Writing Makefile.conf ..."
 echo "OCAMLPATH=$TWBPATH" >> Makefile.conf
-echo "OCAMLMAKEFILE := $TWBPATH/utils/OCamlMakefile" >> Makefile.conf
+echo "OCAMLMAKEFILE=$TWBPATH/utils/OCamlMakefile" >> Makefile.conf
 echo "NOEXTLIB=$NOEXTLIB" >> Makefile.conf
 echo "export OCAMLPATH OCAMLMAKEFILE NOEXTLIB" >> Makefile.conf
 echo >> Makefile.conf

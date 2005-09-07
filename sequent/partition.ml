@@ -20,6 +20,8 @@ module Make(P: NodePattern.S)(H: NodePattern.S) :
 
         type context = (P.sbl * (P.bt, P.bt Sets.st) Gmap.mt)
         
+        (* run the pmatch function and remove the formula from
+         * the store if it matches *)
         let check ((sbl,store) : context) pmatch f =
                 try
                     let s = pmatch sbl [f] in
@@ -51,7 +53,7 @@ module Make(P: NodePattern.S)(H: NodePattern.S) :
             in enum_aux store patternlist
 
         (* we get all formulae associated with a patter minus the
-         * formulae that have been selected to be proncipal formulae.
+         * formulae that have been selected to be principal formulae.
          *  
          * FIXME: This could faster. I know that a formula might be 
          * in the htbl only is the patt is similar to the pattern of 
@@ -61,6 +63,9 @@ module Make(P: NodePattern.S)(H: NodePattern.S) :
             let s = store#get patt.P.pid in
             let l = s#elements in
             let sbl' = patt.P.pmatch subsl l in
+            (* FIXME: here I should be able to remove only those
+             * formulae that have been matched by pmatch.
+             * EX. partition starred and not starred formulae *)
             (sbl',List.fold_left (fun st e -> st#del e ) store l)
         ;;
         (* Return an enumeration with all possible nodes *)

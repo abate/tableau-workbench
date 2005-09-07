@@ -690,19 +690,19 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
   ]];
 
   condition: [[
-      "COND"; OPT "["; l = LIST0 userfun SEP ";"; OPT "]" -> l
+      "COND"; OPT "["; l = LIST1 userfun SEP ";"; OPT "]" -> l
   ]];
 
   actionlist: [[
-      "ACTION"; OPT "["; l = LIST0 action SEP ";"; OPT "]" -> l
+      "ACTION"; OPT "["; l = LIST1 action SEP ";"; OPT "]" -> l
   ]];
 
   branchlist: [[
-      "BRANCH"; OPT "["; l = LIST0 action SEP ";"; OPT "]" -> l
+      "BRANCH"; OPT "["; l = LIST1 action SEP ";"; OPT "]" -> l
   ]];
 
   action: [[
-      OPT "["; l = LIST0 userfun SEP ";"; OPT "]" -> l
+      OPT "["; l = LIST1 userfun SEP ";"; OPT "]" -> l
   ]];
   
   userfun: [[
