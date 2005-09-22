@@ -5,7 +5,7 @@
 #                             For updates see:
 #                http://www.oefai.at/~markus/ocaml_sources
 #
-#        $Id: OCamlMakefile,v 1.67 2004/08/19 14:11:49 mottl Exp $
+#        $Id: OCamlMakefile,v 1.69 2005/01/28 14:59:30 mottl Exp $
 #
 ###########################################################################
 
@@ -971,9 +971,21 @@ endif
 %.ml:			%.mll
 			$(OCAMLLEX) $<
 
-.PRECIOUS:		%.ml %.mli
-%.ml %.mli:		%.mly
+.PRECIOUS:              %.ml %.mli
+%.ml %.mli:             %.mly
 			$(OCAMLYACC) $(YFLAGS) $<
+			$(QUIET)pp=`sed -n -e 's/.*(\*pp \([^*]*\) \*).*/\1/p;q' $<`; \
+			if [ ! -z "$$pp" ]; then \
+			  mv $*.ml $*.ml.temporary; \
+			  echo "(*pp $$pp $(PPFLAGS)*)" > $*.ml; \
+			  cat $*.ml.temporary >> $*.ml; \
+			  rm $*.ml.temporary; \
+			  mv $*.mli $*.mli.temporary; \
+			  echo "(*pp $$pp $(PPFLAGS)*)" > $*.mli; \
+			  cat $*.mli.temporary >> $*.mli; \
+			  rm $*.mli.temporary; \
+			fi
+
 
 .PRECIOUS:		%.ml
 %.ml:			%.rep
@@ -1112,7 +1124,7 @@ rawinstall:	all
 .PHONY: rawuninstall
 rawuninstall:
 	$(QUIET)printf "\nUninstalling library from: $(OCAML_LIB_INSTALL)\n"
-	cd $(OCAML_LIB_INSTALL); rm $(notdir $(LIBINSTALL_FILES))
+	cd $(OCAML_LIB_INSTALL) && rm $(notdir $(LIBINSTALL_FILES))
 	$(QUIET)printf "\nUninstallation successful.\n"
 
 ###########################################################################

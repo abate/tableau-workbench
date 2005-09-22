@@ -7,19 +7,29 @@ module type S =
         type state
         type context
         exception NoMoreRules
-        val next : state -> node -> rule * context * state
+(*        type s = |S |SS of rule |R of rule |E 
+        class type strategy =
+            object
+            method next : state -> node -> rule * context * state
+            method add  : string -> s -> string -> string -> unit
+            end
+    *)
     end
  
 module Make (R:Rule.S)
-(* :
-    sig
+(* :    sig
         type rule = R.rule
         type node = R.node
         type context = R.context
         type state
         exception NoMoreRules
-        val next : state -> node -> rule * context * state
-    end 
+        type s = |S |SS of rule |R of rule |E 
+        class type strategy =
+            object
+            method next : state -> node -> rule * context * state
+            method add  : string -> s -> string -> string -> unit
+            end
+      end 
 *)
 = struct
 
@@ -44,11 +54,12 @@ module Make (R:Rule.S)
         |R  of rule (* rule *)
         |E          (* exit *)
 
-    (* the fsa *)
-    let automata = Hashtbl.create 15
-
+    type t = (id_t, val_t) Hashtbl.t
+    and id_t = string
+    and val_t = (s * string * string)
+    
     (* add an element to the fsa *)
-    let add id t n1 n2 = Hashtbl.add automata id (t,n1,n2)
+    let add automata id t n1 n2 = Hashtbl.add automata id (t,n1,n2)
 
     (* create a fresh state initialized to v *)
     let newstate id = { id = id ; context = Map.empty }
@@ -65,35 +76,38 @@ module Make (R:Rule.S)
 
     (* given a state returns the next state. On success, reset the
      * state context. *)
-    let rec seq inp state next =
+    let rec seq automata inp state next =
       match inp with
-      |Succ -> move inp (nextcxt next None)
-      |Failed -> move inp (nextcxt next (Some(state)))
+      |Succ -> move automata inp (nextcxt next None)
+      |Failed -> move automata inp (nextcxt next (Some(state)))
 
     (* given a state returns the same state and resets the
      * state context. On Failure, depending upon the state
      * context return the same state or move the next state *)
-    and star inp state back out =
+    and star automata inp state back out =
       match inp with
-      |Succ -> move inp (nextcxt back None)
-      |Failed when (check 0 state) -> move inp (nextcxt back ~v:1 (Some(state)))
-      |Failed when (check 1 state) -> move inp (nextcxt out ~v:1 (Some(state)))
+      |Succ -> move automata inp (nextcxt back None)
+      |Failed when (check 0 state) ->
+              move automata inp (nextcxt back ~v:1 (Some(state)))
+      |Failed when (check 1 state) ->
+              move automata inp (nextcxt out ~v:1 (Some(state)))
       |_ -> failwith "star"
 
     (* given a state returns the same state on success and
      * resets the state context or move to the next state on 
      * failure *)
-    and singlestar inp state back out =
+    and singlestar automata inp state back out =
       match inp with
-      |Succ -> move inp (nextcxt back None)
-      |Failed -> move inp (nextcxt out ~v:1 (Some(state)))
+      |Succ -> move automata inp (nextcxt back None)
+      |Failed -> move automata inp (nextcxt out ~v:1 (Some(state)))
 
     (* given a state makes a many move as possible 
      * to the next (non star) state *)
-    and move inp state =
+    and move automata inp state =
             try begin
                 match Hashtbl.find automata state.id with
-                |(S,back,out) -> move inp (star inp state back out)
+                |(S,back,out) ->
+                        move automata inp (star automata inp state back out)
                 |(SS(_),_,_) -> state
                 |(R(_),_,_) -> state
                 |(E,_,_) -> state
@@ -101,22 +115,36 @@ module Make (R:Rule.S)
 
     (* make a transition in the fs from (non star) 
      * state to (non star) state *)
-    let rec next state node =
+    let rec next automata state node =
             try begin
                 match Hashtbl.find automata state.id with
                 |(R(r),_,n) ->
                         let c = r#check node in
-                        if c#is_valid then (r,c,seq Succ state n)
+                        if c#is_valid then (r,c,seq automata Succ state n)
                         else (* the rule failed, we try the next one *)
-                            next (seq Failed state n) node
+                            next automata
+                            (seq automata Failed state n)
+                            node
                 |(SS(r),back,out) -> 
                         let c = r#check node in
-                        if c#is_valid then (r,c,singlestar Succ state back out)
+                        if c#is_valid then
+                            (r,c,singlestar automata Succ state back out)
                         else (* the rule failed, we try the next one *)
-                            next (singlestar Failed state back out) node
-                |(S,_,_) -> failwith "strategy : step"
+                            next automata
+                            (singlestar automata Failed state back out)
+                            node
+                |(S,_,_) -> failwith "strategy : step (S)"
                 |(E,_,_) -> raise NoMoreRules
-            end with Not_found -> failwith "strategy : step"
+            end with Not_found -> failwith "strategy : step (not found)"
 
+    class strategy start =
+        object
+        val automata = Hashtbl.create 20
+        val start = newstate start
+        method start = start
+        method add id t n1 n2 = add automata id t n1 n2
+        method next state node = next automata state node
+        end
+        
     end
 

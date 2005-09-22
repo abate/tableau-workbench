@@ -91,7 +91,7 @@ let main () =
             Loader.load (twbpath^"/twb/") !Options.libdir !Options.logic
         else print_endline "Native mode"
     in
-    let start_state = 
+    let strategy = 
         try (Option.get (!Logic.__strategy))
         with Option.No_value -> failwith "Strategy not specified"
     in
@@ -118,7 +118,7 @@ let main () =
             try
                 let node = newnode( get_line () ) in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
-                let proof = Visit.visit start_state node in
+                let proof = Visit.visit strategy strategy#start node in
                 let time = Timer.stop_timing start in
                 Printf.printf "%s\n%s\n"
                 (Timer.to_string time)

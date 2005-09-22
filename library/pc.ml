@@ -43,12 +43,15 @@ END
 
 (* STRATEGY ((Id; And; Or; Not)* ; K)* *)
 
-Strategy.add "start" (R(new and_rule)) "start" "a" ;
-Strategy.add "a" (R(new or_rule)) "a" "i1" ;
-Strategy.add "i1" (R(new imp_rule)) "i1" "i2" ;
-Strategy.add "i2" (R(new dimp_rule)) "i2" "b" ;
-Strategy.add "b" (R(new id_rule)) "b" "s2";
-Strategy.add "s2" S "start" "end" ;
-Strategy.add "end" E "end" "end" ; 
+let strategy = new Strategy.strategy "start";;
+let _ =
+    strategy#add "start" (R(new and_rule)) "start" "a" ;
+    strategy#add "a" (R(new or_rule)) "a" "i1" ;
+    strategy#add "i1" (R(new imp_rule)) "i1" "i2" ;
+    strategy#add "i2" (R(new dimp_rule)) "i2" "b" ;
+    strategy#add "b" (R(new id_rule)) "b" "s2";
+    strategy#add "s2" S "start" "end" ;
+    strategy#add "end" E "end" "end" ; 
+;;
 
 STRATEGY (A)

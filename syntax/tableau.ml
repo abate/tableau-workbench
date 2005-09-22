@@ -29,11 +29,8 @@ let rec remove_lid =
     | _ as p -> failwith "remove_lid : parsing error" 
 ;;
 
-let hist_table = ref [];;
-let add_hist_table e = hist_table := e::!hist_table;;
-
-(* XXX: big enough ?? *)
-let patt_table = Hashtbl.create 300 ;;
+let hist_table = Hashtbl.create 50 ;;
+let patt_table = Hashtbl.create 50 ;;
 
 (* this table is used to generate the matchpattern function
  * out of all ids generate while parsing the rules *)
@@ -123,7 +120,7 @@ let test_sep strm =
 let test_sep = Grammar.Entry.of_parser Pcaml.gram "test_sep" test_sep ;;
 
 (* generate the code pattern match a set of formulae *)
-let expand_set loc formula l =
+let expand_set loc ?cond formula l =
     let newid = new_id "exp_set" in
     let is_variable = function
         | <:patt< $lid:a$ >> -> true
@@ -180,23 +177,29 @@ let expand_set loc formula l =
              (<:patt< _>>,None,<:expr<failwith ($str:newid$^": type mismatch")>>)
             ]
     in
+    let ex7 =
+        if Option.is_none cond then <:expr< True >>
+        else <:expr< $lid:Option.get cond$(fl) >>
+    in
     (newid,
     <:str_item<
         value $lid:newid$ sbl fl =
             let __rec = fun [ $list:ex6$ ] in 
-            let $pa1$ = List.fold_left (
-                fun [ $pa1$ ->
-                    fun [ el -> 
-                        let $pa2$ = __rec el in $ex3$ 
+            if $ex7$ then
+                let $pa1$ = List.fold_left (
+                    fun [ $pa1$ ->
+                        fun [ el -> 
+                            let $pa2$ = __rec el in $ex3$ 
+                        ]
                     ]
-                ]
-            ) $ex4$ fl
-            in Sbl.add sbl $ex5$
+                ) $ex4$ fl
+                in Sbl.add sbl $ex5$
+            else raise FailedMatch
     >>)
 ;;
 
 (* generate the code to pattern match a principal formula *)
-let expand_single loc formula l =
+let expand_single loc ?cond formula l =
     let newid = new_id "exp_single" in
     let ex1 =
         let l = List.map (
@@ -216,6 +219,11 @@ let expand_single loc formula l =
         ) l
         in list_to_exprlist loc l
     in
+    let ex3 =
+        if Option.is_none cond then <:expr< True >>
+        (* this List.hd cannot be empty because it is a principal formula *)
+        else <:expr< $lid:Option.get cond$(List.hd fl) >>
+    in
     (newid,
     <:str_item<
         value $lid:newid$ sbl fl =
@@ -229,87 +237,54 @@ let expand_single loc formula l =
                             ]) $ex1$ $ex2$ 
                 |`Formula(_) -> raise FailedMatch
                 |_ -> failwith ($str:newid$^": type mismatch") ]
-            in Sbl.add sbl (List.combine $ex2$ (__rec (List.hd fl)))
+            in
+            if $ex3$ then
+                (* this List.hd cannot be empty because it is a principal
+                 * formula *)
+                Sbl.add sbl (List.combine $ex2$ (__rec (List.hd fl)))
+            else raise FailedMatch
     >>)
 ;;
 
 (* generate the code to pattern match a generic variable *)
-let expand_set_anon loc formula a =
+let expand_set_anon loc ?cond formula a =
     let newid = new_id "exp_anon" in
+    let ex1 =
+        if Option.is_none cond then <:expr< True >>
+        else <:expr< $lid:Option.get cond$(fl) >>
+    in
     (newid,
-    <:str_item<
-    (* catch all pattern *)
-    value $lid:newid$ sbl fl =
-        Sbl.add sbl [($str:String.uppercase a$,fl)]
+    <:str_item< value $lid:newid$ sbl fl =
+        if $ex1$ then 
+            Sbl.add sbl [($str:String.uppercase a$,fl)]
+        else raise FailedMatch
     >>)
 ;;
 
-type cond_t = | Single (*    | Cond of ?? *) | NoCond
-type branch_t =
-    | Forall of (string list * MLast.expr) list list
-    | Exists of (string list * MLast.expr) list list
-    | User   of (string list * MLast.expr) list list
-(*  | Cond of ?? *)
+type cond_t =
+    | Single
+    | NoCond
+    | Cond of string
+    | SingCond of string
 
-let expand_rule_num loc stringlist formulalist =
-    let pl = ref [] in
-    let sl = ref [] in
-    let el = ref [] in
-    let add_pattlist = function
-        |_,"" -> ()
-        |Single,s ->  pl := s::!pl
-        |_,s -> sl := s::!sl
-    in
-    let str_items = 
-        List.map2 (fun l (p,c) ->
-            (* generate code for a principal formula,
-             * a set or an anonimous set *)
-            let (id,exp) = 
-                match c,p with
-                |Single,_ -> expand_single loc p l
-                |_,<:patt< $lid:_$ >> -> expand_set_anon loc p (List.hd l)
-                |_ -> expand_set loc p l
-            in
-            (* add the pattern to a hashtable used to build the matchpattern
-             * function *)
-            let s = add_patt_table l p in
-            (* if the pattern is just a variable then the index must be an
-             * empty string, otherwise the string used by matchpattern to index
-             * formulae. if the pattern is an atom then the index is __atom *)
-            let pattexp = 
-                match p with
-                | <:patt< $lid:_$ >> -> 
-                        <:str_item< value $lid:s$ = NodePattern.newpatt "" $lid:id$ >>
-                | <:patt< Atom($lid:_$,$lid:_$) >> -> 
-                        <:str_item< value $lid:s$ = NodePattern.newpatt "__atom" $lid:id$ >>
-                | _ ->
-                        <:str_item< value $lid:s$ = NodePattern.newpatt $str:s$ $lid:id$ >>
-            in
-            (* add a pattern to a list in relation to the type c *)
-            add_pattlist (c,s) ;
-            <:str_item< declare $list:[exp;pattexp]$ end>>
-        ) stringlist formulalist
-    in
-    let pl = list_to_exprlist loc
-        (List.map (fun e -> <:expr< $lid:e$ >> ) !pl )
-    in
-    let sl = list_to_exprlist loc
-        (List.map (fun e -> <:expr< $lid:e$ >> ) !sl )
-    in
-    let el = list_to_exprlist loc
-        (List.map (fun e -> <:expr< $lid:e$ >> ) !el )
-    in
-    (* return a list of patterns and all related functions *)
-    ([pl;sl;el], str_items)
+type act_t = 
+    | NoAct
+    | Act of string
+    
+type branch_t =
+    | Forall of bt
+    | Exists of bt
+    | User   of bt
+(*    | Cond   of string *)
+and bt = (string list * ( MLast.expr * act_t ) ) list list
+
+let is_variable = function
+    | <:expr< $lid:a$ >> -> true
+    | _ -> false
 ;;
 
-
-let expand_action loc sl formula = 
-    let newid = new_id "exp_action" in
-    let is_variable = function
-        | <:expr< $lid:a$ >> -> true
-        | _ -> false
-    in
+(* this is the monster that builds formulae *)
+let expand_build_formula loc (sl,formula) newid =
     let ex1 = 
         let i = ref 0 in
         let l = List.map (fun a ->
@@ -324,9 +299,13 @@ let expand_action loc sl formula =
             <:expr<$lid:"t"^string_of_int !i$>>
         ) sl in <:expr< ( $list:l$ ) >>
     in
+    (* XXX: make possible to build formulae from histories *)
     let ex3 = 
         let l = List.map (fun a ->
-            <:expr<Data.Substlist.find $str:String.uppercase a$ sbl>>
+            if Hashtbl.mem hist_table (String.uppercase a) then
+                <:expr< hist#find $str:String.uppercase a$ >>
+            else
+                <:expr< Data.Substlist.find $str:String.uppercase a$ sbl >>
         ) sl in <:expr< ( $list:l$ ) >>
     in
     let ex4 = 
@@ -340,7 +319,11 @@ let expand_action loc sl formula =
         let i = ref 0 in
         let l = List.map (fun a ->
             incr i;
-            <:patt<`L($lid:"l"^string_of_int !i$)>>
+            try
+                let (s,t) = Hashtbl.find hist_table (String.uppercase a) in
+                <:patt< `$lid:s$($lid:"l"^string_of_int !i$) >>
+            with Not_found -> 
+                <:patt<`Mtlist($lid:"l"^string_of_int !i$) >>
         ) sl in <:patt< ( $list:l$ ) >>
     in
     let pa3 = 
@@ -358,40 +341,251 @@ let expand_action loc sl formula =
         let l = List.map (fun a -> <:patt< [] >>) sl 
         in <:patt< ( $list:l$ ) >>
     in
-    (* if the pattern is just a variable the function to implement the action is
-     * much simpler and we have a special case for it *)
-    if is_variable formula then
-        (newid,
-        <:str_item<
-        value $lid:newid$ sbl = 
-        try match $ex3$ with
-            [`L(l) -> l#elements
-            |_ -> failwith ($str:newid$^" type node allowed") ]
-        with [Not_found -> failwith ($str:newid$^" something wrong")]
-        >>)
-    else
-        (newid,
-        <:str_item<
-            value $lid:newid$ sbl = 
-            try
-                let rec split = fun 
-                    [ $pa3$ -> [ $ex1$::(split $ex2$) ]
-                    | $pa5$ -> []
-                    | _ -> failwith ($str:newid$^" something about the list") ]
-                in    
-                match $ex3$ with
-                [ $pa2$ ->
-                        List.map (fun
-                            [$pa4$ -> `Formula $formula$
-                            | _ -> failwith ($str:newid$^" type node allowed" )]
-                        ) (split $ex4$)
-                | _ -> failwith ($str:newid$^" type node allowed") ]
-            with [ Not_found -> failwith $str:newid$ ] 
-        >>)
+    (* this is to avoid "Warning: this match case is unused." in split *)
+    let ex5 =
+        let l = [
+            (pa3,None,<:expr< [ $ex1$::(split $ex2$) ] >>);
+            (pa5,None,<:expr< [] >>)
+            ]
+        in
+        if List.length sl = 1 then l
+        else (l@[
+                (<:patt< _ >>,None,
+                <:expr< failwith ($str:newid$^" something about the list") >>)
+                ])
+    in
+    <:expr<
+        try
+            let rec split = fun [ $list:ex5$ ]
+            in
+            match $ex3$ with
+            [ $pa2$ ->
+                    List.map (fun
+                        [$pa4$ -> `Formula $formula$
+                        | _ -> failwith ($str:newid$^" type node allowed" )]
+                    ) (split $ex4$)
+            | _ -> failwith ($str:newid$^" type node allowed") ]
+        with [ Not_found -> failwith $str:newid$ ] 
+    >>
 ;;
 
-let expand_rule_den loc t dl =
-    let expand dl tl =
+let expand_build_formula_var loc ?(hist=false) (sl,formula) newid = 
+    let ex3 = 
+        let l = List.map (fun a ->
+            if Hashtbl.mem hist_table (String.uppercase a) then
+                <:expr< hist#find $str:String.uppercase a$ >>
+            else
+                <:expr< Data.Substlist.find $str:String.uppercase a$ sbl >>
+        ) sl in <:expr< ( $list:l$ ) >>
+    in
+    let pa2 =
+        try
+            (* there must be exactly one element in this list *)
+            let (s,t) = Hashtbl.find hist_table (String.uppercase (List.hd sl)) in
+            <:patt< `$lid:s$($lid:"l"$) >>
+        with Not_found -> <:patt<`Mtlist($lid:"l"$) >>
+    in
+    let ex2 = if hist then <:expr< l >> else <:expr< l#elements >> 
+    in
+    <:expr<
+        try match $ex3$ with
+            [$pa2$ -> $ex2$
+            |_ -> failwith ($str:newid$^" type node allowed") ]
+        with [Not_found -> failwith ($str:newid$^" something wrong")]
+    >>
+;;
+ 
+let expand_condlistel loc (act,func,args) =
+    let newid = new_id "history_condition" in
+    let (ex2,ex3) =
+        List.split
+            (List.map (fun (sl,formula) ->
+                let newid = new_id "build" in
+                let ex = 
+                    if is_variable formula then
+                        expand_build_formula_var ~hist:true loc (sl,formula) newid
+                    else expand_build_formula loc (sl,formula) newid
+                in (<:expr< $lid:newid$ >>,(<:patt<$lid:newid$>>,ex))
+            ) args
+        )
+    in
+    let ex4 = <:expr< $lid:func$ ( $list:ex2$ ) >> in
+    let ex5 =
+        if args = [] then <:expr< $ex4$ >>
+        else <:expr< let $list:ex3$ in $ex4$ >>
+    in
+    (<:expr< $lid:newid$ >> ,
+    <:str_item< value $lid:newid$ sbl hist = $ex5$ >>)
+;;
+
+let expand_condlist loc cl =
+    if Option.is_none cl then ([],[])
+    else
+        let (idl,strl) =
+            List.split (
+                List.map (fun a ->
+                    expand_condlistel loc a
+                ) (Option.get cl)
+            )
+        in (idl, strl)
+;;
+
+let expand_rule_num loc (stringlist,formulalist) cl =
+    let pl = ref [] in
+    let sl = ref [] in
+    let add_pattlist = function
+        |_,"" -> ()
+        |Single,s ->  pl := s::!pl
+        |_,s -> sl := s::!sl
+    in
+    let str_items = 
+        List.map2 (fun l (p,c) ->
+            (* generate code for a principal formula,
+             * a set or an anonimous set with or without
+             * local side conditions *)
+            let (id,exp) = 
+                match c,p with
+                |Single,_ -> expand_single loc p l
+                |SingCond(c),_ -> expand_single loc ~cond:c p l
+                
+                (* XXX: List.hd can throw an exception ... *)
+                |Cond(c),<:patt< $lid:_$ >> ->
+                        expand_set_anon loc ~cond:c p (List.hd l)
+                |_,<:patt< $lid:_$ >> -> expand_set_anon loc p (List.hd l)
+                        
+                |Cond(c),_ -> expand_set loc ~cond:c p l
+                |_ -> expand_set loc p l
+            in
+            (* add the pattern to a hashtable used to build the matchpattern
+             * function *)
+            let s = add_patt_table l p in
+            (* if the pattern is just a variable then the index must be an
+             * empty string, otherwise the string used by matchpattern to index
+             * formulae. if the pattern is an atom then the index is __atom *)
+            let pattexp = 
+                match p with
+                | <:patt< $lid:_$ >> -> 
+                        <:str_item<
+                        value $lid:s$ = NodePattern.newpatt "" $lid:id$ >>
+                | <:patt< Atom($lid:_$,$lid:_$) >> -> 
+                        <:str_item<
+                        value $lid:s$ = NodePattern.newpatt "__atom" $lid:id$ >>
+                | _ ->
+                        <:str_item<
+                        value $lid:s$ = NodePattern.newpatt $str:s$ $lid:id$ >>
+            in
+            (* add a pattern to a list in relation to the type c *)
+            add_pattlist (c,s) ;
+            <:str_item< declare $list:[exp;pattexp]$ end>>
+        ) stringlist formulalist
+    in
+    let pl = list_to_exprlist loc
+        (List.map (fun e -> <:expr< $lid:e$ >> ) !pl )
+    in
+    let sl = list_to_exprlist loc
+        (List.map (fun e -> <:expr< $lid:e$ >> ) !sl )
+    in
+    let (condidl, condstrl) = expand_condlist loc cl in
+    let cl = list_to_exprlist loc condidl in
+    let l = 
+        <:expr<
+            let match_all node (pl,sl) hl =
+                let (map,hist) = node#get in
+                let enum = match_node map (pl,sl) in
+                let (enum,sbl,newmap) =
+                    let rec check_hist e =
+                        try match Enum.get e with
+                        [Some(sbl,ns) ->
+                            if List.exists (fun c -> not(c sbl hist) ) hl then 
+                                raise FailedMatch
+                            else (e,sbl,ns)
+                        |None -> (e,Substlist.empty,map)]
+                        with [ FailedMatch -> check_hist e ]
+                    in check_hist enum
+                in
+                let newnode = node#set (map,hist) in
+            new context (enum,sbl,newnode)
+            in match_all node ( $list:[pl;sl]$ ) $cl$ 
+        >>
+    in (l, str_items@condstrl)
+;;
+
+(* this function expand the function to build a new denominator *)
+let expand_action loc sl (formula,action) = 
+    let newid = new_id "exp_action" in
+    let ex = 
+        if is_variable formula then
+            expand_build_formula_var loc (sl,formula) newid
+        else expand_build_formula loc (sl,formula) newid
+    in
+    (* if the pattern is just a variable the function to implement the action is
+     * much simpler and we have a special case for it *)
+    let action =
+        match action with
+        | NoAct -> <:expr< $ex$ >>
+        | Act(a) -> <:expr< $lid:a$($ex$) >>
+    in
+    (newid, <:str_item< value $lid:newid$ sbl = $action$ >>)
+;;
+
+(* this function expand the arguments and the function to 
+ * execute side actions (history manipulation) for one denominator *)
+let expand_actionlistel loc (act,func,args) =
+    let newid = new_id "history_action" in
+    let (ex2,ex3) =
+        List.split
+            (List.map (fun (sl,formula) ->
+                let newid = new_id "build" in
+                let ex = 
+                    if is_variable formula then
+                        expand_build_formula_var ~hist:true loc (sl,formula) newid
+                    else expand_build_formula loc (sl,formula) newid
+                in (<:expr< $lid:newid$ >>,(<:patt<$lid:newid$>>,ex))
+            ) args
+        )
+    in
+    let ex4 =
+        match act with
+        |None -> <:expr< let _ = ($lid:func$ ( $list:ex2$ ) ) in hist >>
+        |Some(h) ->
+                let ex1 =
+                    try
+                        let (s,_) = Hashtbl.find hist_table h in 
+                        <:expr< `$lid:s$ >>
+                    with Not_found ->
+                        failwith ("expand_actionlist: "^h^" history not declared")
+                in
+                <:expr< hist#add $str:h$ ($ex1$ ($lid:func$ ( $list:ex2$ ) )) >>
+    in
+    let ex5 =
+        if args = [] then <:expr< $ex4$ >>
+        else <:expr< let $list:ex3$ in $ex4$ >>
+    in
+    (<:expr< $lid:newid$ >> ,
+    <:str_item< value $lid:newid$ sbl hist = $ex5$ >>)
+;;
+
+let expand_actionlist loc dl hl =
+    if Option.is_none hl then
+        (* XXX: horrible way to make sure to have a
+         * the same number of history actions and den actions *)
+        (List.map (fun _ -> []) dl,[])
+    else
+        let (idl,strl) =
+            List.split (
+                List.map (fun al ->
+                    List.split (
+                        List.map (fun a ->
+                            expand_actionlistel loc a
+                        ) al
+                    )
+                ) (Option.get hl)
+            )
+        in (idl, List.flatten strl)
+;;
+
+let expand_rule_den loc t dl hl =
+    let expand dl tl hl =
         let is_reserved = function
             | <:expr< $lid:"close"$ >>
             | <:expr< $lid:"unsat"$ >> 
@@ -400,7 +594,7 @@ let expand_rule_den loc t dl =
             |_ -> false
         in
         let exp_reserved l = 
-            let (_,f) = try List.find (fun sl,f -> is_reserved f) l
+            let (_,(f,_)) = try List.find (fun (sl,(f,_)) -> is_reserved f) l
                     with Not_found -> failwith "exp_reserved : impossible"
             in
             match f with
@@ -412,127 +606,135 @@ let expand_rule_den loc t dl =
         in
         let __exp dl =
             let (al,strld) =
-                List.split (List.filter_map (fun (sl,f) ->
+                List.split (List.filter_map (fun (sl,(f,act)) ->
                     if is_reserved f then None
                     else
-                    let (id,exp) = expand_action loc sl f in
+                    let (id,exp) = expand_action loc sl (f,act) in
                     let s = new_id "action" in
                     let pattexp =
                         <:str_item<
-                        value $lid:s$ = NodePattern.newact "" $lid:id$ >> in
-                    Some(<:expr< $lid:s$ >>,<:str_item< declare $list:[exp;pattexp]$ end>>)
+                        value $lid:s$ = NodePattern.newact "" $lid:id$ >>
+                    in
+                    Some(
+                        <:expr< $lid:s$ >>,
+                        <:str_item< declare $list:[exp;pattexp]$ end>>
+                    )
                     ) dl
                 )
             in
             let al = list_to_exprlist loc al 
             in (al,strld)
         in
+        let (actidl, actstrl) = expand_actionlist loc (dl::tl) hl in 
         let (firstal,strld) = __exp dl in
         (* first node of the action list *)
-        let h = <:expr< (newnode,$firstal$) >> in
+        let h =
+            let hl = list_to_exprlist loc (List.hd actidl) in
+            <:expr< (newnode,$firstal$,$hl$) >>
+        in
         let (nextal,strl) = List.split (
-            List.map(fun dl ->
+            List.map2(fun dl hl ->
                 let (al,strld) = __exp dl in
-                (<:expr< (newnode#copy,$al$) >>, strld)
-            ) tl 
+                let hl = list_to_exprlist loc hl in 
+                (<:expr< (newnode#copy,$al$,$hl$) >>, strld)
+            ) tl (List.tl actidl)
         ) in
         (* all the others *)
         let tl = list_to_exprlist loc nextal in
         let exp = 
             (* if the pattern contain a keyword and the tail is empty then
                 * it must be an axiom *)
-            if nextal = [] && (List.exists (fun (sl,f) -> is_reserved f) dl) then
+            if nextal = [] && 
+            (List.exists (fun (sl,(f,_)) -> is_reserved f) dl) then
                 let axiom_t = exp_reserved dl in
                 <:expr< let (enum,sbl,newnode) = context#get in
                 Leaf(newnode#set_status Data.$axiom_t$) >>
             else
                 (* otherwise we check is the rule is invertible or not *)
                 match t with
-                | NotInv when not(nextal = []) -> failwith "Not Invertible rule cannot branch"
+                | NotInv when not(nextal = []) ->
+                        failwith "Not Invertible rule cannot branch"
                 | Inv -> <:expr< 
-                            let action_all node sbl al =
+                            let action_all node sbl al hl =
                                 let (map,hist) = node#get in
                                 let newmap = Build.build_node map sbl al in
-                                (* let newhist = Build.build_hist node sbl [] in
-                            * *)
-                                node#set (newmap,hist)
+                                let newhist =
+                                    List.fold_left (fun h f -> f sbl h) hist hl
+                                in 
+                                node#set (newmap,newhist)
                             in
                             let rec make_llist sbl = fun
                                 [[] -> Empty
-                                |[(node,al)::t] -> 
-                                        LList(action_all node sbl al,
+                                |[(node,al,hl)::t] -> 
+                                        LList(action_all node sbl al hl,
                                         lazy(make_llist sbl t))]
                             in
                             let (enum,sbl,newnode) = context#get in
                             Tree(make_llist sbl [ $h$ :: $tl$ ]) >>
                 | NotInv ->
                         <:expr<
-                            let action_all node sbl al =
+                            let action_all node sbl al hl =
                                 let (map,hist) = node#get in
                                 let newmap = Build.build_node map sbl al in
-                                (* let newhist = Build.build_hist node sbl [] in
-                            * *)
-                                node#set (newmap,hist)
+                                let newhist =
+                                    List.fold_left (fun h f -> f sbl h) hist hl
+                                in
+                                node#set (newmap,newhist)
                             in
                             let rec make_llist = fun
                                 [Empty -> Empty
-                                |LList((node,sbl,al),t) ->
-                                        LList(action_all node sbl al,
+                                |LList((node,sbl,al,hl),t) ->
+                                        LList(action_all node sbl al hl,
                                         lazy(make_llist (Lazy.force t)))]
                             in
-                            (* here we dynamically (lazily) generate the tail of the
-                             * action list *)
+                            (* here we dynamically (lazily) generate the 
+                             * tail of the action list *)
                             let rec next context =
                                 let (enum,sbl,node) = context#get in
                                 let (map,hist) = node#get in
-                                let (newsbl,newmap) = match_hist enum hist map [] in
-                                let newnode = node#set (newmap,hist) in
+                                let (newsbl,newmap) = 
+                                    match Enum.get enum with
+                                    [Some(sbl,ns) -> (sbl,ns)
+                                    |None -> (Substlist.empty,map)]
+                                in
+                                let newnode = node#set (map,hist) in
                                 if Data.Substlist.is_empty newsbl then
-                                    LList((node,sbl,($firstal$) ),lazy(Empty))
+                                    LList((node,sbl,$firstal$,[]),lazy(Empty))
                                 else
-                                    LList((node,sbl,($firstal$)),
+                                    LList((node,sbl,$firstal$,[]),
                                     lazy(next (context#set (enum,newsbl,newnode))))
                             in
                             Tree(make_llist ( next context ))
                         >>
         in
-        (exp,List.flatten (strld::strl))
+        (exp,List.flatten (strld::strl)@actstrl)
     in
     match dl,t with
     |Forall (dl::[]),NotInv ->
-            let (exp,strl) = expand dl [] in
+            let (exp,strl) = expand dl [] hl in
             (<:class_str_item< inherit exist_rule >>, exp, strl)
     |Forall (dl::[]),Inv ->
-            let (exp,strl) = expand dl [] in
+            let (exp,strl) = expand dl [] hl in
             (<:class_str_item< inherit linear_rule >>, exp, strl)
     |Forall (dl::tl),Inv ->
-            let (exp,strl) = expand dl tl in
+            let (exp,strl) = expand dl tl hl in
             (<:class_str_item< inherit forall_rule >>,exp, strl)
     |Exists (dl::tl),Inv ->  
-            let (exp,strl) = expand dl tl in
+            let (exp,strl) = expand dl tl hl in
             (<:class_str_item< inherit exist_rule >>, exp, strl)
     |_ -> failwith "expand_rule_den"
 ;; 
 
-let expand_rule_class loc s (nl,fl) dl t =
-    let (pl,strln) = expand_rule_num loc nl fl in 
-    let (rt,al,strld) = expand_rule_den loc t dl in
+let expand_rule_class loc s (nl,fl) dl cl hl bl t =
+    let (pl,strln)    = expand_rule_num loc (nl,fl) cl in
+    let (rt,al,strld) = expand_rule_den loc t dl hl in
     strln@strld@
     [<:str_item< 
         class $lid:(String.lowercase s)^"_rule"$ = 
                 object 
                 $rt$; (* FIXME: this is the antiquotation *)
                 
-                method check node = 
-                    let match_all node (pl,sl,ll) hl =
-                        let (map,hist) = node#get in
-                        let enum = match_node map (pl,sl,ll) in
-                        let (sbl,newmap) = match_hist enum hist map hl in
-                        let newnode = node#set (newmap,hist) in
-                    new context (enum,sbl,newnode)
-                    in
-                    match_all node ( $list:pl$ ) [] ;
-
+                method check node = $pl$ ;
                 method down context = $al$ ;
                 end 
     >>
@@ -585,21 +787,18 @@ type 'a tree =
 
 let expand_strategy loc tree = []
 
-(*
-let expand_userfun loc = function
-     (sl, <:expr $lid:a$ >> -> if history a then .. else ..
-    |(sl, expr ->
-            *)
-
 let expand_history loc l =
-    let (idlist,expr_list) = List.split l in
-    List.iter (fun e -> add_hist_table e) idlist;
+    let expr_list = List.map (
+        fun (v,s,t) ->
+            <:expr< ($str:v$,`$lid:s$ (new $uid:s$ . $lid:t$)) >>
+    ) l
+    in
+    List.iter (fun (v,s,t) ->
+        Hashtbl.replace hist_table v (s,t)
+    ) l;
     list_to_exprlist loc expr_list
-
-let hist_type loc = function
-    "Set" -> <:expr< `S(new Set.set) >>
-    |_ -> assert(false)
 ;;
+
 
 let expand_preamble loc =
     let stl = [
@@ -614,7 +813,7 @@ let expand_preamble loc =
 ;;
 
 EXTEND
-GLOBAL : Pcaml.str_item patt_term expr_term; 
+GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr patt_term expr_term; 
   Pcaml.str_item: [[
     "CONNECTIVES"; clist = LIST1 connective SEP ";"; "END" ->
       List.iter (function
@@ -635,16 +834,18 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
             <:str_item< declare $list:l$ end >> 
     |"STRATEGY"; s = strategy ->
             (* <:str_item< declare $list:expand_strategy loc s$ end >> *)
-            <:str_item< Logic.__strategy.val := 
-                Some(Strategy.newstate "start") >>
+            <:str_item< Logic.__strategy.val := Some(strategy) >>
   ]];
+
+  Pcaml.expr : [[ "@"; (_,e) = expr_term; "@" -> <:expr< `Formula $e$ >> ]];
+  Pcaml.patt : [[ (_,p) = patt_term -> <:patt< `Formula $p$ >> ]];
 
   connective: [[
       v = UIDENT; ","; s = STRING; ","; r = UIDENT -> (v,s,r)
   ]];
 
   history: [[
-      v = UIDENT; ":"; t = UIDENT -> (v,<:expr< ($str:v$,$hist_type loc t$) >>)
+      v = UIDENT; ":"; s = UIDENT; "."; t = LIDENT -> (v,s,t)
   ]];
   
   strategy:
@@ -679,18 +880,18 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
 *)
 
   rule: [[
-       "RULE";
-       id = UIDENT; (nl,n) = num; t = test_sep; dl = denlist; 
-       OPT condition;
-       OPT actionlist;
-       OPT branchlist;
-       "END" ->
-           let rl = expand_rule_class loc id (nl,n) dl t in 
-           <:str_item< declare $list:rl$ end >>
+      "RULE";
+      id = UIDENT; (nl,n) = num; t = test_sep; dl = denlist; 
+      cl = OPT condition;
+      hl = OPT actionlist;
+      bl = OPT branchlist;
+      "END" ->
+          let rl = expand_rule_class loc id (nl,n) dl cl hl bl t in 
+          <:str_item< declare $list:rl$ end >>
   ]];
 
   condition: [[
-      "COND"; OPT "["; l = LIST1 userfun SEP ";"; OPT "]" -> l
+      "COND"; OPT "["; l = LIST1 usercond SEP ";"; OPT "]" -> l
   ]];
 
   actionlist: [[
@@ -702,14 +903,22 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
   ]];
 
   action: [[
-      OPT "["; l = LIST1 userfun SEP ";"; OPT "]" -> l
+      OPT "["; l = LIST1 useract SEP ";"; OPT "]" -> l
   ]];
   
-  userfun: [[
-      f = LIDENT; OPT "("; LIST0 expr_term SEP ","; OPT ")" -> f
-      | s = UIDENT; "="; f = LIDENT; OPT "("; LIST0 expr_term SEP ","; OPT ")" -> f
+  useract: [[
+      f = LIDENT; OPT "("; args = LIST0 expr_term SEP ","; OPT ")" ->
+          (None,f,args)
+      | s = UIDENT; ":="; 
+        f = LIDENT; OPT "("; args = LIST0 expr_term SEP ","; OPT ")" ->
+          (Some(s),f,args)
   ]];
   
+  usercond: [[
+      f = LIDENT; OPT "("; args = LIST0 expr_term SEP ","; OPT ")" ->
+          (None,f,args)
+  ]];
+
   (* Forall of (string list * expr) list list *)
   denlist: [[
        d = den; "|";  dl = den_forall -> Forall(d::dl)
@@ -725,32 +934,45 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
   den_forall: [[ dl = LIST1 den SEP "|" -> dl ]];
   den_exists: [[ dl = LIST1 den SEP "||" -> dl ]];
   
-  (* ( string list * expr) list *)
-  den: [[al = LIST1 denformula SEP ";" -> al]];
+  (* ( string list * (expr * cond_t)) list *)
+  den: [[al = LIST1 denformula SEP ";" -> al ]];
   
-  (* ( string list list * expr list ) *)
+  (* ( string list list * (expr * cond_t) list ) *)
   num: [[ pl = LIST1 numformula SEP ";" -> List.split pl ]]; 
   
+  (* (expr * cond_t) *)
   numformula: [[
-       "{"; (s,p) = patt_term; "}" -> (s,(p,Single))  (* single formula *)
- (*     |"["; (s,p) = patt_term; "]" -> (s,(p,NoCond))  (* not empty set *) *)
-      |"<"; (s,p) = patt_term; ">" -> (s,(p,NoCond))  (* empty set *)
-      |c = LIDENT; OPT "("; (s,p) = patt_term; OPT ")" -> (s,(p,NoCond)) 
-      |(s,p) = patt_term           -> (s,(p,NoCond))  (* no conditions *)
+       (* single formula *)
+       "{"; (s,p) = patt_term; "}" -> (s,(p,Single))
+       
+       (* set with condition *)
+      |c = LIDENT; OPT "("; (s,p) = patt_term; OPT ")" -> (s,(p,Cond(c))) 
+    
+      (* single formula with condition *)
+      |c = LIDENT; OPT "("; "{";
+        (s,p) = patt_term; "}"; OPT ")" -> (s,(p,SingCond(c)))
+    
+      (* set with no conditions *)
+      |(s,p) = patt_term           -> (s,(p,NoCond))
   ]];
   
+  (* ( string list * (expr * cond_t)) *)
   denformula: [[
-      (s,p) = expr_term -> (s,p) (* string list * expr) *)
+      (s,p) = expr_term -> (s,(p,NoAct)) 
+      |a = LIDENT; OPT "("; (s,p) = expr_term; OPT ")" -> (s,(p,Act(a))) 
   ]];
   
   expr_term:
     [ "One" LEFTA [ ]
     | "Two" RIGHTA [ ]
     | "Simple" NONA
-      [ x = UIDENT -> ([String.lowercase(x)],<:expr< $lid:String.lowercase(x)$>>)
+      [ x = UIDENT ->
+          ([String.lowercase(x)],
+          <:expr< $lid:String.lowercase(x)$>>)
       | "."; x = LIDENT ->
               let nc = <:expr<  Basictype.newcore 1 [|0|] >> in
-              ([String.lowercase(x)],<:expr< Atom($nc$,$lid:String.lowercase(x)$)>>)
+              ([String.lowercase(x)],
+              <:expr< Atom($nc$,$lid:String.lowercase(x)$)>>)
       | "("; p = expr_term; ")" -> p
       ] 
     ];
@@ -759,11 +981,14 @@ GLOBAL : Pcaml.str_item patt_term expr_term;
     [ "One" LEFTA [ ]
     | "Two" RIGHTA [ ]
     | "Simple" NONA
-      [ x = UIDENT -> ([String.lowercase(x)],<:patt< $lid:String.lowercase(x)$>>)
+      [ x = UIDENT ->
+          ([String.lowercase(x)],
+          <:patt< $lid:String.lowercase(x)$>>)
       | "."; x = LIDENT ->
-              (["atom___"^String.lowercase(x)],<:patt< Atom(nc,$lid:String.lowercase(x)$)>>)
+              (["atom___"^String.lowercase(x)],
+              <:patt< Atom(nc,$lid:String.lowercase(x)$)>>)
       | "("; p = patt_term; ")" -> p
-(*      | f = LIDENT; "("; p = patt_term; ")" -> p *)
+      (* | cut = LIDENT; "("; p = expr_term; ")" -> p *)
       ] 
     ];
     

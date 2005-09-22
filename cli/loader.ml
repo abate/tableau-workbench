@@ -90,6 +90,7 @@ let load twblib logiclib logicname =
         Dynlink.allow_unsafe_modules true;
         load_camlp4 ();
         Dynlink.allow_unsafe_modules false;
+        Dynlink.default_available_units ();
         load_library twblib; 
         load_logic logiclib logicname 
 ;;

@@ -36,6 +36,9 @@ type mixtype = [
 let open_bt v = (v : mixtype :> [> mixtype] )
 let open_bt_list v = (v : mixtype list :> [> mixtype] list )
 
+(* is this needed (?) *)
+let map f l = open_bt_list (List.map f l)
+
 (* FIXME: this doesn't copy anything !!! *)
 (* XXX: copy of formulae might be expensive ... *)
 (* what's about a mutable part and an immutable part ??? *)

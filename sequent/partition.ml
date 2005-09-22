@@ -3,12 +3,8 @@
 module Make(P: NodePattern.S)(H: NodePattern.S) :
     sig
     val match_node : (P.bt, P.bt Sets.st) Gmap.mt ->
-        P.pattern list * P.pattern list * P.pattern list ->
+        P.pattern list * P.pattern list ->
             (P.sbl * (P.bt, P.bt Sets.st) Gmap.mt) Enum.t
-
-    val match_hist : (H.sbl * (P.bt, P.bt Sets.st) Gmap.mt) Enum.t -> 
-        H.bt Hmap.mt -> (P.bt, P.bt Sets.st) Gmap.mt -> H.pattern list -> 
-            (H.sbl * (P.bt, P.bt Sets.st) Gmap.mt)
 
     exception FailedMatch
     end 
@@ -29,7 +25,6 @@ module Make(P: NodePattern.S)(H: NodePattern.S) :
                     Some(s,newstore)
                 with FailedMatch -> None
             
-        (* XXX: since I'm using an hash table, I risk a key  collision *)
         let init s = (Substlist.empty, s#copy)
         
         let enum store patternlist =
@@ -68,38 +63,18 @@ module Make(P: NodePattern.S)(H: NodePattern.S) :
              * EX. partition starred and not starred formulae *)
             (sbl',List.fold_left (fun st e -> st#del e ) store l)
         ;;
+        
         (* Return an enumeration with all possible nodes *)
-        let match_node map (pl,sl,ll) = 
+        let match_node map (pl,sl) = 
                 try
                     Enum.map (
                         fun s ->
-                                    let tmpsl =
-                                        List.fold_left (
-                                            fun (subl,ns) patt ->
-                                                getset ns subl patt
-                                        ) s sl
-                                    in
-                                    List.fold_left (
-                                        fun (subl,ns) patt ->
-                                                getset ns subl patt
-                                    ) tmpsl ll
+                            List.fold_left (
+                                fun (subl,ns) patt ->
+                                    getset ns subl patt
+                                ) s sl
                     ) (enum map#copy pl)
                 with FailedMatch -> Enum.empty ()
         ;;
-        
-        let rec match_hist enum hist map hl =
-            try
-                begin
-                    match Enum.get enum with
-                    |Some(sbl,ns) ->
-                            let newsbl = 
-                                List.fold_left (
-                                    fun s p ->
-                                        p.H.pmatch s [(hist#get p.H.pid)]
-                                ) sbl hl
-                            in (newsbl,ns)
-                    |None -> (Substlist.empty,map)
-                end 
-            with FailedMatch -> match_hist enum hist map hl
-            
+       
     end

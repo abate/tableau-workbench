@@ -7,18 +7,18 @@ let add (sbl : sbl) l =
               try
                   begin
                       match Data.Substlist.find k s with
-                      |`L(l) -> Data.Substlist.add k (`L(l#addlist v)) s
-                      |`S(l) -> Data.Substlist.add k (`S(l#addlist v)) s
+                      |`Mtlist(l) -> Data.Substlist.add k (`Mtlist(l#addlist v)) s
+                      |`Set(l) -> Data.Substlist.add k (`Set(l#addlist v)) s
                       |#Comptypes.mixlist -> failwith "add type node allowed"
                   end
               with Not_found ->  (
-                  Data.Substlist.add k (`L((new Comptypes.Mtlist.listobj)#addlist v)) s )
+                  Data.Substlist.add k (`Mtlist((new Comptypes.Mtlist.listobj)#addlist v)) s )
       ) sbl l
 
 let mem sbl p f =
     try
         match Data.Substlist.find p sbl with
-        |`L(l) -> l#mem f
+        |`Mtlist(l) -> l#mem f
         |#Comptypes.mixlist -> failwith "add type node allowed"
     with Not_found -> raise Not_found
 

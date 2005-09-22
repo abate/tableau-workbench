@@ -39,25 +39,26 @@ module Listofsets = Listobj.Make(
         let to_string v = v#to_string
     end   
 )
+;;
 
 type mixlist = [
-    |`L of Mtlist.listobj
-    |`LS of Listofsets.listobj
-    |`S of Set.set
-    |`SS of Setofsets.set
-    |`SoTS of Setoftupleset.set
+    |`Mtlist of Mtlist.listobj
+    |`Listofsets of Listofsets.listobj
+    |`Set of Set.set
+    |`Setofsets of Setofsets.set
+    |`Setoftupleset of Setoftupleset.set
 ]
 
 let copy : mixlist -> mixlist = function 
-    |`L(l) -> `L(l#copy)
-    |`LS(l) -> `LS(l#copy)
-    |`S(s) -> `S(s#copy)
-    |`SS(s) -> `SS(s#copy)
-    |`SoTS(s) -> `SoTS(s#copy)
+    |`Mtlist(l) -> `Mtlist(l#copy)
+    |`Listofsets(l) -> `Listofsets(l#copy)
+    |`Set(s) -> `Set(s#copy)
+    |`Setofsets(s) -> `Setofsets(s#copy)
+    |`Setoftupleset(s) -> `Setoftupleset(s#copy)
 
 let string_of_mixlist : mixlist -> string = function
-    |`L(l) -> l#to_string 
-    |`LS(l) -> l#to_string 
-    |`S(s) -> s#to_string
-    |`SS(s) -> s#to_string
-    |`SoTS(s) -> s#to_string
+    |`Mtlist(l) -> l#to_string 
+    |`Listofsets(l) -> l#to_string 
+    |`Set(s) -> s#to_string
+    |`Setofsets(s) -> s#to_string
+    |`Setoftupleset(s) -> s#to_string
