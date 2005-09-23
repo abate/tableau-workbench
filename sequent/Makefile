@@ -6,7 +6,8 @@ SOURCES := \
 	partition.ml \
 	userRule.ml \
 	sbl.ml \
-	datatype.ml 
+	datatype.ml \
+	outputBroker.ml \
 	
 RESULT := twbseq
 PACKS := twb.core twb.types

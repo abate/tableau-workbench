@@ -441,7 +441,7 @@ let expand_rule_num loc (stringlist,formulalist) cl =
     let sl = ref [] in
     let add_pattlist = function
         |_,"" -> ()
-        |Single,s ->  pl := !pl@[s]
+        |Single,s | SingCond(_),s ->  pl := !pl@[s]
         |_,s -> sl := !sl@[s]
     in
     let str_items = 
@@ -687,7 +687,8 @@ let expand_rule_den loc t dl hl =
                                 let newhist =
                                     List.fold_left (fun h f -> f sbl h) hist hl
                                 in 
-                                node#set (newmap,newhist)
+                                let n = node#set (newmap,newhist) in
+                                let _ = OutputBroker.print n name in n
                             in
                             let rec make_llist sbl = fun
                                 [[] -> Empty
@@ -705,7 +706,8 @@ let expand_rule_den loc t dl hl =
                                 let newhist =
                                     List.fold_left (fun h f -> f sbl h) hist hl
                                 in
-                                node#set (newmap,newhist)
+                                let n = node#set (newmap,newhist) in
+                                let _ = OutputBroker.print n name in n
                             in
                             let rec make_llist = fun
                                 [Empty -> Empty
@@ -757,9 +759,10 @@ let expand_rule_class loc s (nl,fl) dl cl hl bl t =
     strln@strld@
     [<:str_item< 
         class $lid:(String.lowercase s)^"_rule"$ = 
-                object 
+                object
                 $rt$; (* FIXME: this is the antiquotation *)
                 
+                value name = $str:s$;
                 method check node = $pl$ ;
                 method down context = $al$ ;
                 end 
@@ -858,13 +861,21 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr patt_term expr_term;
     |"TABLEAU"; l = LIST1 rule; "END" ->
             let l = (expand_matchpatt loc)::l in 
             <:str_item< declare $list:l$ end >> 
+    |"PP"; OPT ":="; e = Pcaml.expr ->
+            <:str_item< Logic.__pp.val := Some($e$) >>
+    |"NEG"; OPT ":="; e = Pcaml.expr ->
+            <:str_item< Logic.__neg.val := Some($e$) >>
     |"STRATEGY"; s = strategy ->
             (* <:str_item< declare $list:expand_strategy loc s$ end >> *)
             <:str_item< Logic.__strategy.val := Some(strategy) >>
   ]];
 
-  Pcaml.expr : [[ "@"; (_,e) = expr_term; "@" -> <:expr< `Formula $e$ >> ]];
-  Pcaml.patt : [[ (_,p) = patt_term -> <:patt< `Formula $p$ >> ]];
+  Pcaml.expr : 
+      [[ "term"; OPT "("; (_,e) = expr_term; OPT ")" ->
+          <:expr< `Formula $e$ >> ]];
+  Pcaml.patt :
+      [[ "term"; OPT "("; (_,p) = patt_term; OPT ")"->
+          <:patt< `Formula $p$ >> ]];
 
   connective: [[
       v = UIDENT; ","; s = STRING; ","; r = UIDENT -> (v,s,r)

@@ -17,7 +17,6 @@ type formula =
     |Box of core * formula
     |Diai of int * core * formula
     |Boxi of int * core * formula
-
     |Atom of core * string 
 
 type label = int list
@@ -32,6 +31,17 @@ type mixtype = [
     |`FormulaTuple of (formula * formula)
     |`FormulaTriple of (formula * formula * formula)
 ]
+
+(* XXX: to be generalized *)
+let unbox = function 
+    `Formula a -> a
+    |_ -> failwith "unbox "
+;;
+
+(* is_marked returns true if the i-th element is equal to 1 *)
+let is_marked ?(i=0) ?(v=1) n = ( n.star.(i) = v )
+let mark ?(i=0) ?(v=1) n = ( n.star.(i) <- v ); n
+let unmark ?(i=0) n = mark ~i ~v:0 n
 
 let open_bt v = (v : mixtype :> [> mixtype] )
 let open_bt_list v = (v : mixtype list :> [> mixtype] list )

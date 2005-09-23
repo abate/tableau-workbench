@@ -77,7 +77,16 @@ let newnode s =
         try (Option.get (!Logic.__inputparser))
         with Option.No_value -> failwith "Input Parser error"
     in
-    let fmap = fmap#addlist (inputparser s) in
+    let pp = 
+        if Option.is_none (!Logic.__pp) then (fun x -> x)
+        else (Option.get (!Logic.__pp))
+    in 
+    let neg = 
+        if Option.is_none (!Logic.__neg) || (!Options.noneg)
+        then (fun x -> x)
+        else (Option.get (!Logic.__neg))
+    in 
+    let fmap = fmap#addlist (pp ( neg (inputparser s))) in
     new Node.node (fmap,hmap)
 ;;
 
