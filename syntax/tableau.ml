@@ -16,9 +16,10 @@ let new_id =
 
 (* given a patter, returns an pattern where all lid as
  * substituted with _ *)
-let rec remove_lid = 
-    let loc = Token.dummy_loc in 
-    function
+let rec remove_lid p = 
+    let loc = Token.dummy_loc in
+(*   let _ = print_endline (Pcaml.string_of Pcaml.pr_patt p) in *)
+    match p with
     | <:patt< Atom(_,_) >> -> <:patt< _ >>
     | <:patt< $uid:s$ ( $list:pl$ ) >> ->
         let l = List.map (remove_lid) pl in
@@ -38,7 +39,7 @@ let add_patt_table l p =
     let patt = remove_lid p in
     try let (s,l) = Hashtbl.find patt_table patt in s
     with Not_found ->
-        let s = new_id "pattern" in
+        let s = new_id "patternid" in
         match patt with
         | <:patt< _ >> -> s
         | <:patt< Atom(_,_) >> -> s
@@ -395,7 +396,7 @@ let expand_build_formula_var loc ?(hist=false) (sl,formula) newid =
     >>
 ;;
  
-let expand_condlistel loc (act,func,args) =
+let expand_condlistel loc (act,func,args,ex) =
     let newid = new_id "history_condition" in
     let (ex2,ex3) =
         List.split
@@ -409,7 +410,12 @@ let expand_condlistel loc (act,func,args) =
             ) args
         )
     in
-    let ex4 = <:expr< $lid:func$ ( $list:ex2$ ) >> in
+    let ex4 = 
+        if Option.is_none ex then
+            <:expr< $lid:func$ ( $list:ex2$ ) >>
+        else
+            <:expr< $lid:func$ ( $list:ex2$ ) $Option.get ex$ >>
+    in
     let ex5 =
         if args = [] then <:expr< $ex4$ >>
         else <:expr< let $list:ex3$ in $ex4$ >>
@@ -435,8 +441,8 @@ let expand_rule_num loc (stringlist,formulalist) cl =
     let sl = ref [] in
     let add_pattlist = function
         |_,"" -> ()
-        |Single,s ->  pl := s::!pl
-        |_,s -> sl := s::!sl
+        |Single,s ->  pl := !pl@[s]
+        |_,s -> sl := !sl@[s]
     in
     let str_items = 
         List.map2 (fun l (p,c) ->
@@ -459,6 +465,7 @@ let expand_rule_num loc (stringlist,formulalist) cl =
             (* add the pattern to a hashtable used to build the matchpattern
              * function *)
             let s = add_patt_table l p in
+            let paid = new_id "pattern" in
             (* if the pattern is just a variable then the index must be an
              * empty string, otherwise the string used by matchpattern to index
              * formulae. if the pattern is an atom then the index is __atom *)
@@ -466,16 +473,18 @@ let expand_rule_num loc (stringlist,formulalist) cl =
                 match p with
                 | <:patt< $lid:_$ >> -> 
                         <:str_item<
-                        value $lid:s$ = NodePattern.newpatt "" $lid:id$ >>
+                        value $lid:paid$ = NodePattern.newpatt "" $lid:id$ >>
                 | <:patt< Atom($lid:_$,$lid:_$) >> -> 
                         <:str_item<
-                        value $lid:s$ = NodePattern.newpatt "__atom" $lid:id$ >>
+                        value $lid:paid$ = NodePattern.newpatt "__atom" $lid:id$ 
+                        >>
                 | _ ->
                         <:str_item<
-                        value $lid:s$ = NodePattern.newpatt $str:s$ $lid:id$ >>
+                        value $lid:paid$ = NodePattern.newpatt $str:s$ $lid:id$ 
+                        >>
             in
             (* add a pattern to a list in relation to the type c *)
-            add_pattlist (c,s) ;
+            add_pattlist (c,paid) ;
             <:str_item< declare $list:[exp;pattexp]$ end>>
         ) stringlist formulalist
     in
@@ -497,13 +506,15 @@ let expand_rule_num loc (stringlist,formulalist) cl =
                         try match Enum.get e with
                         [Some(sbl,ns) ->
                             if List.exists (fun c -> not(c sbl hist) ) hl then 
+                                (* I raise FailedMatch and cach it below. sooner
+                                 * or later the enum is going to be empty *)
                                 raise FailedMatch
                             else (e,sbl,ns)
                         |None -> (e,Substlist.empty,map)]
                         with [ FailedMatch -> check_hist e ]
                     in check_hist enum
                 in
-                let newnode = node#set (map,hist) in
+                let newnode = node#set (newmap,hist) in
             new context (enum,sbl,newnode)
             in match_all node ( $list:[pl;sl]$ ) $cl$ 
         >>
@@ -530,7 +541,7 @@ let expand_action loc sl (formula,action) =
 
 (* this function expand the arguments and the function to 
  * execute side actions (history manipulation) for one denominator *)
-let expand_actionlistel loc (act,func,args) =
+let expand_actionlistel loc (act,func,args,ex) =
     let newid = new_id "history_action" in
     let (ex2,ex3) =
         List.split
@@ -545,17 +556,34 @@ let expand_actionlistel loc (act,func,args) =
         )
     in
     let ex4 =
-        match act with
-        |None -> <:expr< let _ = ($lid:func$ ( $list:ex2$ ) ) in hist >>
-        |Some(h) ->
+        match act,ex with
+        |None,None -> <:expr< let _ = ($lid:func$ ( $list:ex2$ ) ) in hist >>
+        |None,Some(e) ->
+                <:expr< let _ = ($lid:func$ ( $list:ex2$ ) $e$ ) in hist >>
+        |Some(h),None ->
                 let ex1 =
                     try
-                        let (s,_) = Hashtbl.find hist_table h in 
-                        <:expr< `$lid:s$ >>
+                        let (s,_) =
+                            Hashtbl.find hist_table h
+                        in <:expr< `$lid:s$ >>
                     with Not_found ->
                         failwith ("expand_actionlist: "^h^" history not declared")
                 in
-                <:expr< hist#add $str:h$ ($ex1$ ($lid:func$ ( $list:ex2$ ) )) >>
+                <:expr<
+                hist#add $str:h$ ($ex1$ ($lid:func$ ( $list:ex2$ ) ))
+                >>
+        |Some(h),Some(e) ->
+                let ex1 =
+                    try
+                        let (s,_) =
+                            Hashtbl.find hist_table h
+                        in <:expr< `$lid:s$ >>
+                    with Not_found ->
+                        failwith ("expand_actionlist: "^h^" history not declared")
+                in
+                <:expr<
+                hist#add $str:h$ ($ex1$ ($lid:func$ ( $list:ex2$ ) $e$ ))
+                >>
     in
     let ex5 =
         if args = [] then <:expr< $ex4$ >>
@@ -628,10 +656,8 @@ let expand_rule_den loc t dl hl =
         let (actidl, actstrl) = expand_actionlist loc (dl::tl) hl in 
         let (firstal,strld) = __exp dl in
         (* first node of the action list *)
-        let h =
-            let hl = list_to_exprlist loc (List.hd actidl) in
-            <:expr< (newnode,$firstal$,$hl$) >>
-        in
+        let firsthl = list_to_exprlist loc (List.hd actidl) in
+        let h = <:expr< (newnode,$firstal$,$firsthl$) >> in
         let (nextal,strl) = List.split (
             List.map2(fun dl hl ->
                 let (al,strld) = __exp dl in
@@ -699,9 +725,9 @@ let expand_rule_den loc t dl hl =
                                 in
                                 let newnode = node#set (map,hist) in
                                 if Data.Substlist.is_empty newsbl then
-                                    LList((node,sbl,$firstal$,[]),lazy(Empty))
+                                    LList((node,sbl,$firstal$,$firsthl$),lazy(Empty))
                                 else
-                                    LList((node,sbl,$firstal$,[]),
+                                    LList((node,sbl,$firstal$,$firsthl$),
                                     lazy(next (context#set (enum,newsbl,newnode))))
                             in
                             Tree(make_llist ( next context ))
@@ -907,16 +933,22 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr patt_term expr_term;
   ]];
   
   useract: [[
-      f = LIDENT; OPT "("; args = LIST0 expr_term SEP ","; OPT ")" ->
-          (None,f,args)
+      f = LIDENT;
+      "("; args = LIST0 expr_term SEP ","; ")";
+      OPT "("; ex = OPT Pcaml.expr LEVEL "simple"; OPT ")"
+      -> (None,f,args,ex)
       | s = UIDENT; ":="; 
-        f = LIDENT; OPT "("; args = LIST0 expr_term SEP ","; OPT ")" ->
-          (Some(s),f,args)
+        f = LIDENT;
+        "("; args = LIST0 expr_term SEP ","; ")";
+        OPT "("; ex = OPT Pcaml.expr LEVEL "simple"; OPT ")"
+        -> (Some(s),f,args,ex)
   ]];
   
   usercond: [[
-      f = LIDENT; OPT "("; args = LIST0 expr_term SEP ","; OPT ")" ->
-          (None,f,args)
+      f = LIDENT;
+      "("; args = LIST0 expr_term SEP ","; ")"; 
+      OPT "("; ex = OPT Pcaml.expr LEVEL "simple"; OPT ")"
+      -> (None,f,args,ex)
   ]];
 
   (* Forall of (string list * expr) list list *)

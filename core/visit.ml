@@ -18,6 +18,6 @@ module Make (R:Rule.S) (S: Strategy.S
                 match rule#down context with
                 |Tree(l) -> rule#up (Llist.map (visit strategy newstate) l)
                 |Leaf(_) as n -> rule#up (LList(n,lazy(Empty)))
-            with S.NoMoreRules -> Leaf(node)
+            with Strategy.NoMoreRules -> Leaf(node)
 
     end

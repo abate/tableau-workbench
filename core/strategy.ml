@@ -1,12 +1,23 @@
 (** this module return the the rule to apply and a new context *)
 
+exception NoMoreRules
+
 module type S =
     sig
         type rule
         type node
         type state
         type context
-        exception NoMoreRules
+        type s = |S |SS of rule |R of rule |E 
+        class strategy :
+          string ->
+          object
+            val automata : (string, s * string * string) Hashtbl.t
+            val start : state
+            method add : string -> s -> string -> string -> unit
+            method next : state -> node -> rule * context * state
+            method start : state
+          end
 (*        type s = |S |SS of rule |R of rule |E 
         class type strategy =
             object
@@ -16,8 +27,9 @@ module type S =
     *)
     end
  
-module Make (R:Rule.S)
-(* :    sig
+module Make (R:Rule.S) 
+(* 
+:    sig
         type rule = R.rule
         type node = R.node
         type context = R.context
@@ -40,7 +52,7 @@ module Make (R:Rule.S)
         end
     )
 
-    exception NoMoreRules
+    (*exception NoMoreRules *)
 
     type rule = R.rule
     type node = R.node

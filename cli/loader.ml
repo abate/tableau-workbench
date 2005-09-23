@@ -25,9 +25,9 @@ let rec load_module modname path =
             try
                 Hashtbl.add modules modname ();
                 Hashtbl.add are_loading modname ();
-                Printf.printf "Loading: %s ..." modname;
+                (* Printf.printf "Loading: %s ..." modname; *)
                 Dynlink.loadfile (modname);
-                print_endline "done.";
+                (* print_endline "done."; *)
                 Hashtbl.remove are_loading modname
             with
             | Dynlink.Error(Dynlink.Unavailable_unit(depend))
@@ -54,14 +54,14 @@ let load_camlp4 () =
     let stdlib = "/usr/lib/ocaml/"^version^"/stdlib.cma" in
     let camlp4_modules = ["odyl";"camlp4"] in
     try
-        Printf.printf "Loading: %s ..." stdlib;
+        (* Printf.printf "Loading: %s ..." stdlib; *)
         Dynlink.loadfile (stdlib);
-        print_endline "done.";
+        (* print_endline "done."; *)
         List.iter (fun m ->
             let file = Printf.sprintf "/usr/lib/ocaml/%s/camlp4/%s.cma" version m in
-            Printf.printf "Loading: %s ..." file;
+            (* Printf.printf "Loading: %s ..." file; *)
             Dynlink.loadfile(file);
-            print_endline "done."
+            (* print_endline "done." *)
         ) camlp4_modules
     with
     Dynlink.Error(e) -> failwith (Dynlink.error_message e)
@@ -72,9 +72,9 @@ let load_library twblib =
     try
         List.iter (fun m ->
             let file = Printf.sprintf "%s/%s.cma" twblib m in
-            Printf.printf "Loading: %s ..." file;
+            (* Printf.printf "Loading: %s ..." file; *)
             Dynlink.loadfile(file);
-            print_endline "done."
+            (* print_endline "done." *)
         ) twb_modules
     with
     Dynlink.Error(e) -> failwith (Dynlink.error_message e)

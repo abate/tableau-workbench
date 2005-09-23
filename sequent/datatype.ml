@@ -87,6 +87,6 @@ module RuleContext =
     end
 
 module Rule = UserRule.Make(Type)(Node)(struct type t = RuleContext.t end)
-module Strategy = Strategy.Make(Rule)
+module Strategy = Strategy.Make(Rule) 
 module Visit = Visit.Make(Rule)(Strategy)
 
