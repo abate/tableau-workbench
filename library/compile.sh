@@ -13,3 +13,5 @@ fi
 camlp4o $STDLIB/str.cma $DESTDIR/extlib/extLib.cma ../syntax/tableau.cmo pr_o.cmo $1 > ${1//.ml}-pp.ml
 
 ocamlfind ocamlc -package twb.core -g -c -o ${1//.ml} ${1//.ml}-pp.ml
+
+ocamlfind ocamlopt -package unix,str,twb.core,twb.types,twb.sequent,twb.syntax -linkpkg -o ${1//.ml} ../cli/timer.cmx ../cli/logic.cmx ${1//.ml}-pp.ml ../cli/twb.cmx

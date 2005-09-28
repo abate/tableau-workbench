@@ -18,6 +18,7 @@ type formula =
     |Diai of int * core * formula
     |Boxi of int * core * formula
     |Atom of core * string 
+    |Const of core * string
 
 type label = int list
 
@@ -77,6 +78,7 @@ let rec string_of_formula = function
     |Dia(c,f) -> Printf.sprintf "(Dia %s)" (string_of_formula f)
     |Box(c,f) -> Printf.sprintf "(Box %s)" (string_of_formula f)
     |Atom(c,s) -> s
+    |Const(c,s) -> s
                 
 let string_of_mixtype : mixtype -> string = function
     |`Int(i) -> string_of_int i

@@ -12,7 +12,7 @@ nc:
 	cd types && make ncl && cp twbtypes.* *.cmi ../twb/
 	cd sequent && make ncl && cp twbseq* *.cmi ../twb/
 	cd syntax && make ncl && cp twbintf* *.cmi ../twb/
-	cd cli && make nc && cp logic.* ../twb/
+	cd cli && make twbnc && cp logic.* ../twb/
 
 pnc:
 	cd core && make pncl && cp twbcore.* *.cmi ../twb/

@@ -1,19 +1,21 @@
+(*pp camlp4o pa_macro.cmo *)
 
 open Datatype
 open ExtLib
-open Loader
+
+IFNDEF NATIVE THEN open Loader ENDIF
 
 module Options =
 struct
   let preproc = ref false
   let debug = ref 0
   let noneg = ref false
-  let native = ref false
 
   let timeout = ref 0
 
   let logic = ref ""
-  let libdir = ref "./"
+
+IFNDEF NATIVE THEN let libdir = ref "./" ENDIF
 
   let outdir = ref "trace"
   let outtype = ref ""
@@ -33,13 +35,15 @@ let options =
      ("-time",  Arg.Int    (fun l -> Options.timeout := l), "set exec timeout");
 
      ("-logic", Arg.String (fun l -> Options.logic := l),   "set logic");
-     ("-dir",   Arg.String (fun l -> Options.libdir := l),   "set library directory");
+
 
      ("-outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
      ("-out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
 
-     ("-native",Arg.Set Options.native,  "run a prover in native code")
-    ]
+    ]@
+    IFNDEF NATIVE THEN
+    [("-dir",   Arg.String (fun l -> Options.libdir := l),   "set library directory")]
+    ELSE [] ENDIF
 ;;
 
 (** twbpath: location of the twb installation *)
@@ -96,9 +100,10 @@ let main () =
         with Arg.Bad s -> failwith s
     in 
     let _ = 
-        if not(!Options.native) then
-            Loader.load (twbpath^"/twb/") !Options.libdir !Options.logic
-        else print_endline "Native mode"
+IFNDEF NATIVE THEN
+        Loader.load (twbpath^"/twb/") !Options.libdir !Options.logic
+ELSE ()
+ENDIF
     in
     let strategy = 
         try (Option.get (!Logic.__strategy))
