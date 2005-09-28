@@ -1,6 +1,8 @@
 -include Makefile.conf
 
-all:
+all: bc nc
+
+bc:
 	cd core && make && cp twbcore.* *.cmi ../twb/
 	cd types && make && cp twbtypes* *.cmi ../twb/
 	cd sequent && make && cp twbseq* *.cmi ../twb/
