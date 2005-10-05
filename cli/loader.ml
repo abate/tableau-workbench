@@ -51,17 +51,26 @@ let rec load_module modname path =
 
 let load_camlp4 () =
     let version = Sys.ocaml_version in
-    let stdlib = "/usr/lib/ocaml/"^version^"/stdlib.cma" in
+    let stdlibpath =
+        try (Sys.getenv "OCAMLPATH")
+        with Not_found -> "/usr/lib/ocaml/"^version
+    in
+    let extralibpath = 
+        try (Sys.getenv "OCAMLSITELIBPATH")
+        with Not_found -> stdlibpath
+    in
+    let stdlib = 
+        let filename = stdlibpath^"/stdlib.cma" in
+        if Sys.file_exists filename then filename
+        else failwith (filename^" not found")
+    in
     let camlp4_modules = ["odyl";"camlp4"] in
     try
-        (* Printf.printf "Loading: %s ..." stdlib; *)
         Dynlink.loadfile (stdlib);
-        (* print_endline "done."; *)
         List.iter (fun m ->
-            let file = Printf.sprintf "/usr/lib/ocaml/%s/camlp4/%s.cma" version m in
-            (* Printf.printf "Loading: %s ..." file; *)
-            Dynlink.loadfile(file);
-            (* print_endline "done." *)
+            let filename = Printf.sprintf "%s/camlp4/%s.cma" extralibpath m in
+            if Sys.file_exists filename then Dynlink.loadfile(filename)
+            else failwith (filename^" not found")
         ) camlp4_modules
     with
     Dynlink.Error(e) -> failwith (Dynlink.error_message e)

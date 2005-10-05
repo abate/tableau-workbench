@@ -30,6 +30,7 @@ module Make (T:Data.S) (N:Node.S) (C: sig type t end) =
             |Leaf(n) when (n#status = Closed) -> Leaf(n)
             |Leaf(_) as a -> synth_rec a
             |_ -> failwith "synth_exists: Tree"
+        ;;
 
         (* pass information from the last visited branch to the new one *)
         let synth_merge_exists acc next = next ;;
@@ -42,13 +43,13 @@ module Make (T:Data.S) (N:Node.S) (C: sig type t end) =
             |Leaf(n) when (n#status = Open) -> Leaf(n)
             |Leaf(_) as a -> synth_rec a
             |_ -> failwith "synth_exists: Tree"
+        ;;
 
         (* pass information from the last visited branch to the new one *)
         let synth_merge_forall acc next = next ;;
 
         (* universal branching *)
         let synth_func_forall = synth_func synth_cond_forall synth_merge_forall;;
-
 
         class virtual rule =
             object

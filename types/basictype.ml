@@ -4,8 +4,8 @@ type core = {
     star: int array;
 }
 
-let newcore id star = { id = id; star = star }
-let nc = newcore 1 [|0|]
+let newcore id star = { id = id; star = star } ;;
+let nc = newcore 1 [|0|] ;;
 
 type formula =
     |And of core * formula * formula
@@ -40,20 +40,53 @@ let unbox = function
 ;;
 
 (* is_marked returns true if the i-th element is equal to 1 *)
-let is_marked ?(i=0) ?(v=1) n = ( n.star.(i) = v )
-let mark ?(i=0) ?(v=1) n = ( n.star.(i) <- v ); n
-let unmark ?(i=0) n = mark ~i ~v:0 n
+let is_marked_core ?(i=0) ?(v=1) n = ( n.star.(i) = v )
+let mark_core ?(i=0) ?(v=1) n = ( n.star.(i) <- v ); n
+let unmark_core ?(i=0) n = mark_core ~i ~v:0 n
 
-let open_bt v = (v : mixtype :> [> mixtype] )
-let open_bt_list v = (v : mixtype list :> [> mixtype] list )
+let rec metamark f = function
+    |And(c,f1,f2)  -> And(f c,f1,f2)
+    |Or(c,f1,f2)   -> Or(f c,f1,f2)
+    |Imp(c,f1,f2)  -> Imp(f c,f1,f2)
+    |DImp(c,f1,f2) -> DImp(f c,f1,f2)
+    |Not(c,f1)     -> Not(f c,f1)
+    |Diai(i,c,f1)  -> Diai(i,f c,f1)
+    |Boxi(i,c,f1)  -> Boxi(i,f c,f1)
+    |Dia(c,f1)      -> Dia(f c,f1)
+    |Box(c,f1)      -> Box(f c,f1)
+    |Atom(c,s)     -> Atom(f c,s)
+    |Const(c,s)    -> Const(f c,s)
+;;
+
+let mark_formula f   = `Formula ( metamark mark_core (unbox f));;
+let unmark_formula f = `Formula ( metamark unmark_core (unbox f));;
+
+let rec is_marked = function
+    |And(c,_,_) 
+    |Or(c,_,_)  
+    |Imp(c,_,_) 
+    |DImp(c,_,_)
+    |Not(c,_)    
+    |Diai(_,c,_) 
+    |Boxi(_,c,_) 
+    |Dia(c,_)    
+    |Box(c,_)    
+    |Atom(c,_)    
+    |Const(c,_) -> is_marked_core c
+;;
+
+let is_marked_formula f = is_marked (unbox f);;
+
+let open_bt v = (v : mixtype :> [> mixtype] ) ;;
+let open_bt_list v = (v : mixtype list :> [> mixtype] list ) ;;
 
 (* is this needed (?) *)
-let map f l = open_bt_list (List.map f l)
+let map f l = open_bt_list (List.map f l) ;;
 
 (* FIXME: this doesn't copy anything !!! *)
 (* XXX: copy of formulae might be expensive ... *)
 (* what's about a mutable part and an immutable part ??? *)
-let copy f = f
+let copy f = f ;;
 
 let rec string_of_formula = function
     |And(c,f1,f2) ->
@@ -79,7 +112,8 @@ let rec string_of_formula = function
     |Box(c,f) -> Printf.sprintf "(Box %s)" (string_of_formula f)
     |Atom(c,s) -> s
     |Const(c,s) -> s
-                
+;;
+
 let string_of_mixtype : mixtype -> string = function
     |`Int(i) -> string_of_int i
     |`Bool(b) -> string_of_bool b
@@ -105,4 +139,4 @@ let string_of_mixtype : mixtype -> string = function
             (string_of_formula f1)
             (string_of_formula f2)
             (string_of_formula f3)
-
+;;

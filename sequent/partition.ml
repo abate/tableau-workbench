@@ -1,6 +1,6 @@
 
 
-module Make(P: NodePattern.S)(H: NodePattern.S) :
+module Make(P: NodePattern.S) :
     sig
     val match_node : (P.bt, P.bt Sets.st) Gmap.mt ->
         P.pattern list * P.pattern list ->
@@ -58,9 +58,6 @@ module Make(P: NodePattern.S)(H: NodePattern.S) :
             let s = store#get patt.P.pid in
             let l = s#elements in
             let sbl' = patt.P.pmatch subsl l in
-            (* FIXME: here I should be able to remove only those
-             * formulae that have been matched by pmatch.
-             * EX. partition starred and not starred formulae *)
             (sbl',List.fold_left (fun st e -> st#del e ) store l)
         ;;
         

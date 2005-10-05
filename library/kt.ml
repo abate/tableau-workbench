@@ -1,26 +1,17 @@
 
 open Basictype
 
-let not_marked = function
-    `Formula ( Box (core,_) ) -> not(Basictype.is_marked core)
-    | _ -> failwith "not_marked"
-;;
-
+let not_marked f = not(Basictype.is_marked_formula f) ;;
 let is_marked_list l = List.for_all not_marked l ;;
 
-let mark = function
-    `Formula Box (core,x) ->
-        `Formula ( Box ( Basictype.mark core, x ) )
-    | _ -> failwith "mark"
-;;
-
+let mark f = Basictype.mark_formula f
 let mark_list l = Basictype.map mark l ;;
 
 let neg_term = function
     `Formula a -> `Formula ( Not (nc, a))
     | _ -> failwith "neg_term"
 ;;
-let neg = List.map neg_term ;;
+let neg = Basictype.map neg_term ;;
 
 let rec nnf_term = function
     `Formula ( And (_, a1, a2) ) -> 

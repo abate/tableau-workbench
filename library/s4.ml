@@ -1,4 +1,69 @@
 
+
+open Basictype
+
+let not_marked f = not(Basictype.is_marked_formula f) ;;
+let is_marked_list l = List.for_all not_marked l ;;
+
+let mark f = Basictype.mark_formula f
+let mark_list l = Basictype.map mark l ;;
+
+let neg_term = function
+    `Formula a -> `Formula ( Not (nc, a))
+    | _ -> failwith "neg_term"
+;;
+let neg = Basictype.map neg_term ;;
+
+let rec nnf_term = function
+    `Formula ( And (_, a1, a2) ) -> 
+        let x = nnf_term ( `Formula a1 ) 
+        and y = nnf_term ( `Formula a2 )
+        in `Formula ( And ( nc , Basictype.unbox x, Basictype.unbox y ) )
+        
+    | `Formula Not (_, And (_, a1, a2) ) ->
+        let x = nnf_term ( `Formula ( Not (nc ,a1)) )
+        and y = nnf_term ( `Formula ( Not (nc ,a2)) )
+        in `Formula ( Or ( nc , Basictype.unbox x, Basictype.unbox y ) )
+
+    | `Formula ( Or (_, a1, a2) ) -> 
+        let x = nnf_term ( `Formula a1 ) 
+        and y = nnf_term ( `Formula a2 )
+        in `Formula ( Or ( nc , Basictype.unbox x, Basictype.unbox y ) )
+    | `Formula Not (_, Or (_, a1, a2) ) ->
+        let x = nnf_term ( `Formula ( Not (nc ,a1)) )
+        and y = nnf_term ( `Formula ( Not (nc ,a2)) )
+        in `Formula ( And ( nc , Basictype.unbox x, Basictype.unbox y ) )
+        
+    | `Formula Diai (i, _, a1 ) ->
+            let x = nnf_term ( `Formula a1 )
+            in `Formula ( Diai (i, nc, Basictype.unbox x ) )
+    | `Formula Not (_, Diai (i, _, a1 )) ->
+            let x = nnf_term ( `Formula ( Not(nc, a1)) )
+            in `Formula ( Boxi (i, nc, Basictype.unbox x ) )
+
+    | `Formula Boxi (i,_, a1 ) ->
+            let x = nnf_term ( `Formula a1 )
+            in `Formula ( Boxi (i, nc, Basictype.unbox x ) )
+    | `Formula Not (_, Boxi (i, _, a1 )) ->
+            let x = nnf_term ( `Formula ( Not(nc, a1)) )
+            in `Formula ( Diai (i, nc, Basictype.unbox x ) )
+
+    | `Formula Not (_, Not (_, a1) ) ->
+        let x = nnf_term ( `Formula a1 )
+        in `Formula (Basictype.unbox x)
+    | `Formula ( Not (_, a1) ) ->
+        let x = nnf_term ( `Formula a1 )
+        in `Formula ( Not ( nc, Basictype.unbox x ) )
+
+    | `Formula Atom(_, _) as f -> f
+ 
+    | _ -> failwith "nnf_term"
+;;
+
+let nnf l = List.map (fun t -> nnf_term t) l ;;
+
+
+
 CONNECTIVES
   And, "_&_",  One;
   Or,  "_v_",  One;
@@ -17,110 +82,70 @@ HISTORIES
 END
 
 let add (l,h) = h#addlist l
-let notin (l,h) = h#mem (List.hd l)
-let not_marked a = 
-    match a with 
-    <> A -> true
-    | _ -> false
-;;
-let not_marked_list l = List.for_all not_marked l ;;
-let mark a =
-    match a with
-    <> B -> @ <> B @
-    | _ -> failwith "ddd"
-;;
-let mark_list l = Basictype.map mark l ;;
-let print () s = print_endline s ;;
+let notin (l,h) = not(h#mem (List.hd l))
+let isin (l,h) = h#mem (List.hd l)
+let emptyset h = h#empty
 
 TABLEAU
-  RULE K1
-  { <1> A } ; [1] X; <1> Y ; Z
-  -----------------------------
-  A ; X || <1> Y ; [1] X
-
-  BRANCH empty ( <1> Y )
-  END
-
   RULE S4 
-  { <1> A } ; [1] X; [1] Y ; Z
-  -----------------------------
-  A ; X || <1> Y ; [1] X
-      
+  { <1> A } ; <1> Y ; Z
+  -----------------------
+  A ; BOXES || <1> Y 
+  
   COND notin(<1> A, DIAMONDS)
   
   ACTION [
-      [ BOXES := add(<1> X,BOXES); 
-        DIAMONDS := add(<1> A,DIAMONDS);
-        DIAMONDS := add(<1> Y,DIAMONDS);
-        print () "s4 down right" 
-      ];
       [ DIAMONDS := add(<1> A,DIAMONDS);
-        DIAMONDS := add(<1> Y,DIAMONDS);
-        print () "s4 down left" 
-      ]
+        DIAMONDS := add(<1> Y,DIAMONDS) ];
+        
+      [ DIAMONDS := add(<1> A,DIAMONDS) ]
   ] 
   
   BRANCH [ empty(<1> Y) ] 
   END
 
-(*
-  RULE K forall(i)
-  { <i>A } ; [i]X ; Z
-  =====================
-    A ; X
-  END
-*)
+  RULE TNEW
+  { [1] A }
+  ---------
+     A 
 
-  RULE T 
-     not_marked ({ [1] A }) 
-  ----------------------
-     A ; mark_list([1] A)
+     COND notin([1] A, BOXES)
+     
+     ACTION [
+         BOXES    := add([1] A,BOXES);
+         DIAMONDS := emptyset (DIAMONDS) ]
   END
 
-  RULE K
-  { <1> A } ; [1] X ; Z
-  =====================
-    A ; X
+  RULE TOLD
+  { [1] A }
+  ---------
+     A 
 
-    ACTION [ print () "K down" ]
+     COND isin([1] A, BOXES)
   END
- 
+
   RULE Id
   { A } ; { ~ A }
   ---------------
     Close
-
-    ACTION [ print () "ID down" ]
   END
   
-  RULE AntiId
-  { .a } ; .z 
-  ------------
-    Open
-  END
-
   RULE And
   { A & B }
  ------------
     A ; B
-    
-    ACTION [ print () "And down" ]
   END
   
   RULE Or
   { A v B }
  ------------
     A | B
-
-    ACTION [ [ print () "Or down right" ]; [print () "Or down left"] ]
   END
 
   RULE Imp 
   { A --> B }
  ------------
     ~ A | B
-
-    ACTION [ [ print () "Imp down right" ]; [print () "Imp down left"] ]
   END
 
   RULE DImp 
@@ -131,19 +156,22 @@ TABLEAU
 
 END
 
-(* STRATEGY ((Id; And; Or; Not)* ; K)* *)
-
 let strategy = new Strategy.strategy "start";;
 let _ = 
     strategy#add "start" (R(new and_rule))  "start" "a" ;
     strategy#add "a"     (R(new or_rule))   "a" "i1" ;
     strategy#add "i1"    (R(new imp_rule))  "i1" "i2" ;
-    strategy#add "i2"    (R(new dimp_rule)) "i2" "b" ;
+    strategy#add "i2"    (R(new dimp_rule)) "i2" "i3" ;
+    strategy#add "i3"    (R(new tnew_rule)) "i3" "i4" ;
+    strategy#add "i4"    (R(new told_rule)) "i4" "b" ;
     strategy#add "b"     (R(new id_rule))   "b" "s1";
-    strategy#add "s1"    S                  "a" "d" ;
-    strategy#add "d"     (R(new k_rule))    "d" "s2";
+    strategy#add "s1"    S                  "start" "d" ;
+    strategy#add "d"     (R(new s4_rule))   "d" "s2";
     strategy#add "s2"    S                  "start" "end" ;
     strategy#add "end"   E                  "end" "end"
 ;;
+
+PP := nnf
+NEG := neg
 
 STRATEGY (A)

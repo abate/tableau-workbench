@@ -8,6 +8,7 @@ class type ['t] st =
         method elements : 't list
         method filter : ('t -> bool) -> 'a
         method copy : 'a
+        method empty : 'a
         method to_string : string
     end
 
@@ -50,6 +51,8 @@ module Make (T : ValType ) :
             
             (* XXX: copy is o(n) *)
             method copy = {< data = (copy data) >}
+
+            method empty = {< data = Set.empty >}
 
             method mem e = Set.mem e data 
 

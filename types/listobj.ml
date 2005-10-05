@@ -29,6 +29,8 @@ module Make (T : ValType) :
 
             (* XXX: copy is o(n) *)
             method copy = {< data = (copy data) >}
+
+            method empty = {< data = [] >}
             
             method filter f = {< data = List.filter f data >}
 

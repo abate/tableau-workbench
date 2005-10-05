@@ -47,10 +47,11 @@ let options =
 ;;
 
 (** twbpath: location of the twb installation *)
+IFNDEF NATIVE THEN
 let twbpath =
     try (Sys.getenv "TWBPATH")
     with Not_found -> failwith "Cannot find TWBPATH"
-;;
+ENDIF
 
 let input_file = ref None;;
 let file f =

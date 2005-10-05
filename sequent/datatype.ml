@@ -40,7 +40,7 @@ module History =
 
 module NodeType = 
     struct
-        type elt = ( Store.store * History.store)
+        type elt = ( Store.store * History.store )
         let copy (m,h) = ( Store.copy m, History.copy h )
         let to_string (m,h) =
             Printf.sprintf "%s%s"
@@ -56,26 +56,19 @@ module NodePattern = NodePatternFunc.Make(
     struct
         type bt = Type.bt
         type t = Type.t
+        type hist = History.store
         type key = int
     end
 )
 
-module HistPattern =  NodePatternFunc.Make(
-     struct
-        type bt = Type.t
-        type t = Type.t
-        type key = string
-    end
-)
-
-module Partition = Partition.Make(NodePattern)(HistPattern)
+module Partition = Partition.Make(NodePattern)
 module Build = Build.Make(NodePattern)
 
 module RuleContext =
     struct
-    type t = (HistPattern.sbl *
+    type t = (NodePattern.sbl *
                 (NodePattern.bt, NodePattern.bt Sets.st) Gmap.mt) Enum.t * 
-                    HistPattern.sbl * Node.node
+                    NodePattern.sbl * Node.node
 
     class context ((e,s,n) : t) = 
         object

@@ -536,7 +536,7 @@ let expand_action loc sl (formula,action) =
         | NoAct -> <:expr< $ex$ >>
         | Act(a) -> <:expr< $lid:a$($ex$) >>
     in
-    (newid, <:str_item< value $lid:newid$ sbl = $action$ >>)
+    (newid, <:str_item< value $lid:newid$ sbl hist = $action$ >>)
 ;;
 
 (* this function expand the arguments and the function to 
@@ -683,7 +683,7 @@ let expand_rule_den loc t dl hl =
                 | Inv -> <:expr< 
                             let action_all node sbl al hl =
                                 let (map,hist) = node#get in
-                                let newmap = Build.build_node map sbl al in
+                                let newmap = Build.build_node map sbl hist al in
                                 let newhist =
                                     List.fold_left (fun h f -> f sbl h) hist hl
                                 in 
@@ -702,7 +702,7 @@ let expand_rule_den loc t dl hl =
                         <:expr<
                             let action_all node sbl al hl =
                                 let (map,hist) = node#get in
-                                let newmap = Build.build_node map sbl al in
+                                let newmap = Build.build_node map sbl hist al in
                                 let newhist =
                                     List.fold_left (fun h f -> f sbl h) hist hl
                                 in
@@ -833,7 +833,7 @@ let expand_preamble loc =
     let stl = [
         "Llist";"Data";"Basictype";"Comptypes";
         "Datatype";"Datatype.NodeType";"Datatype.Node";
-        "Datatype.NodePattern";"Datatype.HistPattern";
+        "Datatype.NodePattern";
         "Datatype.Partition";"Datatype.Rule";"Datatype.RuleContext";
         "Datatype.Strategy";"Datatype.Visit";"UserRule";"Tree"]
     in
