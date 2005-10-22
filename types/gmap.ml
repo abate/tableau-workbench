@@ -100,7 +100,10 @@ module Make(T: ValType) :
 
             method to_string = 
                 FMap.fold (
-                    fun k v s -> Printf.sprintf "%s%s" s (v#to_string)
+                    fun k v s ->
+                        if s = "" then Printf.sprintf "%s" (v#to_string)
+                        else if (v#to_string) = "" then s
+                        else Printf.sprintf "%s\n%s" s (v#to_string)
                 ) data ""
                     
         end

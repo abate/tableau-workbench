@@ -34,3 +34,9 @@ package "syntax" (
 	archive(byte) = "twbintf.cma"
 	archive(native) = "twbintf.cmxa"
 )
+
+package "cli" (
+	version = "[distributed with TWB]"
+	description = "twb command line interface"
+	archive(native) = "twbcli.cmxa"
+)

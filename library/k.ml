@@ -9,63 +9,51 @@ CONNECTIVES
   Dia, "Dia_", Simple
 END
 
-let print () s = ()
-(*    print_endline ("Rule: "^s);
-    print_newline () *)
-;;
+let not_empty = function [] -> false | _ -> true
 
 TABLEAU
+
   RULE K1
   { Dia A } ; Box X ; Dia Y ; Z
   -----------------------------
       A ; X || Dia Y ; Box X
 
-  ACTION [ [print () "K down right"]; [print () "K down left"] ]
+  BRANCH [ not_empty(Dia Y) ]
   END
 
   RULE K
   { Dia A } ; Box X ; Z
-  =====================
+  ----------------------
     A ; X
-
-    ACTION [ print () "K down" ]
   END
  
   RULE Id
   { A } ; { ~ A }
-  ---------------
+  ===============
     Close
-
-    ACTION [ print () "ID down" ]
   END
   
   RULE And
   { A & B }
- ------------
+ ==========
     A ; B
-    
-    ACTION [ print () "And down" ]
   END
   
   RULE Or
   { A v B }
- ------------
+ ==========
     A | B
-
-    ACTION [ [ print () "Or down right" ]; [print () "Or down left"] ]
   END
 
   RULE Imp 
   { A --> B }
- ------------
+ ============
     ~ A | B
-
-    ACTION [ [ print () "Imp down right" ]; [print () "Imp down left"] ]
   END
 
   RULE DImp 
   { A <--> B }
- -------------------
+ ==================
   A --> B | B --> A
   END
 
@@ -79,7 +67,7 @@ let _ =
     strategy#add "i2"    (R(new dimp_rule)) "i2" "b" ;
     strategy#add "b"     (R(new id_rule))   "b" "s1";
     strategy#add "s1"    S                  "start" "d" ;
-    strategy#add "d"     (R(new k_rule))    "d" "s2";
+    strategy#add "d"     (R(new k1_rule))    "d" "s2";
     strategy#add "s2"    S                  "start" "end" ;
     strategy#add "end"   E                  "end" "end"
 ;;

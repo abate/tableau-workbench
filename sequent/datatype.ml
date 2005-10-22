@@ -10,9 +10,19 @@ module Type =
 module Fmap = Gmap.Make(
     struct
         type t = Type.bt
+        type c = Comptypes.Set.set
+        let make () = new Comptypes.Set.set
+    end)
+
+(*
+with Comptypes.Mtlist.listobj are multisets
+module Fmap = Gmap.Make(
+    struct
+        type t = Type.bt
         type c = Comptypes.Mtlist.listobj
         let make () = new Comptypes.Mtlist.listobj
     end)
+*)
 
 module Hmap = Hmap.Make(
     struct
@@ -38,48 +48,57 @@ module History =
         let make () = new Hmap.map 
     end
 
-module NodeType = 
+module Variable =
     struct
-        type elt = ( Store.store * History.store )
-        let copy (m,h) = ( Store.copy m, History.copy h )
-        let to_string (m,h) =
-            Printf.sprintf "%s%s"
-            (Store.to_string m)
-            (History.to_string h)
+        type store = Hmap.map
+        let copy s = s#copy
+        let to_string s = s#to_string
+        let make () = new Hmap.map 
     end
 
-module Node = Node.Make(NodeType)
+type history_type = History | Variable 
+    
+module ConcreteNode =
+    struct
+        type elt = ( Store.store * History.store * Variable.store )
+        let copy (m,h,v) = ( Store.copy m, History.copy h, Variable.copy v )
+        let to_string (m,h,v) =
+            Printf.sprintf "%s\n%s\n%s"
+            (Store.to_string m)
+            (History.to_string h)
+            (Variable.to_string v)
+    end
+
+module Node = Node.Make(ConcreteNode)
 
 module NodePatternFunc = NodePattern
 
 module NodePattern = NodePatternFunc.Make(
     struct
-        type bt = Type.bt
         type t = Type.t
+        type bt = Type.bt
         type hist = History.store
-        type key = int
     end
 )
 
 module Partition = Partition.Make(NodePattern)
 module Build = Build.Make(NodePattern)
 
-module RuleContext =
+module RuleContext = RuleContext.Make(Node)(NodePattern)
+module Rule =
     struct
-    type t = (NodePattern.sbl *
-                (NodePattern.bt, NodePattern.bt Sets.st) Gmap.mt) Enum.t * 
-                    NodePattern.sbl * Node.node
-
-    class context ((e,s,n) : t) = 
+    type t = RuleContext.t
+    type node = Node.node
+    type tree = node Tree.tree
+    type context_type = RuleContext.ct
+    type context = RuleContext.context
+    class virtual rule =
         object
-            val data = (e,s,n)
-            method set e = {< data = e >}
-            method get = data
-            method is_valid = not(Data.Substlist.is_empty s)
+            method virtual check : node -> context
+            method virtual down  : context -> tree
+            method virtual up    : context -> tree Llist.llist -> tree
         end
     end
-
-module Rule = UserRule.Make(Type)(Node)(struct type t = RuleContext.t end)
 module Strategy = Strategy.Make(Rule) 
 module Visit = Visit.Make(Rule)(Strategy)
 

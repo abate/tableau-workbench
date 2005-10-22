@@ -62,21 +62,27 @@ let file f =
     with _ -> ()
 ;;
 
-let tree_to_string = function
-    Tree.Leaf(n) -> n#to_string
-   |_ -> failwith "Something wrong in tree_to_string"
+let unbox = function
+    Tree.Leaf(n) -> n
+    |_ -> failwith "Something wrong in unbox"
 ;;
+
+let tree_to_string t = (unbox t)#to_string ;;
 
 let newnode s =
     let fmap =
         try (new Fmap.map (Option.get (!Logic.__matchpatt)))
         with Option.No_value -> failwith "Rules not specified"
     in
-    let hmap =
+    let (hmap,vmap) =
         try List.fold_left (
-                fun m (id,set) -> m#add id set)
-            (new Hmap.map) (Option.get (!Logic.__history_list))
-        with Option.No_value -> new Hmap.map
+                fun (h,v) ->
+                    function
+                        |(id,set,History) -> (h#add id set,v)
+                        |(id,set,Variable) -> (h,v#add id set)
+                    )
+            ((new Hmap.map),(new Hmap.map)) (Option.get (!Logic.__history_list))
+        with Option.No_value -> (new Hmap.map, new Hmap.map)
     in
     let inputparser =
         try (Option.get (!Logic.__inputparser))
@@ -92,7 +98,31 @@ let newnode s =
         else (Option.get (!Logic.__neg))
     in 
     let fmap = fmap#addlist (pp ( neg (inputparser s))) in
-    new Node.node (fmap,hmap)
+    new Node.node (fmap,hmap,vmap)
+;;
+
+(* XXX: this is a bit of a hack ... the pretty print should be in the
+ * basictype file and should be automatically generated ... *)
+(* here we set the pretty printer for the formula type *)
+let _ = 
+    if (Option.is_none !Logic.__printer) then ()
+    else Basictype.string_of_formula := (Option.get !Logic.__printer)
+;;
+
+let exit_function t =
+    if Option.is_none (!Logic.__exit) then
+        let (_,_,v) = (unbox t)#get in
+        try
+            match v#find "status" with
+            `Set s -> 
+                (match List.hd s#elements with
+                |`String s -> s
+                |_ -> failwith "exit function not specified and type mismatch")
+            |_ -> failwith "exit function not specified"
+        with Not_found -> failwith "exit function not specified"
+    else
+        let (_,_,v) = (unbox t)#get in
+        (Option.get (!Logic.__exit)) [v]
 ;;
 
 let main () =
@@ -132,12 +162,19 @@ ENDIF
             let start = Timer.start_timing () in
             try
                 let node = newnode( get_line () ) in
+                let _ = OutputBroker.print node "initial node" 0 in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
-                let proof = Visit.visit strategy strategy#start node in
+                let result =
+                    Visit.visit
+                    strategy
+                    strategy#start
+                    node 
+                in
                 let time = Timer.stop_timing start in
-                Printf.printf "%s\n%s\n"
+                Printf.printf "%s\nResult: %s\n%s\n"
                 (Timer.to_string time)
-                (tree_to_string proof)
+                (exit_function result)
+                (tree_to_string result)
             with Timer.Timeout -> Printf.printf "Timeout elapsed\n"
         done
     with

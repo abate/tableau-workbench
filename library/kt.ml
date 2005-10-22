@@ -75,43 +75,43 @@ TABLEAU
 
   RULE T 
      not_marked ({ Box A }) 
-  ---------------------------
+  =========================
      A ; mark_list (Box A)
   END
 
   RULE K
   { Dia A } ; Box X ; Z
-  =====================
+  -----------------------
     A ; X
   END
  
   RULE Id
   { A } ; { ~ A }
-  ---------------
+  ===============
     Close
   END
   
   RULE And
   { A & B }
- ------------
+ ===============
     A ; B
   END
   
   RULE Or
   { A v B }
- ------------
+ ===============
     A | B
   END
 
   RULE Imp 
   { A --> B }
- ------------
+ ===============
     ~ A | B
   END
 
   RULE DImp 
   { A <--> B }
- -------------------
+ ===============
   A --> B | B --> A
   END
 
@@ -127,7 +127,8 @@ let _ =
     strategy#add "b"     (R(new id_rule))   "b" "s1";
     strategy#add "s1"    S                  "start" "d" ;
     strategy#add "d"     (R(new k_rule))    "d" "s2";
-    strategy#add "s2"    S                  "start" "end" ;
+    strategy#add "s2"    S                  "start" "meta" ;
+    strategy#add "meta" (R(new defaultaxiom_rule)) "end" "end" ;
     strategy#add "end"   E                  "end" "end"
 ;;
 

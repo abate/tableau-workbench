@@ -10,14 +10,13 @@ module Make (R:Rule.S) (S: Strategy.S
     struct
         (* generic depth first search.
          * THIS IS THE TWB CORE *)
-        (* XXX: the default here is Open for NoMoreRules, but it should
-         * be user defined *)
         let rec visit strategy state node =
             try
                 let (rule,context,newstate) = strategy#next state node in
                 match rule#down context with
-                |Tree(l) -> rule#up (Llist.map (visit strategy newstate) l)
-                |Leaf(_) as n -> rule#up (LList(n,lazy(Empty)))
+                |Tree(l) ->
+                        rule#up context (Llist.map (visit strategy newstate) l)
+                |Leaf(_) as n -> rule#up context (LList(n,lazy(Empty)))
             with Strategy.NoMoreRules -> Leaf(node)
 
     end

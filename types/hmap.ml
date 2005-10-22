@@ -5,6 +5,7 @@ class type ['t] mt =
     method add : string -> 't -> 'a
     method copy : 'a
     method find : string -> 't
+    method mem : string -> bool
     method to_string : string
   end
 
@@ -22,43 +23,25 @@ module Make(T: ValType) :
     end
 = struct
     
-    module FMap = Map.Make (
-        struct
-            type t = string
-            let compare = compare
-        end
-    )
-
-    let copy m = FMap.fold (
-        fun k v m' -> FMap.add k (T.copy v) m'
-    ) m FMap.empty
-
     class map =
         object(self)
 
-            val data : T.t FMap.t = FMap.empty
-
-            method private addel fm p e =
-                try
-                    let s = FMap.find p data
-                    in FMap.add p e (FMap.remove p data)
-                with Not_found -> FMap.add p e data 
-
-            (* insertion is O(log n) where n is the number of keys *)
-            method add p e = {< data = self#addel data p e >}
-
-            (* given a pattern return an element list *)
-            (* find is O(log n) where n is the number of keys *)
-            method find p = FMap.find p data
+            val data = Hashtbl.create 7
             
-            (* copy is o(n*m)
-             * where n is the number of keys 
-             * and m is the number of element in the value *)
-            method copy = {< data = (copy data) >}
-
+            method add p e = Hashtbl.replace data p e ; {< >}
+                
+            method find p = Hashtbl.find data p
+            method mem p = Hashtbl.mem data p
+            method copy = {< data = (Hashtbl.copy data) >}
             method to_string =
-                FMap.fold (
+                Hashtbl.fold (
                     fun k v s -> Printf.sprintf "%s\n%s:%s" s k (T.to_string v)
+                    (*
+                    fun k v s ->
+                        if (T.to_string v) = "" then ""
+                        else if s = "" then Printf.sprintf "%s:%s" k (T.to_string v) 
+                            else Printf.sprintf "%s\n%s:%s" s k (T.to_string v)
+                            *)
                 ) data ""
  
         end

@@ -5,12 +5,6 @@ module Substlist = Map.Make(
         let compare = Pervasives.compare
     end)
 
-type status =
-    | Open
-    | Closed
-    | User of string (** User defined status *)
-
-
 module type S =
     sig
     type t

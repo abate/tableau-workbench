@@ -1,13 +1,29 @@
 
-module Make(P: NodePattern.S) (*:
+module type S =
     sig
-        val build_node : (P.bt, P.bt Sets.st) Gmap.mt -> P.sbl ->
-            P.action list -> (P.bt, P.bt Sets.st) Gmap.mt
-    end *)
-= struct
+    type t
+    type map (* map type *)
+    type at (* node pattern type *)
+    type hist
+    type sbl = t Data.Substlist.t
+    val build_node : map -> sbl -> hist -> hist -> at -> map
+    end
+;;
+
+
+module Make(P: NodePattern.S) =
     
-    let build_node (map : (P.bt, P.bt Sets.st) Gmap.mt ) sbl hist al = 
-                    List.fold_left (fun (m : (P.bt, P.bt Sets.st) Gmap.mt ) a ->
-                        m#addlist ~id:a.P.aid (a.P.paction sbl hist)
-                    ) map al 
-end
+    struct
+    
+    type t = P.t
+    type map = P.map
+    type at = P.action list
+    type hist = P.hist
+    type sbl = t Data.Substlist.t
+    
+    let build_node map sbl hist var al =
+                    List.fold_left (fun (m : map) a ->
+                        m#addlist ~id:a.P.aid (a.P.paction sbl hist var)
+                    ) map al
+    
+    end

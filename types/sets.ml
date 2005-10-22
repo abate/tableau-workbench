@@ -6,7 +6,12 @@ class type ['t] st =
         method del : 't -> 'a
         method mem : 't -> bool
         method elements : 't list
+        method is_empty : bool
         method filter : ('t -> bool) -> 'a
+        method length : int
+        method cardinal : int
+        method intersect : 'a -> 'a
+        method equal : 'a -> bool
         method copy : 'a
         method empty : 'a
         method to_string : string
@@ -37,7 +42,7 @@ module Make (T : ValType ) :
     ) s Set.empty
                 
     class set =
-        object
+        object(self : 'a)
             val data = Set.empty
 
             (* XXX: insertion is o(log n) *)
@@ -59,22 +64,41 @@ module Make (T : ValType ) :
             method filter f = {< data = Set.filter f data >}
 
             method elements = Set.elements data
-(*
-            method pmatch f (sl : string list) =
-                let rec empty acc = function
-                |1 -> ({< data = Set.empty >})::acc
-                |_ as n -> empty (({< data = Set.empty >})::acc) (n-1)
-                in
-                let l = List.map2 (
-                    fun s el -> s#add (f el)
-                ) (empty [] (List.length sl)) (Set.elements data) 
-                in (List.combine sl l)
-*)
+
+            method is_empty = Set.is_empty data
+
+            method cardinal = Set.cardinal data
+            method length = self#cardinal
+
+            (* here I create a set and the use inter.
+             * XXX: I'm double minded ...
+             * the other ways is to expose a method to access the
+             * interal represenation of the set, but this will
+             * break the incapsulation ... *)
+            method intersect (set : 'a) =
+                {< data =
+                    Set.inter data
+                    (List.fold_left
+                        (fun e s -> Set.add s e)
+                        Set.empty set#elements
+                    )
+                >}
+
+            method equal (set : 'a) =
+                Set.equal
+                data 
+                (List.fold_left
+                    (fun e s -> Set.add s e)
+                    Set.empty set#elements
+                )
+            
             method to_string =
                 let s = Set.fold (
-                    fun e s -> Printf.sprintf "%s,%s" s (T.to_string e)
+                    fun e s ->
+                        if s = "" then Printf.sprintf "%s" (T.to_string e)
+                        else Printf.sprintf "%s,%s" s (T.to_string e)
                     ) data ""
-                in Printf.sprintf "(%s)" s
+                in if s = "" then "" else Printf.sprintf "(%s)" s
         end
     ;;
 end

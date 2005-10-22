@@ -28,6 +28,13 @@ let add_muconn op1 op2 co =
     END
 ;;
 
+let add_const name =
+    EXTEND
+      expr_term: LEVEL "Simple"
+      [[ $name$ -> Constant (Basictype.nc,name) ]];
+    END
+;;
+
 
 EXTEND
 GLOBAL : expr_term input_line;
@@ -52,9 +59,10 @@ let buildParser table s =
     in
     let _ =
         List.iter(function
-             "Simple",[op],`Uconn(co) -> add_uconn op co
-            |lev,[op],`Biconn(co) -> add_biconn lev op co
+            |"Const",[name],`Const -> add_const name
+            |"Simple",[op],`Uconn(co) -> add_uconn op co
             |"Simple",[op1;op2],`Muconn(co) -> add_muconn op1 op2 co
+            |lev,[op],`Biconn(co) -> add_biconn lev op co
             |_ -> failwith "buildParser"
         ) table
     in [`Formula(parse s)]

@@ -2,77 +2,219 @@
 open Llist
 open Tree
 open Data
+open Datatype
 
-module Make (T:Data.S) (N:Node.S) (C: sig type t end) =
-    struct
+let newcontext = RuleContext.newcontext
+let match_node = Partition.match_node
+let build_node = Build.build_node
 
-        type t = T.t
-        type context_type = C.t
-        type context = context_type Rule.ct
-        type node = N.node
-        type tree = node Tree.tree
+let rec branchcond context tl tLl bll =
+    let treelist = 
+        match tLl with
+        |Empty -> tl
+        | _ -> (Llist.hd tLl)::tl in
+    let checknext cxt tl = function
+        |[] -> true
+        |bl -> 
+            let (_, sbl, node) = context#get in
+            let (_, hist, _) = node#get in
+            let varlist = 
+                List.map ( function
+                    |Leaf(n) -> let (_,_,v) = n#get in v 
+                    |_ -> failwith "check_branch_cond"
+                ) tl
+            in
+            List.for_all ( fun f -> f sbl hist varlist ) bl
+    in
+    match bll with
+    |[] -> List.rev treelist
+    |[]::tl -> branchcond context treelist (Llist.tl tLl) tl
+    |hd::tl when (checknext context treelist hd) ->
+            (* Llist.tl forces the computation of the next node. if
+            * the branch condition fails, the next node is not explored *)
+            branchcond context treelist (Llist.tl tLl) tl
+    | _ -> List.rev treelist
+;;
 
-        (* generic function that gets a condition and a merge function and
-        * return the synthtized result *)
-        let synth_func cond merge = function 
-            |Empty -> failwith "synth_exists: empty llist"
-            |ll ->
-                    let rec check l' =
-                        cond (fun a -> synth_rec_int a (Llist.tl l')) (Llist.hd l')
-                    and synth_rec_int acc = function
-                        |Empty -> acc
-                        |l -> merge acc (check l)
-                    in check ll
-        ;;
-            
-        (* check when I should stop or go on in the visit *)
-        let synth_cond_exists synth_rec = function
-            |Leaf(n) when (n#status = Closed) -> Leaf(n)
-            |Leaf(_) as a -> synth_rec a
-            |_ -> failwith "synth_exists: Tree"
-        ;;
+let status s 
+(sbl : NodePattern.sbl)
+(hist : History.store)
+(varlist : Variable.store list ) =
+    let varhist = 
+        try List.nth varlist ((List.length varlist) - 1)
+        with Failure "nth" -> failwith "status: nth"
+    in
+    try
+        (match varhist#find "status" with
+        `Set l -> 
+            (match l#elements with
+            |[`String str] when s = str -> true
+            |[`String _] -> false
+            |_ -> failwith "status: elements")
+        |_ -> failwith "custom status: type mistmatch")
+    with Not_found -> failwith "custom status: not found"
+;;
 
-        (* pass information from the last visited branch to the new one *)
-        let synth_merge_exists acc next = next ;;
+let is_open = status "Open";;
+let is_closed = status "Closed";;
 
-        (* existential branching *)
-        let synth_func_exists = synth_func synth_cond_exists synth_merge_exists;;
+(* check method for any rule *)
+let check node patternl historyl =
+    let match_all node (pl, sl) hl =
+        let (map, hist, varhist) = node#get in
+        let enum = match_node map (pl, sl) in
+        let (enum, sbl, newmap) =
+            let rec check_hist e =
+                try
+                    match Enum.get e with
+                    Some (sbl, ns) ->
+                        if List.exists (fun c -> not (c sbl hist [varhist])) hl then
+                            (* I raise FailedMatch and cach it below. sooner
+                             * or later the enum is going to be empty *)
+                            raise Partition.FailedMatch
+                          else (e, sbl, ns)
+                   | None -> (e, Data.Substlist.empty, map)
+                with Partition.FailedMatch -> check_hist e
+           in check_hist enum
+       in
+       let newnode = node#set (newmap, hist, varhist) in
+       newcontext (enum, sbl, newnode)
+    in match_all node patternl historyl
+;;
 
-        (* check when I should stop or go on in the visit *)
-        let synth_cond_forall synth_rec = function
-            |Leaf(n) when (n#status = Open) -> Leaf(n)
-            |Leaf(_) as a -> synth_rec a
-            |_ -> failwith "synth_exists: Tree"
-        ;;
+let nodeid = ref 0;;
+let printer n name ruleid =
+    let _ = incr nodeid in
+    OutputBroker.print n name ruleid !nodeid
+;;
 
-        (* pass information from the last visited branch to the new one *)
-        let synth_merge_forall acc next = next ;;
+(* down method for a rule with explicit branching *)
+let down_explicit name context makelist =
+  (* this is the rule application identifier *)
+  let ruleid = !nodeid in
+  let action_all node sbl oldvar al hl =
+    let (map, hist, varhist) = node#get in
+    let newmap = build_node map sbl hist oldvar al in
+    let newhist =
+        List.fold_left (fun h f ->
+            let (k,v) = f sbl h oldvar in
+            h#add k v
+        ) hist hl
+    in
+    let n = node#set (newmap, newhist, varhist) in
+    let _ = printer n name ruleid in n
+  in
+  let rec make_llist sbl oldvar =
+    function
+      [] -> Empty
+    | (node, al, hl) :: t ->
+            let next = action_all node sbl oldvar al hl in
+            let (_, _, nextvar) = next#get in
+            LList (next, lazy (make_llist sbl (nextvar::oldvar) t))
+  in
+  let (_, sbl, newnode) = context#get in
+  Tree (make_llist sbl [Variable.make ()] (makelist newnode))
+;;
 
-        (* universal branching *)
-        let synth_func_forall = synth_func synth_cond_forall synth_merge_forall;;
+(* down method for a rule with implicit branching *)
+let down_implicit name context actionl historyl =
+  (* this is the rule application identifier *)
+  let ruleid = !nodeid in
+  let action_all node sbl oldvar al hl =
+    let (map, hist, varhist) = node#get in
+    let newmap = build_node map sbl hist oldvar al in
+    let newhist =
+        List.fold_left (fun h f ->
+            let (k,v) = f sbl h oldvar in
+            h#add k v
+        ) hist hl
+    in
+    let n = node#set (newmap, newhist, varhist) in
+    let _ = printer n name ruleid in n
+  in
+  let rec make_llist oldvar =
+    function
+      Empty -> Empty
+    | LList ((node, sbl, al, hl), t) ->
+            let next = action_all node sbl oldvar al hl in
+            let (_, _,nextvar) = next#get in
+            LList (next, lazy (make_llist (nextvar::oldvar) (Lazy.force t)))
+  in
+  (* here we dynamically (lazily) generate the tail of the action list *)
+  let rec next context =
+    let (enum, sbl, node) = context#get in
+    let (map, hist, vars) = node#get in
+    let (newsbl, newmap) =
+      match Enum.get enum with
+        Some (sbl, ns) -> sbl, ns
+      | None -> Data.Substlist.empty, map
+    in
+    if Data.Substlist.is_empty newsbl then
+        LList ((node, sbl, actionl, historyl), lazy Empty)
+    else
+        let newnode = node#set (map, hist, vars) in
+        LList ((node, sbl, actionl, historyl),
+           lazy (next (context#set (enum, newsbl, newnode))))
+  in
+  Tree (make_llist [Variable.make ()] (next context))
+;;
 
-        class virtual rule =
-            object
-                method virtual check : node -> context
-                method virtual down  : context -> tree
-                method virtual up    : tree Llist.llist -> tree
-            end
+let down_axiom name context status =
+    let (enum,sbl,newnode) = context#get in
+    let (h, v, varhist) = newnode#get in
+    let newnode = newnode#set(h,v,status varhist) in
+    let _ = printer newnode name !nodeid in 
+    Leaf(newnode)
+;;
 
-        class virtual exist_rule =
-            object
-                inherit rule
-                method up = synth_func_exists
-            end
+let unbox_tree = function
+    Leaf (n) -> n
+    |_ -> failwith "unbox_tree"
+;;
 
-        class virtual forall_rule =
-            object
-                inherit rule
-                method up = synth_func_forall
-            end
+(* up method - simple. explore the first branch, if the
+ * branch condition is true, then explore the second branch. 
+ * On backtrack apply a synth action, but the status is set
+ * accrding the the branch condition *)
+let up_explore_simple context treelist synthlist branchll =
+    let (_, sbl, node) = context#get in
+    let (_, hist, _) = node#get in
+    (* tl holds the results of all branches that have been explored *)
+    let tl = (branchcond context [] treelist branchll) in
+    let varlist = 
+        List.map ( function
+            |Leaf(n) -> let (_,_,v) = n#get in v 
+            |_ -> failwith "up_explore_simple"
+        ) tl
+    in
+    let newnode =
+        List.fold_left (
+            fun n f ->
+                (* here the function f return the variable
+                 * history (sythethized histories) *)
+                let (k,v) = f sbl hist varlist in
+                let (m,h,var) = n#get in
+                n#set (m,h,var#add k v)
+        ) (unbox_tree (List.hd (List.rev tl))) synthlist
+        (* XXX: hackish .... is it always the case the the last node has
+         * the correct status ? *)
+    in Leaf (newnode)
+;;
 
-        class virtual linear_rule =
-            object
-                inherit rule
-                method up tl = Llist.hd tl
-            end
-    end 
+let up_explore_linear context treelist synthlist =
+    let (_, sbl, node) = context#get in
+    let (_, hist, _) = node#get in
+    let t = List.hd (Llist.to_list treelist) in
+    let varhist =
+        let n = unbox_tree t in
+        let (_,_,v) = n#get in v
+    in
+    let newnode =
+        List.fold_left (
+            fun n f ->
+                let (k,v) = f sbl hist [varhist] in
+                let (m,h,var) = n#get in
+                n#set (m,h,var#add k v)
+        ) (unbox_tree t) synthlist
+    in Leaf (newnode)
+;; 

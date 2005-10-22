@@ -23,6 +23,6 @@ module type S =
             object
                 method virtual check : node -> context
                 method virtual down : context -> tree
-                method virtual up : tree Llist.llist -> tree
+                method virtual up : context -> tree Llist.llist -> tree
             end
       end
