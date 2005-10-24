@@ -45,6 +45,9 @@ module Make (T : ValType) :
             method intersect (l : 'a) =
                 {< data = List.filter (fun e -> List.mem e l#elements) data >}
 
+            (* the union here doesn't remove duplicates *)
+            method union (l : 'a) = {< data = (l#elements)@data >}
+                
             method equal (l : 'a) =
                 List.for_all2 (fun a b -> a = b) data l#elements
             

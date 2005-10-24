@@ -11,6 +11,7 @@ class type ['t,'c] mt =
     method del : 't -> 'a
     method replace : string -> 'c -> 'a
     method get : string -> 'c
+    method empty : 'a
     method to_string : string
   end
 
@@ -97,6 +98,7 @@ module Make(T: ValType) :
                 
             (* copy is o(n) *)
             method copy = {< data = (copy data) >}
+            method empty = {< data = FMap.empty >}
 
             method to_string = 
                 FMap.fold (

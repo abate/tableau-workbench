@@ -11,6 +11,7 @@ class type ['t] st =
         method length : int
         method cardinal : int
         method intersect : 'a -> 'a
+        method union: 'a -> 'a
         method equal : 'a -> bool
         method copy : 'a
         method empty : 'a
@@ -84,6 +85,16 @@ module Make (T : ValType ) :
                     )
                 >}
 
+            method union (set : 'a) =
+                {< data =
+                    Set.union data
+                    (List.fold_left
+                        (fun e s -> Set.add s e)
+                        Set.empty set#elements
+                    )
+                >}
+
+                    
             method equal (set : 'a) =
                 Set.equal
                 data 

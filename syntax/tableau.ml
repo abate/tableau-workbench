@@ -461,9 +461,7 @@ let expand_build_formula_var loc ?(den=false) (sl,formula) newid =
                 | (_,_,"History",_) -> <:expr< hist#find $str:a$ >>
                 | (_,_,"Variable",_) ->
                         <:expr<
-                        let varhist =
-                            try List.nth varl ( $formula$ - 1 )
-                            with [ Failure "nth" -> failwith ($str:newid$^" Invalid index") ]
+                        let varhist = List.nth varl ( $formula$ - 1 )
                         in varhist#find $str:a$ 
                         >>
                 | _ -> failwith "expand_build_formula_var"
@@ -492,11 +490,26 @@ let expand_build_formula_var loc ?(den=false) (sl,formula) newid =
             | _ -> <:expr< l >>
         with Not_found -> <:expr< l#elements >>
     in
+    let ex4 =
+        try
+            match Hashtbl.find hist_table (List.hd sl) with
+            | (s,"Single","Variable",e) ->
+                    if Option.is_none e then
+                        failwith
+                        ((List.hd sl)^
+                        " : conditional branching used but default not specified")
+                    else <:expr< $Option.get e$ >>
+            | (s,t,"Variable",e) -> <:expr< (new $uid:s$.$lid:t$) >>
+            | _ -> <:expr< failwith "this is impossible" >>
+        with Not_found -> <:expr< failwith "this is impossible" >>
+    in
     <:expr<
         try match $ex3$ with
             [$pa2$ -> $ex2$
             |_ -> failwith ($str:newid$^" type node allowed") ]
-        with [Not_found -> failwith ($str:newid$^" something wrong")]
+        with
+        [Not_found -> failwith ($str:newid$^" something wrong")
+        |Failure "nth" -> $ex4$ ]
     >>
 ;;
  
@@ -1012,7 +1025,23 @@ type 'a tree =
 ;;
 
 let expand_strategy loc tree = []
-
+(*
+let expand_default_strategy loc =
+    let str = <:expr< value __strategy = new Strategy.strategy "start" >> in
+    let sat = 
+        List.map (fun id ->
+            <:expr< __strategy#add newid (R new $lid:id^"_rule") newid nextid >>
+        ) inv_rule_list
+    in
+    let star = strategy#add "star1" S "start" "trans";
+    let trans =
+        List.map (fun id ->
+            <:expr< __strategy#add newid (R new $lid:id^"_rule") newid nextid >>
+        ) notinv_rule_list
+    in
+    <:expr< $list:sat$
+    *)
+    
 (* this function creates the history list. it also add the synth history
  * "status" if it has not been user defined *)
 let expand_history loc l =
@@ -1095,6 +1124,9 @@ rewrite_expr_term rewrite_patt_term;
     |"HISTORIES"; hlist = LIST1 history SEP ";"; "END" ->
             let l = expand_history loc hlist in
             <:str_item< Logic.__history_list.val := Some($l$) >>
+(*    |"VARIABLES"; vlist = LIST1 variable SEP ";"; "END" ->
+            let l = expand_history loc vlist in
+            <:str_item< Logic.__history_list.val := Some($l$) >> *)
     |"TABLEAU"; l = LIST1 rule; "END" ->
             let l = (expand_matchpatt loc)::l in 
             (* if the history is empty, then I've to add status to it *)
@@ -1128,7 +1160,14 @@ rewrite_expr_term rewrite_patt_term;
       e = OPT [ "default"; e = Pcaml.expr LEVEL "simple"-> e ] ->
               (v,s,"Single","Variable", e)
   ]];
-  
+
+(*  variable: [
+      [ v = LIDENT; ":"; s = UIDENT; "."; t = LIDENT -> (v,s,t,"Variable", None)
+      | v = LIDENT; ":"; s = UIDENT; 
+      e = OPT [ "default"; e = Pcaml.expr LEVEL "simple"-> e ] ->
+              (v,s,"Single","Variable", e)
+  ]]; *)
+
   strategy:
   [ "One" LEFTA
       [ s1 = strategy LEVEL "Simple"; ";";
@@ -1267,28 +1306,29 @@ rewrite_expr_term rewrite_patt_term;
   Pcaml.expr: LEVEL "simple"  
       [[ "term"; "("; e = rewrite_expr_term; ")" ->
           <:expr< $e$ >> 
-      | "atm"; "("; x = LIDENT; ")" ->
+(*      | "atm"; "("; x = LIDENT; ")" ->
               let nc = <:expr< Basictype.newcore 1 [|0|] >> in
               (<:expr< Atom($nc$,$lid:x$)>>)
       | "atm"; "("; x = UIDENT; ")" ->
               let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              (<:expr< Atom($nc$,$str:x$)>>)
+              (<:expr< Atom($nc$,$str:x$)>>) 
       | "const"; "("; x = LIDENT; ")" ->
               let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              (<:expr< Constant($nc$,$lid:x$)>>)
+              (<:expr< Constant($nc$,$lid:x$)>>) *)
       | "const"; "("; x = test_constant ; ")" ->
               let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              (<:expr< Constant($nc$,$str:x$)>>)
+              (<:expr< Constant($nc$,$str:x$)>>) 
   ]];
   Pcaml.patt: LEVEL "simple"
       [[ "term"; "("; p = rewrite_patt_term; ")"->
           <:patt< $p$ >>
-      | "atm"; "("; x = LIDENT; ")" ->
+(*      | "atm"; "("; x = LIDENT; ")" ->
                 <:patt< Atom(nc,$lid:x$) >>
       | "const"; "("; x = LIDENT; ")"->
                 <:patt< Constant(nc,$lid:x$) >>
       | "const"; "("; x = test_constant; ")"->
                 <:patt< Constant(nc,$str:x$) >>
+                *)
   ]];
 
   rewrite_expr_term:
@@ -1296,6 +1336,9 @@ rewrite_expr_term rewrite_patt_term;
     | "Two" RIGHTA [ ]
     | "Simple" NONA
       [ x = LIDENT -> <:expr< $lid:x$ >>
+(*      | x = test_constant ->
+              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
+              <:expr< Constant($nc$,$str:x$) >> *)
       | x = UIDENT ->
           let nc = <:expr< Basictype.newcore 1 [|0|] >> in
           <:expr< Atom($nc$,$str:x$)>>
@@ -1309,6 +1352,8 @@ rewrite_expr_term rewrite_patt_term;
     | "Simple" NONA
       [ x = LIDENT -> <:patt< $lid:x$>>
       | "." ; x = LIDENT -> <:patt< Atom(_,$lid:x$)>>
+      | x = test_constant -> <:patt< Constant(_,$str:x$) >>
+      | "Constant" -> <:patt< Constant(_,_) >>
       | "("; p = rewrite_patt_term; ")" -> p
       ] 
     ];

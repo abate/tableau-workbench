@@ -10,7 +10,6 @@ END
 
 
 let rec nnf_term f =
-    print_endline (Basictype.string_of_formula f);
     match f with
     | term ( a & b ) -> 
         let x = nnf_term a  
@@ -53,7 +52,7 @@ let rec nnf_term f =
     | term ( ~ .a ) as f -> f
     | term ( .a ) as f -> f
  
-    | f -> failwith ("nnf_term"^(Basictype.string_of_formula f))
+    | f -> failwith "nnf_term"
 ;;
 
 

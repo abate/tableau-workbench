@@ -32,6 +32,15 @@ module Setoftupleset = Sets.Make(
     end
 )
 
+module Setoftermint = Sets.Make(
+    struct
+        type t = (Basictype.mixtype * int)
+        let copy (t,i) = (t,i)
+        let to_string (t,i) =
+            Printf.sprintf "(%s,%d)" (Basictype.string_of_mixtype t) i
+    end
+)
+
 module Listoftupleset = Listobj.Make(
     struct
         type t = (Set.set * Set.set)
@@ -56,6 +65,7 @@ type mixlist = [
     |`Listofsets of Listofsets.listobj
     |`Set of Set.set
     |`Setofsets of Setofsets.set
+    |`Setoftermint of Setoftermint.set
     |`Setoftupleset of Setoftupleset.set
     |`Listoftupleset of Listoftupleset.listobj
 ]
@@ -65,6 +75,7 @@ let copy : mixlist -> mixlist = function
     |`Listofsets(l) -> `Listofsets(l#copy)
     |`Set(s) -> `Set(s#copy)
     |`Setofsets(s) -> `Setofsets(s#copy)
+    |`Setoftermint(s) -> `Setoftermint(s#copy)
     |`Setoftupleset(s) -> `Setoftupleset(s#copy)
     |`Listoftupleset(s) -> `Listoftupleset(s#copy)
 
@@ -73,5 +84,6 @@ let string_of_mixlist : mixlist -> string = function
     |`Listofsets(l) -> l#to_string 
     |`Set(s) -> s#to_string
     |`Setofsets(s) -> s#to_string
+    |`Setoftermint(s) -> s#to_string
     |`Setoftupleset(s) -> s#to_string
     |`Listoftupleset(s) -> s#to_string

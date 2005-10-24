@@ -16,20 +16,18 @@ END
 
 HISTORIES
   Ev : Set.set ;
-  Br : Listoftupleset.listobj ;
-  uev : Set.set; 
-  status : String;
-  n : Int default 0
+  Br : Listofsets.listobj ;
+  uev : Setoftermint.set; 
+  status : String
 END
 
 (*
 VARIABLES
-  uev : Set.set;
+  uev : Set.set; 
   status : String;
   n : Int default 0
 END
 *)
-
 
 let add (l,h) = h#addlist l
 let notin (l,h) = not(h#mem (List.hd l))
@@ -37,33 +35,40 @@ let isin (l,h) = h#mem (List.hd l)
 let not_empty l = not(l#is_empty)
 
 let emptyset h = h#empty
-let push (xa,xb,z,ev,br) = 
+let push (xa,xb,z,br) = 
     let set = (new Set.set)#addlist (xa@xb@z)
-    in br#add (set, ev)
+    in br#add set
 ;;
 
-let termfalse = `Formula ( term ( Falsum )) ;; 
-let setclose () = (new Set.set)#add termfalse ;;
-let setclosen br = br#length ;;
+let termfalse = `Formula ( term ( Falsum ) ) ;; 
+let setclose br = (new Setoftermint.set)#add (termfalse, br#length) ;;
 
-let beta (uev1, uev2, n1, n2, br) =
-(*    print_endline "Beta";
-    print_string "uev 1:";
-    print_endline uev1#to_string;
-    print_string "uev 2:";
-    print_endline uev2#to_string;
-    print_string "n1: "; print_int n1;
-    print_newline ();
-    print_string "n2: "; print_int n2;
-    print_endline "--------------";
-    *)
+let beta (uev1, uev2, br) =
     let m = (br#length - 1) in
-    if uev1#is_empty || uev2#is_empty then (new Set.set)
-    else if n1 > m && n2 > m then (new Set.set)#add termfalse
-    else if n1 <= m && n2 > m then uev1
-    else if (List.hd uev2#elements) = termfalse then uev1
-    else if n1 > m && n2 <= m then uev2
-    else if (List.hd uev1#elements) = termfalse then uev2
+
+    if uev1#is_empty || uev2#is_empty then (new Setoftermint.set)
+    
+    else if List.exists (function 
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        |_ -> false) uev1#elements
+    then uev2
+    
+    else if List.exists (function
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        | _ -> false) uev2#elements
+    then uev1
+    
+    else if List.for_all ( fun (_,n) -> n > m ) (uev1#union uev2)#elements
+    then (new Setoftermint.set)#add (termfalse,m+1)
+    
+    else if List.for_all ( fun (_,n) -> n <= m ) uev1#elements &&
+    List.for_all ( fun (_,n) -> n > m ) uev2#elements 
+    then uev1
+    
+    else if List.for_all ( fun (_,n) -> n <= m ) uev2#elements &&
+    List.for_all ( fun (_,n) -> n > m ) uev1#elements
+    then uev2
+    
     else uev1#intersect uev2
 ;;
 
@@ -79,41 +84,44 @@ let rec index n s l =
 ;;
 
 let loop_check (xa,xb,z,br) =
-    let (br1, br2) = List.split br#elements in
     let set = (new Set.set)#addlist (xa@xb@z) in
-    not(List.exists (fun s -> set#equal s) br1)
+    not(List.exists (fun s -> set#equal s) br#elements)
 ;;
 
 let setuev (xa,xb,z,ev,br) =
-    let (br1, br2) = List.split br#elements in
     let set = (new Set.set)#addlist (xa@xb@z) in
-    let i = index 0 set (List.rev br1) in
+    let i = index 0 set (List.rev br#elements) in
     let rec buildset counter bl acc =
         if counter < ((List.length bl) - 1) then
             let bl_i = (List.nth bl counter) in
             buildset (counter+1) bl (acc@(bl_i#elements))
         else acc
     in
-    let loopset = ((ev#elements) @ (buildset (i+1) br2 [])) in 
-    let uev = 
-        set#filter (function
-            |`Formula term ( X ( c Un d ) ) -> 
-                    not(List.mem (`Formula d) loopset)
-            |_ -> false
+    let loopset = ev#elements in 
+    let uev =
+        (new Setoftermint.set)#addlist (
+            List.map (fun e -> (e,i))
+            (List.filter (function
+                |`Formula term (X (c Un d)) ->
+                        not(List.mem (`Formula d) loopset)
+                |_ -> false
+            ) (xa@xb))
         )
-    in 
+    in
 (*    print_string "SetUev: "; print_int i; print_newline ();
     print_endline (uev#to_string); *)
     uev
 ;;
 
-let setn (xa,xb,z,br) =
-    let (br1, br2) = List.split br#elements in
-    let set = (new Set.set)#addlist (xa@xb@z)
-    in index 0 set (List.rev br1)
+let pi (uev, br, ev) =
+    let m = br#length in
+    let loopset = ev#elements in
+    uev#filter (function
+        |(`Formula term (X (c Un d)), n) when (n > m) ->
+              not(List.mem (`Formula d) loopset)
+        |_ -> true
+    )
 ;;
-   
-let min (a,b) = min a b ;;
 
 let rec nnf_term f = 
 (*    print_endline (Basictype.string_of_formula f); *)
@@ -212,10 +220,7 @@ TABLEAU
   ===============
      Axiom
 
-  BACKTRACK [
-      uev := setclose();
-      n := setclosen (Br)
-  ]
+  BACKTRACK [ uev := setclose (Br) ]
 
   END
   
@@ -224,10 +229,7 @@ TABLEAU
   ===============
      Axiom
 
-  BACKTRACK [
-      uev := setclose();
-      n := setclosen (Br)
-  ]
+  BACKTRACK [ uev := setclose (Br) ]
 
   END
 
@@ -236,10 +238,7 @@ TABLEAU
   =================
        Axiom
 
-  BACKTRACK [
-      uev := setuev(X A, X B, Z, Ev, Br);
-      n   := setn (X A, X B, Z, Br)
-  ]
+  BACKTRACK [ uev := setuev(X A, X B, Z, Ev, Br) ]
 
   END
 
@@ -251,8 +250,9 @@ TABLEAU
   COND [ loop_check(X A, X B, Z, Br) ]
   ACTION [
       Ev := emptyset(Ev);
-      Br := push(X A, X B, Z, Ev, Br)
+      Br := push(X A, X B, Z, Br)
   ]
+  BACKTRACK [ uev := pi(uev(1), Br, Ev) ]
 
   END
 
@@ -269,10 +269,7 @@ TABLEAU
       D ||| C ; X ( C Un D ) 
 
   ACTION    [ [ Ev := add(D, Ev) ] ; [] ]
-  BACKTRACK [ 
-      uev := beta(uev(1), uev(2), n(1), n(2), Br);
-      n := min (n(1), n(2))
-  ]
+  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ]
   BRANCH    [ [ not_empty(uev(1)) ] ] 
     
   END
@@ -282,11 +279,7 @@ TABLEAU
   =========
    A ||| B
 
-  BACKTRACK [ 
-      uev := beta(uev(1), uev(2), n(1), n(2), Br);
-      n := min (n(1) , n(2))
-  ]
-
+  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ]
   BRANCH [ [ not_empty(uev(1)) ] ]  
   END
 
@@ -320,11 +313,11 @@ let _ =
     strategy#add "end"   E                  "end" "end"
 ;;
 
-let exit (uev) = 
-    if uev#is_empty then "Open"
-    else if (List.hd uev#elements) = termfalse
-        then "Closed"
-        else "Open"
+let exit (uev) =
+    match uev#elements with
+    |(termfalse,_)::[] -> "Closed"
+    |[] -> "Open"
+    |_ -> "Open"
 ;;
 
 PP := nnf

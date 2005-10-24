@@ -3,6 +3,9 @@
 open Basictype
 open Genlex
 
+Grammar.warning_verbose := false ;;
+Grammar.error_verbose := true ;;
+
 let gram = Grammar.gcreate (Plexer.gmake ());;
 let expr_term = Grammar.Entry.create gram "expr_term";;
 let input_line = Grammar.Entry.create gram "input_line";;
@@ -65,6 +68,7 @@ let buildParser table s =
             |lev,[op],`Biconn(co) -> add_biconn lev op co
             |_ -> failwith "buildParser"
         ) table
+(*    in let _ = Grammar.Entry.print expr_term *)
     in [`Formula(parse s)]
 ;;
 

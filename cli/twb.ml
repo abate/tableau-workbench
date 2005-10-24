@@ -10,6 +10,7 @@ struct
   let preproc = ref false
   let debug = ref 0
   let noneg = ref false
+  let trace = ref false
 
   let timeout = ref 0
 
@@ -32,6 +33,7 @@ let options =
      ("-noneg", Arg.Set    Options.noneg, "doesn't use the Negation Procedure");
 
      ("-debug", Arg.Int    (fun l -> Options.debug := l ), "debug level");
+     ("-trace", Arg.Set    Options.trace, "print proof trace");
      ("-time",  Arg.Int    (fun l -> Options.timeout := l), "set exec timeout");
 
      ("-logic", Arg.String (fun l -> Options.logic := l),   "set logic");
@@ -152,9 +154,12 @@ ENDIF
         in
             Stream.from read_new_line
     in
+    (* we stop on a new line, we ignore comments *)
     let rec get_line () =
         match Stream.next read_lines with
-        |s when Str.string_match (Str.regexp "^[\n\t ]+$") s 0 -> get_line ()
+        |s when Str.string_match (Str.regexp "^[\n\t ]*$") s 0 -> 
+                raise End_of_file
+        |s when Str.string_match (Str.regexp "^#.*$") s 0 -> get_line ()
         |s -> s
     in
     try
@@ -162,6 +167,9 @@ ENDIF
             let start = Timer.start_timing () in
             try
                 let node = newnode( get_line () ) in
+                (* still a bit hackish way of setting user prefs *)
+                let _ = UserRule.nodeid := 0 in
+                let _ = OutputBroker.trace := !Options.trace in
                 let _ = OutputBroker.print node "initial node" 0 in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
                 let result =

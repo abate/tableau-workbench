@@ -161,8 +161,8 @@ let down_implicit name context actionl historyl =
 
 let down_axiom name context status =
     let (enum,sbl,newnode) = context#get in
-    let (h, v, varhist) = newnode#get in
-    let newnode = newnode#set(h,v,status varhist) in
+    let (m, h, varhist) = newnode#get in
+    let newnode = newnode#set(m#empty, h#empty, status varhist) in
     let _ = printer newnode name !nodeid in 
     Leaf(newnode)
 ;;

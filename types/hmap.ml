@@ -6,6 +6,7 @@ class type ['t] mt =
     method copy : 'a
     method find : string -> 't
     method mem : string -> bool
+    method empty : 'a
     method to_string : string
   end
 
@@ -33,6 +34,7 @@ module Make(T: ValType) :
             method find p = Hashtbl.find data p
             method mem p = Hashtbl.mem data p
             method copy = {< data = (Hashtbl.copy data) >}
+            method empty = {< data = Hashtbl.create 7 >}
             method to_string =
                 Hashtbl.fold (
                     fun k v s -> Printf.sprintf "%s\n%s:%s" s k (T.to_string v)
