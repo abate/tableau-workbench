@@ -1,75 +1,90 @@
-
-open Basictype
-
-let not_marked f = not(Basictype.is_marked_formula f) ;;
-let is_marked_list l = List.for_all not_marked l ;;
-
-let mark f = Basictype.mark_formula f
-let mark_list l = Basictype.map mark l ;;
-
-let neg_term = function
-    `Formula a -> `Formula ( Not (nc, a))
-    | _ -> failwith "neg_term"
-;;
-let neg = Basictype.map neg_term ;;
-
-let rec nnf_term = function
-    `Formula ( And (_, a1, a2) ) -> 
-        let x = nnf_term ( `Formula a1 ) 
-        and y = nnf_term ( `Formula a2 )
-        in `Formula ( And ( nc , Basictype.unbox x, Basictype.unbox y ) )
-        
-    | `Formula Not (_, And (_, a1, a2) ) ->
-        let x = nnf_term ( `Formula ( Not (nc ,a1)) )
-        and y = nnf_term ( `Formula ( Not (nc ,a2)) )
-        in `Formula ( Or ( nc , Basictype.unbox x, Basictype.unbox y ) )
-
-    | `Formula ( Or (_, a1, a2) ) -> 
-        let x = nnf_term ( `Formula a1 ) 
-        and y = nnf_term ( `Formula a2 )
-        in `Formula ( Or ( nc , Basictype.unbox x, Basictype.unbox y ) )
-    | `Formula Not (_, Or (_, a1, a2) ) ->
-        let x = nnf_term ( `Formula ( Not (nc ,a1)) )
-        and y = nnf_term ( `Formula ( Not (nc ,a2)) )
-        in `Formula ( And ( nc , Basictype.unbox x, Basictype.unbox y ) )
-        
-    | `Formula Dia (_, a1 ) ->
-            let x = nnf_term ( `Formula a1 )
-            in `Formula ( Dia (nc, Basictype.unbox x ) )
-    | `Formula Not (_, Dia (_, a1 )) ->
-            let x = nnf_term ( `Formula ( Not(nc, a1)) )
-            in `Formula ( Box (nc, Basictype.unbox x ) )
-
-    | `Formula Box (_, a1 ) ->
-            let x = nnf_term ( `Formula a1 )
-            in `Formula ( Box (nc, Basictype.unbox x ) )
-    | `Formula Not (_, Box (_, a1 )) ->
-            let x = nnf_term ( `Formula ( Not(nc, a1)) )
-            in `Formula ( Dia (nc, Basictype.unbox x ) )
-
-    | `Formula Not (_, Not (_, a1) ) ->
-        let x = nnf_term ( `Formula a1 )
-        in `Formula (Basictype.unbox x)
-    | `Formula ( Not (_, a1) ) ->
-        let x = nnf_term ( `Formula a1 )
-        in `Formula ( Not ( nc, Basictype.unbox x ) )
-
-    | `Formula Atom(_, _) as f -> f
- 
-    | _ -> failwith "nnf_term"
-;;
-
-let nnf l = List.map (fun t -> nnf_term t) l ;;
-
 CONNECTIVES
   And, "_&_",  One;
   Or,  "_v_",  One;
-  Imp, "_-->_", One;
-  DImp, "_<-->_", One;
+  Imp, "_->_", One;
+  DImp, "_<->_", One;
   Not, "~_",   Simple;
-  Dia, "Dia_", Simple;
-  Box, "Box_", Simple
+  Dia, "<>_", Simple;
+  Box, "Box_", Simple;
+  Falsum, Const;
+  Verum, Const
 END
+
+let not_marked f = not(Basictype.is_marked_formula f) ;;
+let mark_list l = Basictype.map Basictype.mark_formula l ;;
+
+let rec nnf_term f =
+(*    print_endline (Basictype.string_of_formula f); *)
+    match f with
+    |term ( a & b ) ->
+        let x = nnf_term a
+        and y = nnf_term b
+        in term ( x & y )
+
+    |term ( ~ ( a & b ) ) ->
+        let x = nnf_term term ( ~ a )
+        and y = nnf_term term ( ~ b )
+        in term ( x v y )
+
+    |term ( a v b ) ->
+            let x = nnf_term a
+            and y = nnf_term b
+            in term ( x v y )
+
+    |term ( ~ ( a v b ) ) ->
+            let x = nnf_term term ( ~ a )
+            and y = nnf_term term ( ~ b )
+            in term ( x & y )
+
+    |term ( a <-> b ) ->
+            let x = nnf_term term ( a -> b )
+            and y = nnf_term term ( b -> a )
+            in term ( x & y )
+
+    |term ( ~ ( a <-> b ) ) ->
+            let x = nnf_term term ( ~ (a -> b) )
+            and y = nnf_term term ( ~ (b -> a) )
+            in term ( x v y )
+
+    |term ( a -> b ) ->
+            nnf_term term ( (~ a) v b )
+
+    |term ( ~ (a -> b) ) ->
+            nnf_term term ( a & (~ b) )
+
+    |term ( ~ ~ a ) -> nnf_term a
+
+    |term ( ~ .a ) as f -> f
+    |term ( .a ) as f -> f
+
+    | term ( <> a ) ->
+            let x = nnf_term a
+            in term ( <> x )
+
+    | term ( ~ ( <> a ) ) ->
+            let x = nnf_term ( term ( ~ a ) )
+            in term ( Box x )
+
+    | term ( Box a ) ->
+            let x = nnf_term a
+            in term ( Box x )
+
+    | term ( ~ ( Box a ) ) ->
+            let x = nnf_term ( term ( ~ a ) )
+            in term ( <> x )
+
+    |term ( ~ Falsum ) -> const ( Verum )
+    |term ( ~ Verum ) -> const ( Falsum )
+
+    |term ( Constant ) -> f
+    |term ( ~ Constant ) -> f
+
+    | _ -> failwith ("nnf_term"^(!Basictype.string_of_formula f))
+
+let neg_term = function term ( a ) -> term ( ~ a ) ;;
+let neg = Basictype.map neg_term ;;
+let nnf = Basictype.map nnf_term ;;
+
 
 TABLEAU
 
@@ -80,7 +95,7 @@ TABLEAU
   END
 
   RULE K
-  { Dia A } ; Box X ; Z
+  { <> A } ; Box X ; Z
   -----------------------
     A ; X
   END
@@ -104,15 +119,15 @@ TABLEAU
   END
 
   RULE Imp 
-  { A --> B }
+  { A -> B }
  ===============
     ~ A | B
   END
 
   RULE DImp 
-  { A <--> B }
+  { A <-> B }
  ===============
-  A --> B | B --> A
+  A -> B | B -> A
   END
 
 END
@@ -127,8 +142,7 @@ let _ =
     strategy#add "b"     (R(new id_rule))   "b" "s1";
     strategy#add "s1"    S                  "start" "d" ;
     strategy#add "d"     (R(new k_rule))    "d" "s2";
-    strategy#add "s2"    S                  "start" "meta" ;
-    strategy#add "meta" (R(new defaultaxiom_rule)) "end" "end" ;
+    strategy#add "s2"    S                  "start" "end" ;
     strategy#add "end"   E                  "end" "end"
 ;;
 

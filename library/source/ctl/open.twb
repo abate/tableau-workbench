@@ -1,0 +1,2 @@
+#open
+~ ( AxG (AxF (p & q) & AxF (p & ~ q) & AxF (~ p & q)) )

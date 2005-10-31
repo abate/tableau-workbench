@@ -6,9 +6,12 @@ let trace = ref false;;
 let print (node : Node.node) name parentid childid =
     if !trace then
         begin
-            Printf.printf "%s ( %d -> %d )\n" name parentid childid;
-            print_endline (node#to_string);
-            print_newline ()
+            let (m,h,_) = node#get in
+            Printf.printf
+            "%s ( %d -> %d )\n%s\n%s\n\n"
+            name parentid childid
+            (Store.to_string m)
+            (History.to_string h)
         end
     else ()
 ;;

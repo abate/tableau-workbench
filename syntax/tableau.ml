@@ -3,11 +3,12 @@
 open Genlex
 open ExtLib
 
+Grammar.error_verbose := true ;;
+
 let patt_term    = Grammar.Entry.create Pcaml.gram "patt_term";;
 let expr_term    = Grammar.Entry.create Pcaml.gram "expr_term";;
 let rewrite_patt_term    = Grammar.Entry.create Pcaml.gram "rewrite_patt_term";;
 let rewrite_expr_term    = Grammar.Entry.create Pcaml.gram "rewrite_expr_term";;
-
 
 (* generates fresh ids given a string *)
 let new_id = 
@@ -98,7 +99,7 @@ let add_uconn op co =
       expr_term: LEVEL "Simple"
         [[ $op$; (lx,x) = expr_term ->
             let nc = <:expr<  Basictype.newcore 1 [|0|] >> in
-            (lx,<:expr< $uid:co$(nc,$x$) >> )
+            (lx,<:expr< $uid:co$($nc$,$x$) >> )
         ]];
         
       rewrite_patt_term: LEVEL "Simple"
@@ -108,7 +109,7 @@ let add_uconn op co =
       rewrite_expr_term: LEVEL "Simple"
         [[ $op$; x = rewrite_expr_term ->
             let nc = <:expr<  Basictype.newcore 1 [|0|] >> in
-            <:expr< $uid:co$(nc,$x$) >>
+            <:expr< $uid:co$($nc$,$x$) >>
         ]];
     END
 ;;
@@ -122,7 +123,7 @@ let add_muconn op1 op2 co =
       expr_term: LEVEL "Simple"
       [[ $op1$; i = INT; $op2$; (lx,x) = expr_term ->
             let nc = <:expr<  Basictype.newcore 1 [|0|] >> in
-            (lx,<:expr< $uid:co$($int:i$,nc,$x$) >> )
+            (lx,<:expr< $uid:co$($int:i$,$nc$,$x$) >> )
         ]];
         
       rewrite_patt_term: LEVEL "Simple"
@@ -135,10 +136,10 @@ let add_muconn op1 op2 co =
       rewrite_expr_term: LEVEL "Simple"
       [[ $op1$; i = INT; $op2$; x = rewrite_expr_term ->
             let nc = <:expr<  Basictype.newcore 1 [|0|] >> in
-            <:expr< $uid:co$($int:i$,nc,$x$) >>
+            <:expr< $uid:co$($int:i$,$nc$,$x$) >>
         | $op1$; i = LIDENT; $op2$; x = rewrite_expr_term ->
             let nc = <:expr<  Basictype.newcore 1 [|0|] >> in
-            <:expr< $uid:co$($lid:i$,nc,$x$) >>
+            <:expr< $uid:co$($lid:i$,$nc$,$x$) >>
 
         ]];
 
@@ -181,6 +182,14 @@ let test_constant strm =
     | _ -> raise Stream.Failure
 ;;
 let test_constant = Grammar.Entry.of_parser Pcaml.gram "test_constant" test_constant ;;
+
+let test_uid strm =
+    match Stream.peek strm with
+    | Some (("UIDENT", s)) when not(Hashtbl.mem const_table s) ->
+            Stream.junk strm; s
+    | _ -> raise Stream.Failure
+;;
+let test_uid = Grammar.Entry.of_parser Pcaml.gram "test_uid" test_uid ;;
 
 let is_variable = function
       ([s],<:expr< $lid:a$ >>) -> true
@@ -380,7 +389,6 @@ let expand_build_formula loc (sl,formula) newid =
             <:expr<$lid:"t"^string_of_int !i$>>
         ) (List.unique sl) in <:expr< ( $list:l$ ) >>
     in
-    (* XXX: make possible to build formulae from histories *)
     let ex3 = 
         let l = List.map (fun a ->
             if Hashtbl.mem hist_table a then
@@ -487,6 +495,7 @@ let expand_build_formula_var loc ?(den=false) (sl,formula) newid =
                 |_ -> failwith ($str:newid$^" singleton")
                 ]
                 >>
+            | (_,_,"History",_) when den = true -> <:expr< l#elements >>
             | _ -> <:expr< l >>
         with Not_found -> <:expr< l#elements >>
     in
@@ -512,21 +521,45 @@ let expand_build_formula_var loc ?(den=false) (sl,formula) newid =
         |Failure "nth" -> $ex4$ ]
     >>
 ;;
- 
+
+type args_t =
+    |Var
+    |Expr
+    |Term
+
+let expand_variable_list loc s newid =
+    match Hashtbl.find hist_table s with
+    | (st,_,"Variable",_) ->
+            <:expr<
+            List.map (fun 
+                [ varhist ->
+                    match (varhist#find $str:s$) with
+                    [`$uid:st$ l -> l
+                    |_ -> failwith ($str:newid$^" type node allowed")
+                    ]
+                ]
+                ) varl >>
+    | _ -> failwith "expand_variable_list"
+;;
+
 let expand_condlistel loc (act,func,args) =
     let newid = new_id "history_condition" in
     let (ex2, ex3) =
         List.split
             (List.map (function 
-                 ([],formula) -> (<:expr< $formula$ >>,None)
-                |(sl,formula) ->
+                |([],formula,Expr) -> (<:expr< $formula$ >>,None)
+                |([s],_,Var) ->
+                        let newid = new_id "build" in
+                        let ex = expand_variable_list loc s newid in
+                        (<:expr< $lid:newid$ >>, Some(<:patt<$lid:newid$>>,ex))
+                |(sl,formula,Term) ->
                     let newid = new_id "build" in
                     let ex = 
-                    (* special case to handle arbitrary expressions as argument *)
                         if is_variable (sl,formula) then
                             expand_build_formula_var loc (sl,formula) newid
                         else expand_build_formula loc (sl,formula) newid
                     in (<:expr< $lid:newid$ >>,Some(<:patt<$lid:newid$>>,ex))
+                |_ -> failwith "expand_condlistel"
             ) args
         )
     in
@@ -564,6 +597,10 @@ let expand_constant loc p l =
             in Sbl.add sbl [ ($str:s$,[f]) ]
         >>
     in (newid,ex)
+;;
+
+let expand_constant_expression loc formula =
+    <:expr< [ `Formula $formula$ ] >>
 ;;
 
 let expand_rule_num loc (stringlist,formulalist) cl =
@@ -639,7 +676,9 @@ let expand_rule_num loc (stringlist,formulalist) cl =
 let expand_action loc sl (formula,action) = 
     let newid = new_id "exp_action" in
     let ex = 
-        if is_variable (sl,formula) then
+        if sl = [] then
+            expand_constant_expression loc formula
+        else if is_variable (sl,formula) then
             expand_build_formula_var loc ~den:true (sl,formula) newid
         else expand_build_formula loc (sl,formula) newid
     in
@@ -660,15 +699,19 @@ let expand_actionlistel loc (act,func,args) =
     let (ex2,ex3) =
         List.split
             (List.map (function
-                (* special case to handle arbitrary expressions as argument *)
-                 ([],formula) -> (<:expr< $formula$ >>,None)
-                |(sl,formula) ->
+                |([],formula,Expr) -> (<:expr< $formula$ >>,None)
+                |([s],_,Var) -> 
+                        let newid = new_id "build" in
+                        let ex = expand_variable_list loc s newid in
+                        (<:expr< $lid:newid$ >>, Some(<:patt<$lid:newid$>>,ex))
+                |(sl,formula,Term) ->
                     let newid = new_id "build" in
                     let ex = 
                         if is_variable (sl,formula) then
                             expand_build_formula_var loc (sl,formula) newid
                         else expand_build_formula loc (sl,formula) newid
                     in (<:expr< $lid:newid$ >>,Some(<:patt<$lid:newid$>>,ex))
+                | _ -> failwith "expand_actionlistel"
             ) args
         )
     in
@@ -868,8 +911,10 @@ let expand_rule_den loc t dl hl bll bt =
     |Forall (dl::[]),NotInv ->
             let (exp,strl) = expand dl [] hl in
             let (branchidl, branchstrl) = expand_branchlist loc [dl] bll in
-            let bidl = List.map (
-                fun l -> list_to_exprlist loc (openrule::l) ) branchidl
+            let bidl =
+                match branchidl with
+                |[] -> [ list_to_exprlist loc [openrule] ]
+                |_ -> List.map (fun l -> list_to_exprlist loc (openrule::l) ) branchidl
             in
             let up =
                 <:expr< UserRule.up_explore_simple context treelist 
@@ -956,17 +1001,17 @@ let expand_parser loc connlist =
     | (v,s,r) when s =~ mu_re ->
             Some(
                 <:expr< ( $str:r$,[$str:(get_match 1 s)$;$str:(get_match 2 s)$], `Muconn (
-                fun [ (i,a) -> $lid:v$(i,Basictype.nc,a) ]) ) >>
+                    fun [ (i,a) -> $lid:v$(i,Basictype.newcore 1 [|0|],a) ]) ) >>
             )
     | (v,s,r) when s =~ u_re ->
             Some(
                 <:expr< ( $str:r$,[$str:(get_match 1 s)$], `Uconn (
-                fun [ a -> $lid:v$(Basictype.nc,a) ]) ) >>
+                    fun [ a -> $lid:v$(Basictype.newcore 1 [|0|],a) ]) ) >>
             )
     | (v,s,r) when s =~ bi_re ->
             Some (
                 <:expr< ( $str:r$,[$str:(get_match 1 s)$], `Biconn ( 
-                fun [ (a,b) -> $lid:v$(Basictype.nc,a,b) ]) ) >>
+                    fun [ (a,b) -> $lid:v$(Basictype.newcore 1 [|0|],a,b) ]) ) >>
             )
 
     | (v,"Const",_) -> Some ( <:expr< ( "Const",[$str:v$], `Const ) >> )
@@ -985,9 +1030,7 @@ let expand_printer loc connlist =
                 Some(<:patt< ( $lid:v$(i,nc,a) ) >>,
                 None,
                 <:expr< Printf.sprintf
-                $str:"("^(get_match 1 s)$
-                ^(string_of_int i)^
-                $str:(get_match 2 s)^" %s)"$
+                $str:"("^(get_match 1 s)^"%d"^(get_match 2 s)^" %s)"$ i
                 (pr_aux a) >>)
         | (v,s,r) when s =~ u_re ->
                 Some(<:patt< ( $lid:v$(nc,a)) >>,
@@ -1072,15 +1115,19 @@ let expand_exit loc (func,args) =
     let (ex2, ex3) =
         List.split
             (List.map (function 
-                 ([],formula) -> (<:expr< $formula$ >>,None)
-                |(sl,formula) ->
+                |([],formula,Expr) -> (<:expr< $formula$ >>,None)
+                |([s],_,Var) -> 
+                        let newid = new_id "build" in
+                        let ex = expand_variable_list loc s newid in
+                        (<:expr< $lid:newid$ >>, Some(<:patt<$lid:newid$>>,ex))
+                |(sl,formula,Term) ->
                     let newid = new_id "build" in
                     let ex = 
-                    (* special case to handle arbitrary expressions as argument *)
                         if is_variable (sl,formula) then
                             expand_build_formula_var loc (sl,formula) newid
                         else expand_build_formula loc (sl,formula) newid
                     in (<:expr< $lid:newid$ >>,Some(<:patt<$lid:newid$>>,ex))
+                | _ -> failwith "expand_exit"
             ) args
         )
     in
@@ -1128,6 +1175,7 @@ rewrite_expr_term rewrite_patt_term;
             let l = expand_history loc vlist in
             <:str_item< Logic.__history_list.val := Some($l$) >> *)
     |"TABLEAU"; l = LIST1 rule; "END" ->
+      (*      let _ = Grammar.Entry.print expr_term in *)
             let l = (expand_matchpatt loc)::l in 
             (* if the history is empty, then I've to add status to it *)
             if not(Hashtbl.mem hist_table "status") then
@@ -1143,11 +1191,19 @@ rewrite_expr_term rewrite_patt_term;
     |"EXIT"; OPT ":="; f = LIDENT; "("; args = LIST0 arguments SEP ","; ")" ->
             let ex = expand_exit loc (f,args) in
             <:str_item< Logic.__exit.val := Some($ex$) >> 
+    |"OPTIONS"; olist = LIST1 options SEP ";"; "END" ->
+            let ol = list_to_exprlist loc olist in
+            <:str_item< Logic.__options.val := Some ([ $list:ol$ ]) >>
     |"STRATEGY"; s = strategy ->
             (* <:str_item< declare $list:expand_strategy loc s$ end >> *)
             <:str_item< Logic.__strategy.val := Some(strategy) >>
   ]];
 
+  options : [[
+      OPT "("; s = STRING ; ","; e = Pcaml.expr LEVEL "simple"; ","; a = STRING; OPT ")" ->
+          <:expr< ( $str:s$ , $e$ , $str:a$ ) >> 
+  ]];
+  
   connective: [[ 
         v = UIDENT; ","; s = STRING; ","; r = UIDENT -> (v,s,r)
       | v = UIDENT; ","; "Const" -> (v,"Const","")
@@ -1228,11 +1284,18 @@ rewrite_expr_term rewrite_patt_term;
   
   usercond: [[
       f = LIDENT; "("; args = LIST0 arguments SEP ","; ")" -> (None,f,args)
+(*      |ex = Pcaml.expr LEVEL "simple" -> (None,ex,[]) *)
   ]];
 
   arguments: [[
-        ex = expr_term -> ex
-      | ex = Pcaml.expr LEVEL "simple" -> ([],ex)
+       x = test_variable; (ex,t) = varindex -> ([x],ex,t)
+      |(sl,ex) = expr_term -> (sl,ex,Term)
+      | ex = Pcaml.expr LEVEL "simple" -> ([],ex,Expr)
+  ]];
+
+  varindex: [[
+       "("; ")" -> (<:expr< "_dummy" >>,Var)
+      |"("; i = INT; ")" -> (<:expr< $int:i$ >>, Term)
   ]];
   
   (* Forall of (string list * expr) list list *)
@@ -1287,8 +1350,8 @@ rewrite_expr_term rewrite_patt_term;
       | x = test_variable; "("; i = INT; ")" -> ([x], <:expr< $int:i$ >>)
       | x = test_constant ->
               let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              ([x], <:expr< Constant($nc$,$str:x$)>>)
-      | x = UIDENT -> ([x], <:expr< $lid:String.lowercase x$ >> )
+              ([], <:expr< Constant($nc$,$str:x$)>>)
+      | x = test_uid -> ([x], <:expr< $lid:String.lowercase x$ >> )
       | "("; p = expr_term; ")" -> p
       ] 
     ];
@@ -1298,7 +1361,8 @@ rewrite_expr_term rewrite_patt_term;
     | "Two" RIGHTA [ ]
     | "Simple" NONA
       [ "."; x = LIDENT -> (["atom___"^x], <:patt< Atom(nc,$lid:x$) >>)
-      | x = UIDENT -> ([x], <:patt< $lid:String.lowercase x$>>)
+      | x = test_uid -> ([x], <:patt< $lid:String.lowercase x$>>)
+      | x = test_constant -> (["const___"^x], <:patt< Constant(nc,$lid:x$) >>)
       | "("; p = patt_term; ")" -> p
       ] 
     ];
@@ -1306,29 +1370,10 @@ rewrite_expr_term rewrite_patt_term;
   Pcaml.expr: LEVEL "simple"  
       [[ "term"; "("; e = rewrite_expr_term; ")" ->
           <:expr< $e$ >> 
-(*      | "atm"; "("; x = LIDENT; ")" ->
-              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              (<:expr< Atom($nc$,$lid:x$)>>)
-      | "atm"; "("; x = UIDENT; ")" ->
-              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              (<:expr< Atom($nc$,$str:x$)>>) 
-      | "const"; "("; x = LIDENT; ")" ->
-              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              (<:expr< Constant($nc$,$lid:x$)>>) *)
-      | "const"; "("; x = test_constant ; ")" ->
-              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              (<:expr< Constant($nc$,$str:x$)>>) 
   ]];
   Pcaml.patt: LEVEL "simple"
       [[ "term"; "("; p = rewrite_patt_term; ")"->
           <:patt< $p$ >>
-(*      | "atm"; "("; x = LIDENT; ")" ->
-                <:patt< Atom(nc,$lid:x$) >>
-      | "const"; "("; x = LIDENT; ")"->
-                <:patt< Constant(nc,$lid:x$) >>
-      | "const"; "("; x = test_constant; ")"->
-                <:patt< Constant(nc,$str:x$) >>
-                *)
   ]];
 
   rewrite_expr_term:
@@ -1336,10 +1381,10 @@ rewrite_expr_term rewrite_patt_term;
     | "Two" RIGHTA [ ]
     | "Simple" NONA
       [ x = LIDENT -> <:expr< $lid:x$ >>
-(*      | x = test_constant ->
+      | x = test_constant ->
               let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              <:expr< Constant($nc$,$str:x$) >> *)
-      | x = UIDENT ->
+              <:expr< Constant($nc$,$str:x$) >>
+      | "." ; x = LIDENT ->
           let nc = <:expr< Basictype.newcore 1 [|0|] >> in
           <:expr< Atom($nc$,$str:x$)>>
       | "("; p = rewrite_expr_term; ")" -> p

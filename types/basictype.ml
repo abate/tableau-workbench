@@ -5,7 +5,6 @@ type core = {
 }
 
 let newcore id star = { id = id; star = star } ;;
-let nc = newcore 1 [|0|] ;;
 
 type formula =
     (* Classical logic *)
@@ -32,6 +31,13 @@ type formula =
     |Until of core * formula * formula
     |Before of core * formula * formula
     
+    (* ctl *)
+    |ExX of core * formula
+    |AxX of core * formula
+    |ExG of core * formula
+    |ExF of core * formula
+    |AxG of core * formula
+    |AxF of core * formula
 
 type label = int list
 
@@ -59,6 +65,12 @@ let is_marked_core ?(i=0) ?(v=1) n = ( n.star.(i) = v )
 let mark_core ?(i=0) ?(v=1) n = ( n.star.(i) <- v ); n
 let unmark_core ?(i=0) n = mark_core ~i ~v:0 n
 
+(*
+let compare t1 t2 = 
+    match t1,t2 with
+    |Atom(c1,s1), Atom(c2,s2) when c1 = c2 -> Pervasive.compare s1 s2
+    |And(c1,f11,f12), And(c2,f21,f22) when c1 = c2 -> *)
+
 let rec metamark f = function
     |And(c,f1,f2)  -> And(f c,f1,f2)
     |Or(c,f1,f2)   -> Or(f c,f1,f2)
@@ -79,11 +91,15 @@ let rec metamark f = function
     |Next(c,f1)      -> Next(f c,f1)
     |Until(c,f1,f2)  -> Until(f c,f1,f2)
     |Before(c,f1,f2) -> Before(f c,f1,f2)
+    |ExX(c,f1)       -> ExX(f c,f1)
+    |AxX(c,f1)       -> AxX(f c,f1)
+    |ExG(c,f1)       -> ExG(f c,f1)
+    |ExF(c,f1)       -> ExF(f c,f1)
+    |AxG(c,f1)       -> AxG(f c,f1)
+    |AxF(c,f1)       -> AxF(f c,f1)
 
-;;
-
-let mark_formula f   = `Formula ( metamark mark_core (unbox f));;
-let unmark_formula f = `Formula ( metamark unmark_core (unbox f));;
+let mark_formula f   = ( metamark mark_core f);;
+let unmark_formula f = ( metamark unmark_core f);;
 
 let rec is_marked = function
     |And(c,_,_) 
@@ -105,6 +121,13 @@ let rec is_marked = function
     |Next(c,_)    
     |Until(c,_,_)
     |Before(c,_,_)
+
+    |ExX(c,_)
+    |AxX(c,_)
+    |ExG(c,_)
+    |ExF(c,_)
+    |AxG(c,_)
+    |AxF(c,_)
 
     -> is_marked_core c
 ;;
@@ -164,6 +187,14 @@ let rec default_printer = function
             Printf.sprintf "(%s Bf %s)"
             (default_printer f1)
             (default_printer f2)
+
+    |ExX(c,f) -> Printf.sprintf "(ExX %s)" (default_printer f)
+    |AxX(c,f) -> Printf.sprintf "(AxX %s)" (default_printer f)
+    |ExG(c,f) -> Printf.sprintf "(ExG %s)" (default_printer f)
+    |ExF(c,f) -> Printf.sprintf "(ExF %s)" (default_printer f)
+    |AxG(c,f) -> Printf.sprintf "(AxG %s)" (default_printer f)
+    |AxF(c,f) -> Printf.sprintf "(AxF %s)" (default_printer f)
+
 ;;
 
 let string_of_formula = ref default_printer ;;

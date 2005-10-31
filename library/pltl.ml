@@ -1,7 +1,7 @@
 
 CONNECTIVES
-  And, "_&_",  One;
-  Or,  "_v_",  One;
+  And, "_&_",  Two;
+  Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
   Until, "_Un_", One;
@@ -16,20 +16,11 @@ END
 
 HISTORIES
   Ev : Set.set ;
-  Br : Listoftupleset.listobj ;
-  uev : Set.set; 
-  status : String;
-  n : Int default 0
-END
-
-(*
-VARIABLES
+  Br : Listoftupleset.listobj;
   uev : Set.set;
   status : String;
   n : Int default 0
 END
-*)
-
 
 let add (l,h) = h#addlist l
 let notin (l,h) = not(h#mem (List.hd l))
@@ -192,8 +183,8 @@ let rec nnf_term f =
             and y = nnf_term term ( b )
             in term ( x Un y )
 
-    |term ( ~ Falsum ) -> const ( Verum )
-    |term ( ~ Verum ) -> const ( Falsum )
+    |term ( ~ Falsum ) -> term ( Verum )
+    |term ( ~ Verum ) -> term ( Falsum )
 
     |term ( Constant ) -> f
     |term ( ~ Constant ) -> f

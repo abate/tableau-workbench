@@ -75,7 +75,7 @@ module Make (T : ValType ) :
              * XXX: I'm double minded ...
              * the other ways is to expose a method to access the
              * interal represenation of the set, but this will
-             * break the incapsulation ... *)
+             * break the data incapsulation ... Friends functions ?? *)
             method intersect (set : 'a) =
                 {< data =
                     Set.inter data
@@ -93,7 +93,6 @@ module Make (T : ValType ) :
                         Set.empty set#elements
                     )
                 >}
-
                     
             method equal (set : 'a) =
                 Set.equal

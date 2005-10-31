@@ -1,0 +1,61 @@
+~ ( AxG p & ExF ~ p )
+#axioms 
+# A.1
+AxG (p -> q) -> ( AxG p -> AxG q)
+# A.2
+AxX (p -> q) -> ( AxX p -> AxX q)
+# A.3
+(AxG p) -> (AxX p & AxX AxX AxG p)
+# A.4
+(AxG (p -> AxX p)) -> (p -> AxG p)
+# E.1
+(AxG (p -> q)) -> (ExG p -> ExG q)
+# E.2
+ExG p -> ( p & ExX ExG p )
+# E.3
+AxG p -> ExG p
+# E.4
+(AxG ( p -> ExX p)) -> (p -> ExG p)
+#theorems 
+# T.1
+AxG p -> p
+# T.2
+AxG p -> AxF p
+# T.3
+AxX (p -> q) -> ( ExX p -> ExX q)
+# T.4
+AxG (p -> q) -> ( AxF p -> AxF q)
+# T.5
+ExG p -> ExX p
+# T.6
+AxX p -> ExX p
+# T.7
+(AxG (p & q)) <-> (AxG p & AxG q)
+# T.8
+(ExG (p & q))  -> (ExG p & ExG q)
+# T.9
+(AxX (p & q)) <-> (AxX p & AxX q)
+# T.10
+(ExX (p & q))  -> (ExX p & ExX q)
+# T.11
+(AxX p & ExX q) -> ExX (p & q)
+# T.12
+(AxG p & ExG q) -> ExG (p & q)
+# T.13
+AxG p <-> (p & AxX AxG p)
+# T.14
+ExG p <-> (p & ExX ExG p)
+# T.15
+AxG p <-> AxG AxG p
+# T.16
+ExG p <-> ExG ExG p
+# T.17
+(ExG (p -> AxX p)) -> (p -> ExG p)
+# T.18
+(AxF AxG p) -> AxG AxF p
+# T.20
+(AxX AxG p) <-> AxG AxX p
+# T.21
+ExX ExG p -> ExG ExX p
+# T.19
+ExG ((p v ExG q) & ( ExG p v q )) <-> (ExG p v ExG q)

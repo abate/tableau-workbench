@@ -1,7 +1,7 @@
 
 CONNECTIVES
-  And, "_&_",  One;
-  Or,  "_v_",  One;
+  And, "_&_",  Two;
+  Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
   Not, "~_",   Simple;

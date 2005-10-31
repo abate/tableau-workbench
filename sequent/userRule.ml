@@ -26,14 +26,16 @@ let rec branchcond context tl tLl bll =
             in
             List.for_all ( fun f -> f sbl hist varlist ) bl
     in
-    match bll with
-    |[] -> List.rev treelist
-    |[]::tl -> branchcond context treelist (Llist.tl tLl) tl
-    |hd::tl when (checknext context treelist hd) ->
+    (* we have to check tLl to take into account implicit backtracking *)
+    match bll,tLl with
+    |[],Empty -> List.rev treelist
+    |[],_ -> branchcond context treelist (Llist.tl tLl) []
+    |[]::btl,_ -> branchcond context treelist (Llist.tl tLl) btl
+    |hd::btl,_ when (checknext context treelist hd) ->
             (* Llist.tl forces the computation of the next node. if
             * the branch condition fails, the next node is not explored *)
-            branchcond context treelist (Llist.tl tLl) tl
-    | _ -> List.rev treelist
+            branchcond context treelist (Llist.tl tLl) btl
+    |_ -> List.rev treelist
 ;;
 
 let status s 
@@ -50,6 +52,7 @@ let status s
             (match l#elements with
             |[`String str] when s = str -> true
             |[`String _] -> false
+            |[] -> true
             |_ -> failwith "status: elements")
         |_ -> failwith "custom status: type mistmatch")
     with Not_found -> failwith "custom status: not found"
@@ -62,19 +65,28 @@ let is_closed = status "Closed";;
 let check node patternl historyl =
     let match_all node (pl, sl) hl =
         let (map, hist, varhist) = node#get in
+        (* principal formulae and sets enumeration *)
         let enum = match_node map (pl, sl) in
         let (enum, sbl, newmap) =
             let rec check_hist e =
-                try
-                    match Enum.get e with
-                    Some (sbl, ns) ->
-                        if List.exists (fun c -> not (c sbl hist [varhist])) hl then
-                            (* I raise FailedMatch and cach it below. sooner
-                             * or later the enum is going to be empty *)
-                            raise Partition.FailedMatch
-                          else (e, sbl, ns)
-                   | None -> (e, Data.Substlist.empty, map)
-                with Partition.FailedMatch -> check_hist e
+                (* here I filter the enum wrt the side conditions *)
+                let filtered_enum =
+                    Enum.filter (function sbl, ns ->
+                            not(List.exists (
+                                    fun c -> not (c sbl hist [varhist])
+                                ) hl
+                            )
+                    ) e
+                in
+                (* now filtered_enum contains only the enum that
+                 * respect the side conditions and I can build with
+                 * it the new context for the rule *)
+                try begin
+                    match Enum.get filtered_enum with
+                    |Some (sbl, ns) -> (filtered_enum, sbl, ns)
+                    |None -> raise Partition.FailedMatch (* no more choices *)
+                end with Partition.FailedMatch ->
+                    (Enum.empty (), Data.Substlist.empty, map)
            in check_hist enum
        in
        let newnode = node#set (newmap, hist, varhist) in
@@ -145,6 +157,11 @@ let down_implicit name context actionl historyl =
     let (enum, sbl, node) = context#get in
     let (map, hist, vars) = node#get in
     let (newsbl, newmap) =
+        (* enum is carefully constructed in check to
+         * take side conditions into account and since
+         * it is a lazy data structure, the conditions
+         * are computed only when needed. Enum.get force
+         * the computation *)
       match Enum.get enum with
         Some (sbl, ns) -> sbl, ns
       | None -> Data.Substlist.empty, map

@@ -1,7 +1,7 @@
 
 CONNECTIVES
-  And, "_&_",  One;
-  Or,  "_v_",  One;
+  And, "_&_",  Two;
+  Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
   Until, "_Un_", One;
@@ -200,8 +200,8 @@ let rec nnf_term f =
             and y = nnf_term term ( b )
             in term ( x Un y )
 
-    |term ( ~ Falsum ) -> const ( Verum )
-    |term ( ~ Verum ) -> const ( Falsum )
+    |term ( ~ Falsum ) -> term ( Verum )
+    |term ( ~ Verum ) -> term ( Falsum )
 
     |term ( Constant ) -> f
     |term ( ~ Constant ) -> f
@@ -280,7 +280,7 @@ TABLEAU
    A ||| B
 
   BACKTRACK [ uev := beta(uev(1), uev(2), Br) ]
-  BRANCH [ [ not_empty(uev(1)) ] ]  
+  BRANCH [ [ not_empty(uev(1)) ] ] 
   END
 
   RULE And

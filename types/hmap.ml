@@ -29,7 +29,10 @@ module Make(T: ValType) :
 
             val data = Hashtbl.create 7
             
-            method add p e = Hashtbl.replace data p e ; {< >}
+            method add p e =
+                let h = Hashtbl.copy data in
+                let _ = Hashtbl.replace h p e in
+                {< data = h >}
                 
             method find p = Hashtbl.find data p
             method mem p = Hashtbl.mem data p

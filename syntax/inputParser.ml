@@ -34,7 +34,7 @@ let add_muconn op1 op2 co =
 let add_const name =
     EXTEND
       expr_term: LEVEL "Simple"
-      [[ $name$ -> Constant (Basictype.nc,name) ]];
+      [[ $name$ -> Constant (Basictype.newcore 1 [|0|],name) ]];
     END
 ;;
 
@@ -50,7 +50,7 @@ GLOBAL : expr_term input_line;
     [ "One" LEFTA [ ]
     | "Two" RIGHTA [ ]
     | "Simple" NONA
-      [ x = LIDENT -> Atom(Basictype.nc,x)
+    [ x = LIDENT -> Atom(Basictype.newcore 1 [|0|],x)
       | "("; p = expr_term; ")" -> p ]
     ];
 

@@ -1,22 +1,38 @@
 -include ../Makefile.conf
 
-# ONLY __CMO__ FILES HERE !!!!!!!!!!!!!!
-# everything listed in pretargets gets removed by make clean!!!!!!!!!!!!
-#PRE_TARGETS := \
-#	tableau.cmo tableau.cmi inputParser.cmo inputParser.cmi \
-#
+define PROJ_tableau
+  USE_CAMLP4 = yes
+  SOURCES := tableau.ml
+  RESULT := tableau
+  export PACKS := str extlib twb.types
+endef
+export PROJ_tableau
 
-USE_CAMLP4 := yes
-PACKS := str extlib twb.types
+define PROJ_sequent
+  USE_CAMLP4 = yes
+  SOURCES := sequent.ml
+  RESULT := sequent
+  export PACKS := str extlib twb.types
+endef
+export PROJ_sequent
 
-SOURCES= tableau.ml inputParser.ml
+define PROJ_input
+  USE_CAMLP4 = yes
+  SOURCES := inputParser.ml
+  RESULT := inputParser
+  export PACKS := camlp4.gramlib str extlib twb.types
+endef
+export PROJ_input
 
-RESULT := twbintf
-TRASJ := *.annot *.cm*
+ifndef SUBPROJS
+  export SUBPROJS = tableau sequent input
+endif
 
-OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
-DOC_FILES := $(SOURCES)
+all: bcl inputncl
 
-all: byte-code-library
-	
--include $(OCAMLMAKEFILE)
+inputncl:
+	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=ncl SUBPROJS=input
+
+# Catch-all target will be applied to all subprojects automatically
+%:
+	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=$@

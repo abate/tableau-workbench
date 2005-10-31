@@ -1,0 +1,10 @@
+0: Dia p -> Dia p
+1: Dia p -> Box ( Box ~q v Dia q)
+2: ~( Dia p & Box ~ p )
+3: ~( Dia p & Dia ( Dia q & ~ Dia q) )
+4: Box (a -> b) -> (Box a -> Box b)
+5:( Box(p0 & p1)  <->  Box p0 & Box p1 )
+6:( Dia(p0 v p1)  <->  Dia p0 v Dia p1 )
+7:( ~ Box ~ p0  <-> Dia p0 )
+8: ( Box(p0 -> p1) -> Box p0 -> Box p1 )
+9: ~Box (p & ~p)

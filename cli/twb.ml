@@ -128,8 +128,12 @@ let exit_function t =
 ;;
 
 let main () =
+    let custom_options =
+        try (Option.get (!Logic.__options))
+        with Option.No_value -> []
+    in
     let _ =
-        try Arg.parse options file usage
+        try Arg.parse (options@custom_options) file usage
         with Arg.Bad s -> failwith s
     in 
     let _ = 
@@ -179,10 +183,10 @@ ENDIF
                     node 
                 in
                 let time = Timer.stop_timing start in
-                Printf.printf "%s\nResult: %s\n%s\n"
+                Printf.printf "%s\nResult: %s\n"
                 (Timer.to_string time)
-                (exit_function result)
-                (tree_to_string result)
+                (exit_function result);
+                flush_all ()
             with Timer.Timeout -> Printf.printf "Timeout elapsed\n"
         done
     with

@@ -1,28 +1,102 @@
 
 CONNECTIVES
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_-->_", One;
-  DImp, "_<-->_", One;
+  And, "_&_",  Two;
+  Or,  "_v_",  Two;
+  Imp, "_->_", One;
+  DImp, "_<->_", One;
   Not, "~_",   Simple;
   Box, "Box_", Simple;
-  Dia, "Dia_", Simple
+  Dia, "<>_", Simple;
+  Falsum, Const;
+  Verum, Const
 END
 
 let not_empty = function [] -> false | _ -> true
 
+let rec nnf_term f = 
+    match f with
+    |term ( a & b ) ->
+        let x = nnf_term a
+        and y = nnf_term b
+        in term ( x & y )
+
+    |term ( ~ ( a & b ) ) ->
+        let x = nnf_term term ( ~ a )
+        and y = nnf_term term ( ~ b )
+        in term ( x v y )
+
+    |term ( a v b ) ->
+            let x = nnf_term a
+            and y = nnf_term b
+            in term ( x v y )
+
+    |term ( ~ ( a v b ) ) ->
+            let x = nnf_term term ( ~ a )
+            and y = nnf_term term ( ~ b )
+            in term ( x & y )
+
+    |term ( a <-> b ) ->
+            let x = nnf_term term ( a -> b )
+            and y = nnf_term term ( b -> a )
+            in term ( x & y )
+
+    |term ( ~ ( a <-> b ) ) ->
+            let x = nnf_term term ( ~ (a -> b) )
+            and y = nnf_term term ( ~ (b -> a) )
+            in term ( x v y )
+
+    |term ( a -> b ) ->
+            nnf_term term ( (~ a) v b )
+
+    |term ( ~ (a -> b) ) ->
+            nnf_term term ( a & (~ b) )
+
+    |term ( ~ ~ a ) -> nnf_term a
+
+    |term ( ~ .a ) as f -> f
+    |term ( .a ) as f -> f
+
+    |term ( <> a ) -> 
+            let x = nnf_term a
+            in term ( <> x )
+            
+    |term ( ~ ( <> a ) ) -> 
+            let x = nnf_term ( term ( ~ a ) )
+            in term ( Box x )
+            
+    |term ( Box a ) -> 
+            let x = nnf_term a
+            in term ( Box x )
+            
+    |term ( ~ ( Box a ) ) -> 
+            let x = nnf_term ( term ( ~ a ) )
+            in term ( <> x )
+
+    |term ( ~ Falsum ) -> term ( Verum )
+    |term ( ~ Verum ) -> term ( Falsum )
+
+    |term ( Constant ) -> f
+    |term ( ~ Constant ) -> f
+
+    | _ -> failwith ("nnf_term"^(!Basictype.string_of_formula f))
+;;
+
+let neg_term = function term ( a ) -> term ( ~ a ) ;;
+let neg = Basictype.map neg_term ;;
+let nnf = Basictype.map nnf_term ;;
+let always () = true ;;
 TABLEAU
 
   RULE K1
-  { Dia A } ; Box X ; Dia Y ; Z
+  { <> A } ; Box X ; <> Y ; Z
   -----------------------------
-      A ; X || Dia Y ; Box X
+      A ; X || <> Y ; Box X
 
-  BRANCH [ not_empty(Dia Y) ]
+  BRANCH [ not_empty(<> Y) ]
   END
 
   RULE K
-  { Dia A } ; Box X ; Z
+  { <> A } ; Box X ; Z
   ----------------------
     A ; X
   END
@@ -46,18 +120,21 @@ TABLEAU
   END
 
   RULE Imp 
-  { A --> B }
+  { A -> B }
  ============
     ~ A | B
   END
 
   RULE DImp 
-  { A <--> B }
+  { A <-> B }
  ==================
-  A --> B | B --> A
+  A -> B | B -> A
   END
 
 END
+
+PP := nnf
+NEG := neg
 
 let strategy = new Strategy.strategy "start";;
 let _ = 
@@ -67,7 +144,7 @@ let _ =
     strategy#add "i2"    (R(new dimp_rule)) "i2" "b" ;
     strategy#add "b"     (R(new id_rule))   "b" "s1";
     strategy#add "s1"    S                  "start" "d" ;
-    strategy#add "d"     (R(new k1_rule))    "d" "s2";
+    strategy#add "d"     (R(new k_rule))    "d" "s2";
     strategy#add "s2"    S                  "start" "end" ;
     strategy#add "end"   E                  "end" "end"
 ;;
