@@ -1,0 +1,3 @@
+version="1.4"
+archive(byte)="extLib.cma"
+archive(native)="extLib.cmxa"

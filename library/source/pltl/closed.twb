@@ -18,3 +18,4 @@ G(a -> X a) -> (a -> G a)
 ( (F p0)  <-> (Verum Un p0) )
 ( F(p1 v p2) <-> ( F p1 v F p2 ) )
 ( ( F p0 ) <-> ( p0 v X F p0 )  )
+(G(p0 Un p1) & G(p0 -> p2) & G(p1 -> p2)) -> G p2

@@ -1,11 +1,12 @@
 include ../Makefile.conf
 
 SOURCES := \
+	sbl.ml \
 	nodePattern.ml \
 	build.ml \
 	partition.ml \
 	ruleContext.ml \
-	sbl.ml \
+	userStrategy.ml \
 	datatype.ml \
 	outputBroker.ml \
 	userRule.ml \

@@ -29,79 +29,75 @@ module Make(T: ValType) :
     end
 = struct
     
-    module FMap = Map.Make (
-        struct
-            type t = string
-            let compare = compare
-        end
-    )
-
-    let copy m = FMap.fold (
-        fun k v m' -> FMap.add k (v#copy) m'
-    ) m FMap.empty
+    let copy h =
+        Hashtbl.fold (fun k v tbl ->
+            Hashtbl.add tbl k (v#copy) ; tbl
+        ) h (Hashtbl.create (Hashtbl.length h))
 
     class map matchpatt =
         object(self)
 
-            val data : T.c FMap.t = FMap.empty
+            val data : (string,T.c) Hashtbl.t = Hashtbl.create 10
 
             (* this method pattern match the formula and return a string  *)
             method private pattern = matchpatt
             
+            method private addel fm e =
+                let p = self#pattern e in
+                let s = try Hashtbl.find fm p with Not_found -> T.make () in 
+                let _ = Hashtbl.replace fm p (s#add e)
+                in fm 
+ 
             method addlist ?(id) l =
                 let newdata = 
                     match id with
                     |None | Some ("") ->
-                            List.fold_left (
-                                fun fm e -> self#addel fm e
-                            ) data l
+                            List.fold_left (fun fm e ->
+                                self#addel fm e
+                            ) (copy data) l
                     |Some(p) ->
                             let s =
-                                try FMap.find p data
+                                try Hashtbl.find data p
                                 with Not_found -> T.make ()
                             in
                             let s' = List.fold_left (
                                 fun s e -> s#add e
                             ) s l
-                            in FMap.add p s' (FMap.remove p data)
+                            in
+                            let data' = copy data in
+                            let _ = Hashtbl.replace data' p s' 
+                            in data'
                 in {< data = newdata >}
 
-            method private addel fm e =
-                let p = self#pattern e in
-                let s = try FMap.find p fm with Not_found -> T.make ()
-                in FMap.add p (s#add e) (FMap.remove p fm)
+            method add e = {< data = self#addel (copy data) e >}
 
-            (* insertion is O(log n) *)
-            method add e = {< data = self#addel data e >}
-
-            (* given a pattern return an element list *)
-            (* find is O(log n) *)
             method get = function
-            |"" -> FMap.fold (fun _ v s -> s#addlist (v#elements)) data (T.make ())
-            |_ as p ->
-                    try (FMap.find p data)
-                    with Not_found -> T.make ()
+            |"" -> Hashtbl.fold (fun _ v s -> s#addlist (v#elements)) data (T.make ())
+            |_ as p -> try (Hashtbl.find data p) with Not_found -> T.make ()
 
             method private filter f p =
-                try (FMap.find p data)#filter f
+                try (Hashtbl.find data p)#filter f
                 with Not_found -> T.make ()
             
-            (* deletions is o(log n) *)
             method del e =
                 try let p = (self#pattern e) in
-                    let s = (FMap.find p data)#del e in
-                    {< data = FMap.add p s (FMap.remove p data) >}
+                    let s = (Hashtbl.find data p)#del e in
+                    let data' = copy data in
+                    let _ = Hashtbl.replace data' p s
+                    in {< data = data' >}
                 with Not_found -> {< >}
             
             method replace p s = 
-                {< data = FMap.add p s (FMap.remove p data) >}
+                let data' = copy data in
+                let _ = Hashtbl.replace data' p s in
+                {< data = data' >}
                 
-            (* copy is o(n) *)
-            method copy = {< data = (copy data) >}
-            method empty = {< data = FMap.empty >}
+            method copy = {< data = copy data >}
+
+            method empty = {< data = Hashtbl.create 10 >}
 
             method to_string = 
-                FMap.fold (
+                Hashtbl.fold (
                     fun k v s ->
                         if s = "" then Printf.sprintf "%s" (v#to_string)
                         else if (v#to_string) = "" then s

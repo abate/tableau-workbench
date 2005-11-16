@@ -21,13 +21,8 @@ HISTORIES
   status : String
 END
 
-(*
-VARIABLES
-  uev : Set.set; 
-  status : String;
-  n : Int default 0
-END
-*)
+(* debug flag *)
+let debug = ref false ;;
 
 let add (l,h) = h#addlist l
 let notin (l,h) = not(h#mem (List.hd l))
@@ -45,6 +40,12 @@ let setclose br = (new Setoftermint.set)#add (termfalse, br#length) ;;
 
 let beta (uev1, uev2, br) =
     let m = (br#length - 1) in
+    let _ =
+        if !debug then
+        Printf.printf "BETA\nm:%d\nuev1: %s\nuev2 : %s\nBr: %s\n"
+        m uev1#to_string uev2#to_string br#to_string
+        else ()
+    in
 
     if uev1#is_empty || uev2#is_empty then (new Setoftermint.set)
     
@@ -69,18 +70,30 @@ let beta (uev1, uev2, br) =
     List.for_all ( fun (_,n) -> n > m ) uev1#elements
     then uev2
     
-    else uev1#intersect uev2
+    else
+        (new Setoftermint.set)#addlist(
+            ExtLib.List.filter_map (fun (x,nx) ->
+                try
+                    let (z,nz) =
+                        List.find (fun (y,_) -> y = x)
+                        uev1#elements
+                    in Some(x,min nx nz)
+                with Not_found -> None
+            ) uev2#elements
+        )
+        (* uev1#intersect uev2 *)
 ;;
 
-(* we effectlyvely use a list, not a queue, so we need to reverse
- * the list to look up the index *)
-let rec index n s l =
-    if List.length l > 0 then
-        if s#equal (List.nth l n) then n
-        else
-            if n < ((List.length l) - 1) then index (n+1) s l
-            else failwith "index: core not found"
-    else failwith "index: list empty"
+exception Stop of int ;;
+let index br s =
+    let i = ref 0 in
+    try begin
+        List.iter (fun e ->
+            if s#equal e then raise ( Stop !i) else incr i
+        ) br#elements;
+        failwith "index: list empty"
+        end
+    with Stop(n) -> n
 ;;
 
 let loop_check (xa,xb,z,br) =
@@ -90,13 +103,7 @@ let loop_check (xa,xb,z,br) =
 
 let setuev (xa,xb,z,ev,br) =
     let set = (new Set.set)#addlist (xa@xb@z) in
-    let i = index 0 set (List.rev br#elements) in
-    let rec buildset counter bl acc =
-        if counter < ((List.length bl) - 1) then
-            let bl_i = (List.nth bl counter) in
-            buildset (counter+1) bl (acc@(bl_i#elements))
-        else acc
-    in
+    let i = index br set in
     let loopset = ev#elements in 
     let uev =
         (new Setoftermint.set)#addlist (
@@ -108,8 +115,9 @@ let setuev (xa,xb,z,ev,br) =
             ) (xa@xb))
         )
     in
-(*    print_string "SetUev: "; print_int i; print_newline ();
-    print_endline (uev#to_string); *)
+    if !debug then
+    Printf.printf "SetUev: %d\n%s\n" i (uev#to_string)
+    else () ;
     uev
 ;;
 
@@ -218,7 +226,7 @@ TABLEAU
   RULE Id
   { A } ; { ~ A } ; Z
   ===============
-     Axiom
+     Stop
 
   BACKTRACK [ uev := setclose (Br) ]
 
@@ -227,7 +235,7 @@ TABLEAU
   RULE False
   Falsum ; Z
   ===============
-     Axiom
+     Stop
 
   BACKTRACK [ uev := setclose (Br) ]
 
@@ -236,7 +244,7 @@ TABLEAU
   RULE Loop
   { X A } ; X B ; Z
   =================
-       Axiom
+       Stop
 
   BACKTRACK [ uev := setuev(X A, X B, Z, Ev, Br) ]
 
@@ -244,7 +252,7 @@ TABLEAU
 
   RULE Next
   { X A } ; X B ; Z
-  -----------------
+  =================
       A ; B
       
   COND [ loop_check(X A, X B, Z, Br) ]
@@ -310,14 +318,14 @@ let _ =
     strategy#add "d"     (R(new next_rule)) "d" "s2";
     strategy#add "s2"    S                  "start" "meta" ;
     strategy#add "meta"  (R(new loop_rule)) "end" "end" ;
-    strategy#add "end"   E                  "end" "end"
+    strategy#add "end"   E__                "end" "end"
 ;;
 
 let exit (uev) =
     match uev#elements with
     |(termfalse,_)::[] -> "Closed"
     |[] -> "Open"
-    |_ -> "Open"
+    |_ -> "Closed"
 ;;
 
 PP := nnf
@@ -325,3 +333,8 @@ NEG := neg
 EXIT := exit (uev(1))
 
 STRATEGY (A)
+
+OPTIONS
+    ("-D", (Arg.Set debug), "Enable debug")
+END
+

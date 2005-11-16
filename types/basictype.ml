@@ -39,6 +39,11 @@ type formula =
     |AxG of core * formula
     |AxF of core * formula
 
+    (* lck *)
+    |EDia of core * formula
+    |EBox of core * formula
+    |CDia of core * formula
+    |CBox of core * formula
 type label = int list
 
 type mixtype = [
@@ -98,6 +103,11 @@ let rec metamark f = function
     |AxG(c,f1)       -> AxG(f c,f1)
     |AxF(c,f1)       -> AxF(f c,f1)
 
+    |CDia(c,f1)       -> CDia(f c,f1)
+    |CBox(c,f1)       -> CBox(f c,f1)
+    |EDia(c,f1)       -> EDia(f c,f1)
+    |EBox(c,f1)       -> EBox(f c,f1)
+
 let mark_formula f   = ( metamark mark_core f);;
 let unmark_formula f = ( metamark unmark_core f);;
 
@@ -128,6 +138,11 @@ let rec is_marked = function
     |ExF(c,_)
     |AxG(c,_)
     |AxF(c,_)
+
+    |CDia(c,_)    
+    |CBox(c,_)    
+    |EDia(c,_)    
+    |EBox(c,_)    
 
     -> is_marked_core c
 ;;
@@ -195,6 +210,10 @@ let rec default_printer = function
     |AxG(c,f) -> Printf.sprintf "(AxG %s)" (default_printer f)
     |AxF(c,f) -> Printf.sprintf "(AxF %s)" (default_printer f)
 
+    |CDia(c,f) -> Printf.sprintf "(CDia %s)" (default_printer f)
+    |CBox(c,f) -> Printf.sprintf "(CBox %s)" (default_printer f)
+    |EDia(c,f) -> Printf.sprintf "(EDia %s)" (default_printer f)
+    |EBox(c,f) -> Printf.sprintf "(EBox %s)" (default_printer f)
 ;;
 
 let string_of_formula = ref default_printer ;;

@@ -5,7 +5,7 @@ module type S =
     type map (* map type *)
     type at (* node pattern type *)
     type hist
-    type sbl = t Data.Substlist.t
+    type sbl 
     val build_node : map -> sbl -> hist -> hist -> at -> map
     end
 ;;
@@ -19,7 +19,7 @@ module Make(P: NodePattern.S) =
     type map = P.map
     type at = P.action list
     type hist = P.hist
-    type sbl = t Data.Substlist.t
+    type sbl = P.sbl
     
     let build_node map sbl hist var al =
                     List.fold_left (fun (m : map) a ->

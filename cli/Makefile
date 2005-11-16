@@ -12,6 +12,16 @@ export PACKS := dynlink unix extlib str twb.parser twb.core twb.types twb.sequen
 endef
 export PROJ_twbbc
 
+define PROJ_twbbcl
+USE_CAMLP4 = yes
+SOURCES := \
+	logic.ml \
+	timer.ml 
+RESULT := twbcli
+export PACKS := unix extlib str twb.parser twb.core twb.types twb.sequent
+endef
+export PROJ_twbbcl
+
 define PROJ_twbncl
 USE_CAMLP4 = yes
 PPFLAGS = -DNATIVE
@@ -27,10 +37,13 @@ export PROJ_twbncl
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)
 
-all: twbbc twbncl
+all: twbbcl twbncl
 
 twbbc:
 	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=bc SUBPROJS=twbbc
+
+twbbcl:
+	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=bcl SUBPROJS=twbbcl
 
 twbncl:
 	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=ncl SUBPROJS=twbncl

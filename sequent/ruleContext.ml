@@ -4,7 +4,7 @@ module type S =
     type t
     type node
     type map 
-    type sbl = t Data.Substlist.t
+    type sbl 
     type enum = ( sbl * map ) Enum.t
     type ct = enum * sbl * node
     type context = ct Rule.ct
@@ -25,7 +25,7 @@ module Make (N: Node.S) (P: NodePattern.S) =
             val data = (e,s,n)
             method set e = {< data = e >}
             method get = data
-            method is_valid = not(Data.Substlist.is_empty s)
+            method is_valid = not(s#is_empty)
         end
 
     let newcontext t = new context t

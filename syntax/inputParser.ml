@@ -5,6 +5,7 @@ open Genlex
 
 Grammar.warning_verbose := false ;;
 Grammar.error_verbose := true ;;
+let _loc = Token.dummy_loc ;;
 
 let gram = Grammar.gcreate (Plexer.gmake ());;
 let expr_term = Grammar.Entry.create gram "expr_term";;

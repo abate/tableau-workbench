@@ -25,7 +25,7 @@ let patt_table  = Hashtbl.create 50 ;;
 (* given a patter, returns an pattern where all lid as
  * substituted with _ *)
 let rec remove_lid p = 
-    let loc = Token.dummy_loc in
+    let _loc = Token.dummy_loc in
     match p with
     | <:patt< Atom (_,_) >> -> <:patt< _ >>
     | <:patt< Constant($lid:_$,$str:s$) >> when Hashtbl.mem const_table s -> 
@@ -34,7 +34,7 @@ let rec remove_lid p =
         let l = List.map (remove_lid) pl in
         <:patt< $uid:s$ ( $list:l$ ) >>
     | <:patt< $lid:s$ >> -> <:patt< _ >>
-    | <:patt< $int:i$ >> -> <:patt< _ >>
+    | <:patt< $int:i$ >> -> <:patt< $int:i$ >>
     | <:patt< _ >> -> <:patt< _ >>
     | _ as p ->
             failwith
@@ -56,7 +56,7 @@ let add_patt_table l p =
         | _ -> Hashtbl.add patt_table patt (s,l); s
 ;;    
 
-let list_to_exprlist loc l =
+let list_to_exprlist _loc l =
     List.fold_right (
         fun x l -> <:expr< [ $x$ :: $l$ ] >>
     ) l <:expr< [] >>
@@ -198,7 +198,7 @@ let is_variable = function
 ;;
 
 (* generate the code pattern match a set of formulae *)
-let expand_set loc ?cond formula l =
+let expand_set _loc ?cond formula l =
     let newid = new_id "exp_set" in
     let is_variable = function
         | <:patt< $lid:a$ >> -> true
@@ -242,7 +242,7 @@ let expand_set loc ?cond formula l =
                     let b = [<:expr<$str:a$>>;<:expr<$lid:("l"^(String.lowercase a))$ >>] in
                     <:expr< ( $list:b$ ) >>
             ) l 
-        in list_to_exprlist loc l
+        in list_to_exprlist _loc l
     in
     let ex6 = 
         if is_variable formula then
@@ -271,13 +271,13 @@ let expand_set loc ?cond formula l =
                         ]
                     ]
                 ) $ex4$ fl
-                in Sbl.add sbl $ex5$
+                in sbl#add $ex5$
             else raise FailedMatch
     >>)
 ;;
 
 (* generate the code to pattern match a principal formula *)
-let expand_single loc ?cond formula l =
+let expand_single _loc ?cond formula l =
     let newid = new_id "exp_single" in
     let is_variable = function
         | <:patt< $lid:a$ >> -> true
@@ -290,7 +290,7 @@ let expand_single loc ?cond formula l =
                     <:expr< `Formula (Atom (nc,$lid:get_match 1 a$)) >>
             |a -> <:expr< `Formula $lid:String.lowercase a$ >>
         ) l 
-        in list_to_exprlist loc l
+        in list_to_exprlist _loc l
     in
     let ex2 =
         let l = List.map (
@@ -299,7 +299,7 @@ let expand_single loc ?cond formula l =
                     <:expr< $str: (get_match 1 a)$ >>
             |a -> <:expr< $str: a$>>
         ) l
-        in list_to_exprlist loc l
+        in list_to_exprlist _loc l
     in
     let ex3 =
         if Option.is_none cond then <:expr< True >>
@@ -311,7 +311,7 @@ let expand_single loc ?cond formula l =
         <:expr<
             List.map2 (fun [ f ->
                 fun [ s -> 
-                    try if Sbl.mem sbl s f then [] else raise FailedMatch
+                    try if sbl#mem s f then [] else raise FailedMatch
                     with [ Not_found -> [f] ] 
                 ]
             ]) $ex1$ $ex2$ >>
@@ -332,15 +332,15 @@ let expand_single loc ?cond formula l =
         value $lid:newid$ sbl fl =
             let __rec = fun [ $list:l$ ] in
             if $ex3$ then
-                (* this List.hd cannot be empty because it is a principal
-                 * formula *)
-                Sbl.add sbl (List.combine $ex2$ (__rec (List.hd fl)))
+                (* this is wrong when I have complex formulae *)
+                if fl = [] then sbl#add (List.combine $ex2$ [[]])
+                else sbl#add (List.combine $ex2$ (__rec (List.hd fl)))
             else raise FailedMatch
     >>)
 ;;
 
 (* generate the code to pattern match a generic variable *)
-let expand_set_anon loc ?cond formula a =
+let expand_set_anon _loc ?cond formula a =
     let newid = new_id "exp_anon" in
     let ex1 =
         if Option.is_none cond then <:expr< True >>
@@ -349,13 +349,14 @@ let expand_set_anon loc ?cond formula a =
     (newid,
     <:str_item< value $lid:newid$ sbl fl =
         if $ex1$ then 
-            Sbl.add sbl [($str: a$,fl)]
+            sbl#add [($str: a$,fl)]
         else raise FailedMatch
     >>)
 ;;
 
 type cond_t =
-    | Single
+    | SingleZero
+    | SingleOne
     | Const
     | NoCond
     | Cond of string
@@ -374,7 +375,7 @@ and bt = (string list * ( MLast.expr * act_t ) ) list list
 
 
 (* this is the monster that builds formulae *)
-let expand_build_formula loc (sl,formula) newid =
+let expand_build_formula _loc (sl,formula) newid =
     let ex1 = 
         let i = ref 0 in
         let l = List.map (fun a ->
@@ -394,7 +395,7 @@ let expand_build_formula loc (sl,formula) newid =
             if Hashtbl.mem hist_table a then
                 <:expr< hist#find $str: a$ >>
             else
-                <:expr< Data.Substlist.find $str:a$ sbl >>
+                <:expr< sbl#find $str:a$ >>
         ) (List.unique sl) in <:expr< ( $list:l$ ) >>
     in
     let ex4 = 
@@ -458,7 +459,7 @@ let expand_build_formula loc (sl,formula) newid =
     >>
 ;;
 
-let expand_build_formula_var loc ?(den=false) (sl,formula) newid = 
+let expand_build_formula_var _loc ?(den=false) (sl,formula) newid = 
     (* there must be exactly one element in this list *)
     let ex3 =
         match sl with
@@ -474,7 +475,7 @@ let expand_build_formula_var loc ?(den=false) (sl,formula) newid =
                         >>
                 | _ -> failwith "expand_build_formula_var"
              with Not_found ->
-                 <:expr< Data.Substlist.find $str:a$ sbl >>
+                 <:expr< sbl#find $str:a$ >>
             end
         | _ -> failwith "expand_build_formula_var"
     in
@@ -518,16 +519,35 @@ let expand_build_formula_var loc ?(den=false) (sl,formula) newid =
             |_ -> failwith ($str:newid$^" type node allowed") ]
         with
         [Not_found -> failwith ($str:newid$^" something wrong")
-        |Failure "nth" -> $ex4$ ]
+        |ExtList.List.Invalid_index _ -> $ex4$ ]
     >>
 ;;
+
+let expand_constant _loc p l =
+    let newid = new_id "exp_constant" in
+    let s = List.hd l in
+    let ex =
+        <:str_item<
+        value $lid:newid$ sbl fl =
+            let f =
+                try List.find (fun [ `Formula $p$ -> True | _ -> False ] ) fl
+                with [ Not_found -> raise FailedMatch ]
+            in sbl#add [ ($str:s$,[f]) ]
+        >>
+    in (newid,ex)
+;;
+
+let expand_constant_expression _loc formula =
+    <:expr< [ `Formula $formula$ ] >>
+;;
+
 
 type args_t =
     |Var
     |Expr
     |Term
 
-let expand_variable_list loc s newid =
+let expand_variable_list _loc s newid =
     match Hashtbl.find hist_table s with
     | (st,_,"Variable",_) ->
             <:expr<
@@ -542,7 +562,7 @@ let expand_variable_list loc s newid =
     | _ -> failwith "expand_variable_list"
 ;;
 
-let expand_condlistel loc (act,func,args) =
+let expand_condlistel _loc (act,func,args) =
     let newid = new_id "history_condition" in
     let (ex2, ex3) =
         List.split
@@ -550,14 +570,16 @@ let expand_condlistel loc (act,func,args) =
                 |([],formula,Expr) -> (<:expr< $formula$ >>,None)
                 |([s],_,Var) ->
                         let newid = new_id "build" in
-                        let ex = expand_variable_list loc s newid in
+                        let ex = expand_variable_list _loc s newid in
                         (<:expr< $lid:newid$ >>, Some(<:patt<$lid:newid$>>,ex))
                 |(sl,formula,Term) ->
                     let newid = new_id "build" in
                     let ex = 
-                        if is_variable (sl,formula) then
-                            expand_build_formula_var loc (sl,formula) newid
-                        else expand_build_formula loc (sl,formula) newid
+                        if sl = [] then
+                            expand_constant_expression _loc formula
+                        else if is_variable (sl,formula) then
+                            expand_build_formula_var _loc (sl,formula) newid
+                        else expand_build_formula _loc (sl,formula) newid
                     in (<:expr< $lid:newid$ >>,Some(<:patt<$lid:newid$>>,ex))
                 |_ -> failwith "expand_condlistel"
             ) args
@@ -573,42 +595,26 @@ let expand_condlistel loc (act,func,args) =
     <:str_item< value $lid:newid$ sbl hist varl = $ex5$ >>)
 ;;
 
-let expand_condlist loc cl =
+let expand_condlist _loc cl =
     if Option.is_none cl then ([],[])
     else
         let (idl,strl) =
             List.split (
                 List.map (fun a ->
-                    expand_condlistel loc a
+                    expand_condlistel _loc a
                 ) (Option.get cl)
             )
         in (idl, strl)
 ;;
 
-let expand_constant loc p l =
-    let newid = new_id "exp_constant" in
-    let s = List.hd l in
-    let ex =
-        <:str_item<
-        value $lid:newid$ sbl fl =
-            let f =
-                try List.find (fun [ `Formula $p$ -> True | _ -> False ] ) fl
-                with [ Not_found -> raise FailedMatch ]
-            in Sbl.add sbl [ ($str:s$,[f]) ]
-        >>
-    in (newid,ex)
-;;
-
-let expand_constant_expression loc formula =
-    <:expr< [ `Formula $formula$ ] >>
-;;
-
-let expand_rule_num loc (stringlist,formulalist) cl =
-    let pl = ref [] in
+let expand_rule_num _loc (stringlist,formulalist) cl =
+    let plone = ref [] in
+    let plzero = ref [] in
     let sl = ref [] in
     let add_pattlist = function
         |_,"" -> ()
-        |Single,s | SingCond(_),s | Const,s ->  pl := !pl@[s]
+        |SingleZero,s -> plzero := !plzero@[s]
+        |SingleOne,s |SingCond(_),s |Const,s ->  plone := !plone@[s]
         |_,s -> sl := !sl@[s]
     in
     let str_items = 
@@ -618,17 +624,18 @@ let expand_rule_num loc (stringlist,formulalist) cl =
              * local side conditions *)
             let (id,exp) = 
                 match c,p with
-                |Single,_ -> expand_single loc p l
-                |Const,_ -> expand_constant loc p l
-                |SingCond(c),_ -> expand_single loc ~cond:c p l
+                |SingleOne,_ -> expand_single _loc p l
+                |SingleZero,_ -> expand_single _loc p l
+                |Const,_ -> expand_constant _loc p l
+                |SingCond(c),_ -> expand_single _loc ~cond:c p l
                 
                 (* XXX: List.hd can throw an exception ... *)
                 |Cond(c),<:patt< $lid:_$ >> ->
-                        expand_set_anon loc ~cond:c p (List.hd l)
-                |_,<:patt< $lid:_$ >> -> expand_set_anon loc p (List.hd l)
+                        expand_set_anon _loc ~cond:c p (List.hd l)
+                |_,<:patt< $lid:_$ >> -> expand_set_anon _loc p (List.hd l)
                         
-                |Cond(c),_ -> expand_set loc ~cond:c p l
-                |_ -> expand_set loc p l
+                |Cond(c),_ -> expand_set _loc ~cond:c p l
+                |_ -> expand_set _loc p l
             in
             (* add the pattern to a hashtable used to build the matchpattern
              * function *)
@@ -660,27 +667,30 @@ let expand_rule_num loc (stringlist,formulalist) cl =
             <:str_item< declare $list:[exp;pattexp]$ end>>
         ) stringlist formulalist
     in
-    let pl = list_to_exprlist loc
-        (List.map (fun e -> <:expr< $lid:e$ >> ) !pl )
+    let plone = list_to_exprlist _loc 
+        (List.map (fun e -> <:expr< $lid:e$ >> ) !plone )
     in
-    let sl = list_to_exprlist loc
+    let plzero = list_to_exprlist _loc 
+        (List.map (fun e -> <:expr< $lid:e$ >> ) !plzero )
+    in
+    let sl = list_to_exprlist _loc 
         (List.map (fun e -> <:expr< $lid:e$ >> ) !sl )
     in
-    let (condidl, condstrl) = expand_condlist loc cl in
-    let cl = list_to_exprlist loc condidl in
-    let l = <:expr< UserRule.check node ( $list:[pl;sl]$ ) $cl$ >>
+    let (condidl, condstrl) = expand_condlist _loc cl in
+    let cl = list_to_exprlist _loc condidl in
+    let l = <:expr< UserRule.check name node ( $list:[plzero;plone;sl]$ ) $cl$ >>
     in (l, str_items@condstrl)
 ;;
 
 (* this function expand the function to build a new denominator *)
-let expand_action loc sl (formula,action) = 
+let expand_action _loc sl (formula,action) = 
     let newid = new_id "exp_action" in
     let ex = 
         if sl = [] then
-            expand_constant_expression loc formula
+            expand_constant_expression _loc formula
         else if is_variable (sl,formula) then
-            expand_build_formula_var loc ~den:true (sl,formula) newid
-        else expand_build_formula loc (sl,formula) newid
+            expand_build_formula_var _loc ~den:true (sl,formula) newid
+        else expand_build_formula _loc (sl,formula) newid
     in
     (* if the pattern is just a variable the function to implement the action is
      * much simpler and we have a special case for it *)
@@ -694,7 +704,7 @@ let expand_action loc sl (formula,action) =
 
 (* this function expand the arguments and the function to 
  * execute side actions (history manipulation) for one denominator *)
-let expand_actionlistel loc (act,func,args) =
+let expand_actionlistel _loc (act,func,args) =
     let newid = new_id "history_action" in
     let (ex2,ex3) =
         List.split
@@ -702,14 +712,16 @@ let expand_actionlistel loc (act,func,args) =
                 |([],formula,Expr) -> (<:expr< $formula$ >>,None)
                 |([s],_,Var) -> 
                         let newid = new_id "build" in
-                        let ex = expand_variable_list loc s newid in
+                        let ex = expand_variable_list _loc s newid in
                         (<:expr< $lid:newid$ >>, Some(<:patt<$lid:newid$>>,ex))
                 |(sl,formula,Term) ->
                     let newid = new_id "build" in
                     let ex = 
-                        if is_variable (sl,formula) then
-                            expand_build_formula_var loc (sl,formula) newid
-                        else expand_build_formula loc (sl,formula) newid
+                        if sl = [] then
+                            expand_constant_expression _loc formula
+                        else if is_variable (sl,formula) then
+                            expand_build_formula_var _loc (sl,formula) newid
+                        else expand_build_formula _loc (sl,formula) newid
                     in (<:expr< $lid:newid$ >>,Some(<:patt<$lid:newid$>>,ex))
                 | _ -> failwith "expand_actionlistel"
             ) args
@@ -752,7 +764,7 @@ let expand_actionlistel loc (act,func,args) =
     <:str_item< value $lid:newid$ sbl hist varl = $ex5$ >>)
 ;;
 
-let expand_actionlist loc dl hl =
+let expand_actionlist _loc dl hl =
     if Option.is_none hl then
         (* XXX: horrible way to make sure to have a
          * the same number of history actions and den actions *)
@@ -763,7 +775,7 @@ let expand_actionlist loc dl hl =
                 List.map (fun al ->
                     List.split (
                         List.map (fun a ->
-                            expand_actionlistel loc a
+                            expand_actionlistel _loc a
                         ) al
                     )
                 ) (Option.get hl)
@@ -771,7 +783,7 @@ let expand_actionlist loc dl hl =
         in (idl, List.flatten strl)
 ;;
 
-let expand_branchlist loc dl bll =
+let expand_branchlist _loc dl bll =
     if Option.is_none bll then
         (* XXX: horrible way to make sure to have a
          * the same number of history actions and den actions *)
@@ -782,7 +794,7 @@ let expand_branchlist loc dl bll =
                 List.map (fun al ->
                     List.split (
                         List.map (fun a ->
-                            expand_condlistel loc a
+                            expand_condlistel _loc a
                         ) al
                     )
                 ) (Option.get bll)
@@ -790,26 +802,26 @@ let expand_branchlist loc dl bll =
         in (idl, List.flatten strl)
 ;;
 
-let expand_sythlist loc bt =
+let expand_sythlist _loc bt =
     if Option.is_none bt then ([], [])
     else
         let (idl,strl) =
             List.split (
                 List.map (fun a ->
-                    expand_actionlistel loc a 
+                    expand_actionlistel _loc a 
                 ) (Option.get bt)
             )
         in (idl, strl)
 ;;
 
-let expand_rule_den loc t dl hl bll bt =
+let expand_rule_den _loc t dl hl bll bt =
     let expand dl tl hl =
         let is_axiom = function
-            | <:expr< $lid:"axiom"$ >> -> true
+            | <:expr< $lid:"stop"$ >> -> true
             |_ -> false
         in
         let is_reserved = function
-            | <:expr< $lid:"axiom"$ >>
+            | <:expr< $lid:"stop"$ >>
             | <:expr< $lid:"close"$ >>
             | <:expr< $lid:"unsat"$ >> 
             | <:expr< $lid:"open"$ >>
@@ -832,7 +844,7 @@ let expand_rule_den loc t dl hl bll bt =
                 List.split (List.filter_map (fun (sl,(f,act)) ->
                     if is_reserved f then None
                     else
-                        let (id,exp) = expand_action loc sl (f,act) in
+                        let (id,exp) = expand_action _loc sl (f,act) in
                         let s = new_id "action" in
                         let pattexp =
                             <:str_item<
@@ -845,23 +857,23 @@ let expand_rule_den loc t dl hl bll bt =
                     ) dl
                 )
             in
-            let al = list_to_exprlist loc al 
+            let al = list_to_exprlist _loc al 
             in (al,strld)
         in
-        let (actidl, actstrl) = expand_actionlist loc (dl::tl) hl in
+        let (actidl, actstrl) = expand_actionlist _loc (dl::tl) hl in
         let (firstal,strld) = __exp dl in
         (* first node of the action list *)
-        let firsthl = list_to_exprlist loc (List.hd actidl) in
+        let firsthl = list_to_exprlist _loc (List.hd actidl) in
         let h = <:expr< (n,$firstal$,$firsthl$) >> in
         let (nextal,strl) = List.split (
             List.map2(fun dl hl ->
                 let (al,strld) = __exp dl in
-                let hl = list_to_exprlist loc hl in 
+                let hl = list_to_exprlist _loc hl in 
                 (<:expr< (n#copy,$al$,$hl$) >>, strld)
             ) tl (List.tl actidl)
         ) in
         (* all the others *)
-        let tl = list_to_exprlist loc nextal in
+        let tl = list_to_exprlist _loc nextal in
         let exp = 
             (* if the pattern contain a keyword and the tail is empty then
              * it must be an axiom. *)
@@ -904,64 +916,70 @@ let expand_rule_den loc t dl hl bll bt =
         in
         (exp,List.flatten (strld::strl)@actstrl)
     in
-    let (sythidl, synthstrl) = expand_sythlist loc bt in
+    let (sythidl, synthstrl) = expand_sythlist _loc bt in
     let openrule = <:expr< UserRule.is_open >> in
     let closerule = <:expr< UserRule.is_closed >> in
     match dl,t with
+    (* <> a ; [] x --- a ; x *)
     |Forall (dl::[]),NotInv ->
             let (exp,strl) = expand dl [] hl in
-            let (branchidl, branchstrl) = expand_branchlist loc [dl] bll in
+            let (branchidl, branchstrl) = expand_branchlist _loc [dl] bll in
             let bidl =
                 match branchidl with
-                |[] -> [ list_to_exprlist loc [openrule] ]
-                |_ -> List.map (fun l -> list_to_exprlist loc (openrule::l) ) branchidl
+                |[] -> [ list_to_exprlist _loc [openrule] ]
+                |_ -> List.map (fun l -> list_to_exprlist _loc (openrule::l) ) branchidl
             in
             let up =
                 <:expr< UserRule.up_explore_simple context treelist 
-                $list_to_exprlist loc sythidl$ $list_to_exprlist loc bidl$ >>
+                $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
             in (up ,exp, strl@synthstrl@branchstrl)
-    |Exists (dl::tl),NotInv ->  
+    (* <> a ; [] x ; <> y ; z ==== a ; b || <> y ; [] x *)
+    |Exists (dl::tl),Inv ->  
             let (exp,strl) = expand dl tl hl in
-            let (branchidl, branchstrl) = expand_branchlist loc (dl::tl) bll in
+            let (branchidl, branchstrl) = expand_branchlist _loc (dl::tl) bll in
             let bidl = List.map (
-                fun l -> list_to_exprlist loc (openrule::l) ) branchidl
+                fun l -> list_to_exprlist _loc (openrule::l) ) branchidl
             in
             let up =
                 <:expr< UserRule.up_explore_simple context treelist 
-                $list_to_exprlist loc sythidl$ $list_to_exprlist loc bidl$ >>
+                $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
             in (up ,exp, strl@synthstrl@branchstrl)
+    (* a & b === a ; b *)
     |Forall ([dl]),Inv ->
             let (exp,strl) = expand dl [] hl in
             let up =
                 <:expr< UserRule.up_explore_linear context treelist 
-                $list_to_exprlist loc sythidl$ >>
+                $list_to_exprlist _loc sythidl$ >>
             in (up ,exp, strl@synthstrl)
+    (* a v b === a | b *)
     |Forall (dl::tl),Inv ->
             let (exp,strl) = expand dl tl hl in
-            let (branchidl, branchstrl) = expand_branchlist loc (dl::tl) bll in
+            let (branchidl, branchstrl) = expand_branchlist _loc (dl::tl) bll in
             let bidl = List.map (
-                fun l -> list_to_exprlist loc (closerule::l) ) branchidl
+                fun l -> list_to_exprlist _loc (closerule::l) ) branchidl
             in
             let up =
                 <:expr< UserRule.up_explore_simple context treelist 
-                $list_to_exprlist loc sythidl$ $list_to_exprlist loc bidl$ >>
+                $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
             in (up ,exp, strl@synthstrl@branchstrl)
+    (* a v b === a ||| b *)
+    (* a v b --- a ||| b *)
     |User   (dl::tl),_ ->
             let (exp,strl) = expand dl tl hl in
-            let (branchidl, branchstrl ) = expand_branchlist loc (dl::tl) bll in
-            let bidl = List.map (fun l -> list_to_exprlist loc l ) branchidl in
+            let (branchidl, branchstrl ) = expand_branchlist _loc (dl::tl) bll in
+            let bidl = List.map (fun l -> list_to_exprlist _loc l ) branchidl in
             let up =
                 <:expr< UserRule.up_explore_simple context treelist
-                $list_to_exprlist loc sythidl$ $list_to_exprlist loc bidl$ >>
+                $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
             in (up ,exp, strl@synthstrl@branchstrl)
     |_ -> failwith "expand_rule_den"
 ;; 
 
-let expand_rule_back loc bt = <:expr< () >> ;;
+let expand_rule_back _loc bt = <:expr< () >> ;;
 
-let expand_rule_class loc s (nl,fl) dl cl hl bl bt t =
-    let (pl,strln)    = expand_rule_num loc (nl,fl) cl in
-    let (up,al,strld) = expand_rule_den loc t dl hl bl bt in
+let expand_rule_class _loc s (nl,fl) dl cl hl bl bt t =
+    let (pl,strln)    = expand_rule_num _loc (nl,fl) cl in
+    let (up,al,strld) = expand_rule_den _loc t dl hl bl bt in
     strln@strld@
     [<:str_item< 
         class $lid:(String.lowercase s)^"_rule"$ = 
@@ -979,7 +997,7 @@ let expand_rule_class loc s (nl,fl) dl cl hl bl bt t =
 
 (* generets the code for the function matchpatt. it adds two
  * special cases for atoms and a failwith entry *)
-let expand_matchpatt loc =
+let expand_matchpatt _loc =
     let l = Hashtbl.fold (fun p (s,l) strl -> 
         (<:patt< `Formula($p$) >>,None,<:expr< $str:s$ >>)::strl
         ) patt_table []
@@ -996,7 +1014,7 @@ let expand_matchpatt loc =
     >>
 ;;
 
-let expand_parser loc connlist =
+let expand_parser _loc connlist =
     let l = List.filter_map(function
     | (v,s,r) when s =~ mu_re ->
             Some(
@@ -1020,11 +1038,11 @@ let expand_parser loc connlist =
     | (_,s,_) -> failwith (s^" is not a valid pattern")
     ) connlist
     in 
-    let l = list_to_exprlist loc l in
+    let l = list_to_exprlist _loc l in
     <:str_item< Logic.__inputparser.val :=
         Some(InputParser.buildParser $l$) >>
 
-let expand_printer loc connlist =
+let expand_printer _loc connlist =
     let l = List.filter_map(function
         | (v,s,r) when s =~ mu_re ->
                 Some(<:patt< ( $lid:v$(i,nc,a) ) >>,
@@ -1067,9 +1085,9 @@ type 'a tree =
     |Rule of 'a
 ;;
 
-let expand_strategy loc tree = []
+let expand_strategy _loc tree = []
 (*
-let expand_default_strategy loc =
+let expand_default_strategy _loc =
     let str = <:expr< value __strategy = new Strategy.strategy "start" >> in
     let sat = 
         List.map (fun id ->
@@ -1087,7 +1105,7 @@ let expand_default_strategy loc =
     
 (* this function creates the history list. it also add the synth history
  * "status" if it has not been user defined *)
-let expand_history loc l =
+let expand_history _loc l =
     let histlist = 
         if not(List.exists (fun (s,_,_,ht,_) ->
             (s = "status") && (ht = "Variable") ) l )
@@ -1107,25 +1125,27 @@ let expand_history loc l =
     List.iter (fun (v,s,t,ht,df) ->
         Hashtbl.replace hist_table v (s,t,ht,df)
     ) histlist;
-    list_to_exprlist loc expr_list
+    list_to_exprlist _loc expr_list
 ;;
 
-let expand_exit loc (func,args) = 
-    let newid = new_id "history_condition" in
+let expand_exit _loc (func,args) = 
+    (* let newid = new_id "history_condition" in *)
     let (ex2, ex3) =
         List.split
             (List.map (function 
                 |([],formula,Expr) -> (<:expr< $formula$ >>,None)
                 |([s],_,Var) -> 
                         let newid = new_id "build" in
-                        let ex = expand_variable_list loc s newid in
+                        let ex = expand_variable_list _loc s newid in
                         (<:expr< $lid:newid$ >>, Some(<:patt<$lid:newid$>>,ex))
                 |(sl,formula,Term) ->
                     let newid = new_id "build" in
                     let ex = 
-                        if is_variable (sl,formula) then
-                            expand_build_formula_var loc (sl,formula) newid
-                        else expand_build_formula loc (sl,formula) newid
+                        if sl = [] then
+                            expand_constant_expression _loc formula
+                        else if is_variable (sl,formula) then
+                            expand_build_formula_var _loc (sl,formula) newid
+                        else expand_build_formula _loc (sl,formula) newid
                     in (<:expr< $lid:newid$ >>,Some(<:patt<$lid:newid$>>,ex))
                 | _ -> failwith "expand_exit"
             ) args
@@ -1139,10 +1159,10 @@ let expand_exit loc (func,args) =
     in <:expr< fun [ varl -> $ex5$ ] >>
 ;;
 
-let expand_preamble loc =
+let expand_preamble _loc =
     let stl = [
-        "Llist";"Data";"Basictype";"Comptypes";
-        "Datatype";"Datatype.ConcreteNode";"Datatype.Node";
+        "ExtLib";"Llist";"Data";"Basictype";"Comptypes";
+        "Datatype";"Datatype.Node";
         "Datatype.NodePattern";
         "Datatype.Partition";"Datatype.Rule";"Datatype.RuleContext";
         "Datatype.Strategy";"Datatype.Visit";"UserRule";"Tree"]
@@ -1150,7 +1170,7 @@ let expand_preamble loc =
     let stl = List.map (fun s -> <:str_item< open $uid:s$ >> ) stl in
     <:str_item< declare $list:stl$ end >>
 ;;
-    
+
 EXTEND
 GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr patt_term expr_term
 rewrite_expr_term rewrite_patt_term; 
@@ -1164,22 +1184,22 @@ rewrite_expr_term rewrite_patt_term;
           |(v,"Const",_) -> Hashtbl.replace const_table v ()
           |(_,s,_) -> failwith (s^" is not a valid pattern")
       ) clist ;
-      let preamble = expand_preamble loc in
-      let pa = expand_parser loc clist in
-      let pr = expand_printer loc clist in 
+      let preamble = expand_preamble _loc in
+      let pa = expand_parser _loc clist in
+      let pr = expand_printer _loc clist in 
       <:str_item< declare $list:[preamble;pa;pr]$ end >>
     |"HISTORIES"; hlist = LIST1 history SEP ";"; "END" ->
-            let l = expand_history loc hlist in
+            let l = expand_history _loc hlist in
             <:str_item< Logic.__history_list.val := Some($l$) >>
 (*    |"VARIABLES"; vlist = LIST1 variable SEP ";"; "END" ->
-            let l = expand_history loc vlist in
+            let l = expand_history _loc vlist in
             <:str_item< Logic.__history_list.val := Some($l$) >> *)
     |"TABLEAU"; l = LIST1 rule; "END" ->
       (*      let _ = Grammar.Entry.print expr_term in *)
-            let l = (expand_matchpatt loc)::l in 
+            let l = (expand_matchpatt _loc )::l in 
             (* if the history is empty, then I've to add status to it *)
             if not(Hashtbl.mem hist_table "status") then
-                let hl = expand_history loc [] in
+                let hl = expand_history _loc [] in
                 let h = <:str_item< Logic.__history_list.val := Some($hl$) >>
                 in <:str_item< declare $list:(h::l)$ end >>
             else
@@ -1189,14 +1209,16 @@ rewrite_expr_term rewrite_patt_term;
     |"NEG"; OPT ":="; e = Pcaml.expr ->
             <:str_item< Logic.__neg.val := Some($e$) >>
     |"EXIT"; OPT ":="; f = LIDENT; "("; args = LIST0 arguments SEP ","; ")" ->
-            let ex = expand_exit loc (f,args) in
+            let ex = expand_exit _loc (f,args) in
             <:str_item< Logic.__exit.val := Some($ex$) >> 
     |"OPTIONS"; olist = LIST1 options SEP ";"; "END" ->
-            let ol = list_to_exprlist loc olist in
+            let ol = list_to_exprlist _loc olist in
             <:str_item< Logic.__options.val := Some ([ $list:ol$ ]) >>
     |"STRATEGY"; s = strategy ->
-            (* <:str_item< declare $list:expand_strategy loc s$ end >> *)
-            <:str_item< Logic.__strategy.val := Some(strategy) >>
+            (* <:str_item< declare $list:expand_strategy _loc s$ end >> *)
+            let str = <:str_item< Logic.__strategy.val := Some(strategy) >> in
+            let main = <:str_item< Twb.main () >> in
+            <:str_item< declare $list:[str;main]$ end >>
   ]];
 
   options : [[
@@ -1248,7 +1270,7 @@ rewrite_expr_term rewrite_patt_term;
       bt = OPT backtracklist;
       bl = OPT branchlist;
       "END" ->
-          let rl = expand_rule_class loc id (nl,n) dl cl hl bl bt t in 
+          let rl = expand_rule_class _loc id (nl,n) dl cl hl bl bt t in 
           <:str_item< declare $list:rl$ end >>
   ]];
 
@@ -1294,7 +1316,8 @@ rewrite_expr_term rewrite_patt_term;
   ]];
 
   varindex: [[
-       "("; ")" -> (<:expr< "_dummy" >>,Var)
+      "("; "all"; ")" -> (<:expr< "_dummy" >>,Var)
+      |"("; "last"; ")" -> (<:expr< "_dummy" >>,Var)
       |"("; i = INT; ")" -> (<:expr< $int:i$ >>, Term)
   ]];
   
@@ -1317,8 +1340,11 @@ rewrite_expr_term rewrite_patt_term;
   
   (* (expr * cond_t) *)
   numformula: [[
-       (* single formula *)
-       "{"; (s,p) = patt_term; "}" -> (s,(p,Single))
+       (* one formula *)
+       "{"; (s,p) = patt_term; "}" -> (s,(p,SingleOne))
+
+       (* zero or one formula *)
+      | "("; (s,p) = patt_term; ")" -> (s,(p,SingleZero))
 
       | x = test_constant ->
               ([x], (<:patt< Constant(nc,$str:x$) >>, Const))

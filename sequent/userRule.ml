@@ -4,9 +4,18 @@ open Tree
 open Data
 open Datatype
 
-let newcontext = RuleContext.newcontext
-let match_node = Partition.match_node
-let build_node = Build.build_node
+let newcontext   = RuleContext.newcontext
+let build_node   = Build.build_node
+let build_sbl () = new Substitution.substitution
+
+(* XXX: HACK this is a 'user' option that is set by the main program *)
+let nodeid = ref 0;;
+
+let printer n name ruleid =
+    let _ = incr nodeid in
+    OutputBroker.print n name ruleid !nodeid
+;;
+
 
 let rec branchcond context tl tLl bll =
     let treelist = 
@@ -62,20 +71,30 @@ let is_open = status "Open";;
 let is_closed = status "Closed";;
 
 (* check method for any rule *)
-let check node patternl historyl =
-    let match_all node (pl, sl) hl =
+let check name node patternl historyl =
+    (* Printf.printf "check %s\n" name ; *)
+    let match_all node (plzero, plone, sl) hl =
         let (map, hist, varhist) = node#get in
         (* principal formulae and sets enumeration *)
-        let enum = match_node map (pl, sl) in
+        let enum =
+            match plzero,plone with
+            |[],[] -> Partition.match_node_set (build_sbl (),map) sl
+            |[],pl1 -> Partition.match_node_one (build_sbl (),map) (pl1, sl)
+            |pl0,[] -> Partition.match_node_zero (build_sbl (),map) (pl0, sl)
+            |pl0,pl1 -> Partition.match_node_trail (build_sbl (),map) (pl0,pl1, sl)
+        in
         let (enum, sbl, newmap) =
             let rec check_hist e =
-                (* here I filter the enum wrt the side conditions *)
+                (* here I filter the enum wrt the side conditions 
+                 * and I discard enum that have empty sbl *)
                 let filtered_enum =
-                    Enum.filter (function sbl, ns ->
+                    Enum.filter (function (sbl,ns) ->
+                        if not(sbl#is_empty) then
                             not(List.exists (
-                                    fun c -> not (c sbl hist [varhist])
+                                fun c -> not (c sbl hist [varhist])
                                 ) hl
                             )
+                        else false
                     ) e
                 in
                 (* now filtered_enum contains only the enum that
@@ -86,18 +105,12 @@ let check node patternl historyl =
                     |Some (sbl, ns) -> (filtered_enum, sbl, ns)
                     |None -> raise Partition.FailedMatch (* no more choices *)
                 end with Partition.FailedMatch ->
-                    (Enum.empty (), Data.Substlist.empty, map)
+                    (Enum.empty (), build_sbl (), map)
            in check_hist enum
        in
        let newnode = node#set (newmap, hist, varhist) in
        newcontext (enum, sbl, newnode)
     in match_all node patternl historyl
-;;
-
-let nodeid = ref 0;;
-let printer n name ruleid =
-    let _ = incr nodeid in
-    OutputBroker.print n name ruleid !nodeid
 ;;
 
 (* down method for a rule with explicit branching *)
@@ -163,10 +176,10 @@ let down_implicit name context actionl historyl =
          * are computed only when needed. Enum.get force
          * the computation *)
       match Enum.get enum with
-        Some (sbl, ns) -> sbl, ns
-      | None -> Data.Substlist.empty, map
+        Some (sbl, ns) -> (sbl, ns)
+      | None -> (build_sbl (), map)
     in
-    if Data.Substlist.is_empty newsbl then
+    if newsbl#is_empty then
         LList ((node, sbl, actionl, historyl), lazy Empty)
     else
         let newnode = node#set (map, hist, vars) in

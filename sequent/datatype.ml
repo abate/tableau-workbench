@@ -58,10 +58,11 @@ module Variable =
 
 type history_type = History | Variable 
     
-module ConcreteNode =
+module NodeType =
     struct
         type elt = ( Store.store * History.store * Variable.store )
         let copy (m,h,v) = ( Store.copy m, History.copy h, Variable.copy v )
+        let equal (m1,h1,_) (m2,h2,_) = (m1 = m2) && (h1 = h2)
         let to_string (m,h,v) =
             Printf.sprintf "%s\n%s\n%s"
             (Store.to_string m)
@@ -69,15 +70,18 @@ module ConcreteNode =
             (Variable.to_string v)
     end
 
-module Node = Node.Make(ConcreteNode)
-
+module Node = Node.Make(NodeType)
+module Cache = Cache.Make(Node)
+    
 module NodePatternFunc = NodePattern
+module Substitution = Sbl.Make
 
 module NodePattern = NodePatternFunc.Make(
     struct
         type t = Type.t
         type bt = Type.bt
         type hist = History.store
+        type sbl = Substitution.substitution
     end
 )
 
@@ -99,6 +103,7 @@ module Rule =
             method virtual up    : context -> tree Llist.llist -> tree
         end
     end
-module Strategy = Strategy.Make(Rule) 
-module Visit = Visit.Make(Rule)(Strategy)
+
+module Strategy = UserStrategy.Make(Rule) 
+module Visit = Visit.Make(Node)(Cache)(Rule)(Strategy)
 

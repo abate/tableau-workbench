@@ -97,7 +97,7 @@ TABLEAU
 
   RULE S4 
   { <1> A } ; <1> Y ; Z
-  ----------------------
+  =====================
   A ; BOXES || <1> Y 
   
   COND notin(<1> A, DIAMONDS)

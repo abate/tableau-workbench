@@ -51,15 +51,7 @@ package "thelot" (
 package "tableau" (
 	version = "[distributed with TWB]"
 	description = "generic tableau interface"
-	requires = "camlp4 twb.thelot"
+	requires = "camlp4"
 	archive(syntax,preprocessor) = "str.cma extLib.cma tableau.cma pr_o.cmo"
-#	archive(syntax,toploop)      = "str.cma extLib.cma tableau.cma tableau.cma"
-)
-
-package "sequent_syn" (
-	version = "[distributed with TWB]"
-	description = "generic sequent interface"
-	requires = "camlp4 unix str twb.core twb.types twb.parser twb.sequent"
-	archive(syntax,preprocessor) = "sequent.cma"
-	archive(syntax,toploop)      = "sequent.cma"
+	archive(syntax,toploop)      = "str.cma extLib.cma tableau.cmo pr_o.cmo"
 )

@@ -4,6 +4,7 @@ SOURCES := \
 	llist.ml \
 	data.ml \
 	node.ml \
+	cache.ml \
 	tree.ml \
 	rule.ml \
 	strategy.ml \

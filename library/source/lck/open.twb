@@ -1,12 +1,12 @@
-4: Box1 Box a -> Box1 a
-6: C a
-0: C C a -> C a
-1: C a -> a
-2: C Box1 a -> C a
-3: Box1 C a -> C a
-4: Box1 Box a -> Box1 a
-5: Box1 a -> Box1 Box1 a
-7: dC a
-1: dC a & C dC a
-1: Dia1 a & Box1 dC a & Box1 C E dC a & Box1 E dC a
+[1] [2] a -> [1] a
+C a
+C C a -> C a
+C a -> a
+C [1] a -> C a
+[1] C a -> C a
+[1] [2] a -> [1] a
+[1] a -> [1] [1] a
+dC a
+dC a & C dC a
+<1> a & [1] dC a & [1] C E dC a & [1] E dC a
 

@@ -89,7 +89,7 @@ TABLEAU
 
   RULE K1
   { <> A } ; Box X ; <> Y ; Z
-  -----------------------------
+  ===========================
       A ; X || <> Y ; Box X
 
   BRANCH [ not_empty(<> Y) ]
@@ -146,7 +146,7 @@ let _ =
     strategy#add "s1"    S                  "start" "d" ;
     strategy#add "d"     (R(new k_rule))    "d" "s2";
     strategy#add "s2"    S                  "start" "end" ;
-    strategy#add "end"   E                  "end" "end"
+    strategy#add "end"   E__                "end" "end"
 ;;
 
 STRATEGY (A)

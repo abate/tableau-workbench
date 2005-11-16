@@ -21,7 +21,8 @@ IFNDEF NATIVE THEN let libdir = ref "./" ENDIF
   let outdir = ref "trace"
   let outtype = ref ""
 
-  let native = ref false
+  let nocache = ref true
+  let norec   = ref true
 end
 ;;
 
@@ -41,6 +42,9 @@ let options =
 
      ("-outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
      ("-out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
+
+     ("-nocache", Arg.Set  Options.nocache, "disable default cache");
+     ("-norec",   Arg.Set  Options.norec,   "dfs with no strategy backtracking");
 
     ]@
     IFNDEF NATIVE THEN
@@ -100,15 +104,14 @@ let newnode s =
         else (Option.get (!Logic.__neg))
     in 
     let fmap = fmap#addlist (pp ( neg (inputparser s))) in
+    (* XXX: this is a bit of a hack ... the pretty print should be in the
+     * basictype file and should be automatically generated ... *)
+    (* here we set the pretty printer for the formula type *)
+    let _ = 
+        if (Option.is_none !Logic.__printer) then ()
+        else Basictype.string_of_formula := (Option.get !Logic.__printer)
+    in
     new Node.node (fmap,hmap,vmap)
-;;
-
-(* XXX: this is a bit of a hack ... the pretty print should be in the
- * basictype file and should be automatically generated ... *)
-(* here we set the pretty printer for the formula type *)
-let _ = 
-    if (Option.is_none !Logic.__printer) then ()
-    else Basictype.string_of_formula := (Option.get !Logic.__printer)
 ;;
 
 let exit_function t =
@@ -142,9 +145,15 @@ IFNDEF NATIVE THEN
 ELSE ()
 ENDIF
     in
-    let strategy = 
+    let strategy : Strategy.strategy = 
         try (Option.get (!Logic.__strategy))
         with Option.No_value -> failwith "Strategy not specified"
+    in
+    let cache = (new Cache.cache) in
+    let visit =
+        if (!Options.norec) then Visit.visit_min
+        else if (!Options.nocache) then Visit.visit_nocache
+        else Visit.visit cache
     in
     let file_ch =
         match !input_file with
@@ -170,22 +179,26 @@ ENDIF
         while true do
             let start = Timer.start_timing () in
             try
-                let node = newnode( get_line () ) in
+                let line = get_line () in
+                let _ = Printf.printf "Proving: %s\n" line in
+                let node = newnode line in
                 (* still a bit hackish way of setting user prefs *)
                 let _ = UserRule.nodeid := 0 in
                 let _ = OutputBroker.trace := !Options.trace in
                 let _ = OutputBroker.print node "initial node" 0 in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
                 let result =
-                    Visit.visit
+                    visit
                     strategy
                     strategy#start
                     node 
                 in
                 let time = Timer.stop_timing start in
-                Printf.printf "%s\nResult: %s\n"
+                Printf.printf "%s\nResult: %s\n%s\n"
                 (Timer.to_string time)
-                (exit_function result);
+                (exit_function result)
+                (if !Options.nocache || !Options.norec 
+                then "" else cache#stats);
                 flush_all ()
             with Timer.Timeout -> Printf.printf "Timeout elapsed\n"
         done
@@ -193,4 +206,4 @@ ENDIF
     |End_of_file |Stream.Failure -> exit 0
 ;;
 
-main ();;
+(* main ();; *)

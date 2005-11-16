@@ -12,15 +12,22 @@ module Make (T : ValType) :
     end
 = struct
 
-    let copy l = List.fold_left (fun l e -> (T.copy e)::l ) [] l;;
+    (* we need to reverse the list to maintain the order the the elements *)
+    let copy l = List.fold_left (fun l e -> (T.copy e)::l ) [] (List.rev l);;
 
+    (* This is a stack *)
     class listobj =
         object(self : 'a)
             val data = []
 
             method add e = {< data = e::data >}
 
-            method addlist l = {< data = data@l >}
+            method add_filter f e =
+                let data' = List.filter (fun el -> f e el) data in
+                {< data = e::data' >}
+
+            method addlist l =
+                {< data = (List.fold_left (fun d e -> e::d) data l ) >}
             
             (* XXX: deletions is o(n) *)
             method del e = {< data = List.filter (fun el -> not(e = el)) data >}
@@ -34,7 +41,8 @@ module Make (T : ValType) :
             
             method filter f = {< data = List.filter f data >}
 
-            method elements = data
+            (* we return elements as a stack *)
+            method elements = List.rev data
 
             method is_empty = match data with [] -> true | _ -> false
 
@@ -51,12 +59,14 @@ module Make (T : ValType) :
             method equal (l : 'a) =
                 List.for_all2 (fun a b -> a = b) data l#elements
             
-            method to_string = 
+            method to_string =
+                let i = ref (-1) in 
                 let l = List.fold_left (
                     fun s e ->
-                        if s = "" then Printf.sprintf "%s" (T.to_string e)
-                        else Printf.sprintf "%s;%s" s (T.to_string e)
-                    ) "" data
+                        incr i;
+                        if s = "" then Printf.sprintf "\n%d:%s" !i (T.to_string e)
+                        else Printf.sprintf "%s\n%d:%s" s !i (T.to_string e)
+                    ) "" (self#elements) 
                 in if l = "" then "" else Printf.sprintf "[%s]" l 
             
         end

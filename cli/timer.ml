@@ -9,8 +9,8 @@ let update_ob () = old_behavior := Sys.signal Sys.sigalrm sigalrm_handler
 
 let start_timing () =
     let _ = update_ob () in
-    let adjust = ref 0.0
-    in Unix.times ()
+    (* let adjust = ref 0.0 in *)
+    Unix.times ()
 ;;
 
 let stop_timing start =

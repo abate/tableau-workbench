@@ -2,6 +2,7 @@
 class type ['t] st =
     object('a)
         method add : 't -> 'a
+        method add_filter : ('t -> 't -> bool ) -> 't -> 'a
         method addlist : 't list -> 'a
         method del : 't -> 'a
         method mem : 't -> bool
@@ -25,7 +26,7 @@ module type ValType =
         val to_string : t -> string
     end
 
-module Make (T : ValType ) : 
+module Make ( T : ValType ) : 
     sig
        class set : [T.t] st
     end
@@ -49,8 +50,15 @@ module Make (T : ValType ) :
             (* XXX: insertion is o(log n) *)
             method add e = {< data = Set.add e data >}
 
+            (* XXX: insertion is o(n * log n) *)
+            method add_filter f e =
+                {< data =
+                    let s' = Set.filter (fun el -> f e el) data in
+                    Set.add e s'
+                >}
+            
             method addlist l = {< data = 
-                List.fold_left (fun e s -> Set.add s e ) data l >}
+                List.fold_left (fun s e -> Set.add e s ) data l >}
 
             (* XXX: deletions is o(log n) *)
             method del e = {< data = Set.remove e data >}

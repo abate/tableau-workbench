@@ -24,19 +24,24 @@ module Make(T: ValType) :
     end
 = struct
     
+    let copy h =
+        Hashtbl.fold (fun k v tbl ->
+            Hashtbl.add tbl k (T.copy v) ; tbl
+        ) h (Hashtbl.create (Hashtbl.length h))
+     
     class map =
         object(self)
 
             val data = Hashtbl.create 7
             
             method add p e =
-                let h = Hashtbl.copy data in
+                let h = copy data in
                 let _ = Hashtbl.replace h p e in
                 {< data = h >}
                 
             method find p = Hashtbl.find data p
             method mem p = Hashtbl.mem data p
-            method copy = {< data = (Hashtbl.copy data) >}
+            method copy = {< data = copy data >}
             method empty = {< data = Hashtbl.create 7 >}
             method to_string =
                 Hashtbl.fold (

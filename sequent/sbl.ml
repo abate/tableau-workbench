@@ -1,49 +1,88 @@
 
-module type S =
+class type ['t,'bt] st =
+    object('sub)
+        method add : (string * 'bt list) list -> 'sub
+        method find : string -> 't
+        method is_empty : bool
+        method mem : string -> 'bt -> bool
+        method copy : 'sub
+        method empty : 'sub
+        method to_string : string
+      end
+
+module Make : 
     sig
-    type t = Comptypes.mixlist
-    type key = string
-    type sbl = t Data.Substlist.t
-    val add : sbl -> t list -> sbl
-    val mem : sbl -> key -> t -> bool
-    val find : key -> sbl -> t
-    val to_string : sbl -> string
+        class substitution : [Comptypes.mixlist, Basictype.mixtype] st
     end
-;;
+    = struct
+        
+    module Sbl = Map.Make(
+        struct
+            type t = string
+            let compare = Pervasives.compare
+        end)
 
-let find k sbl = Data.Substlist.find k sbl ;;
+    exception Stop
+    
+    class substitution =
+        object
+            val sbl = Sbl.empty
+            
+            method add l =
+                let sbl' =
+                    List.fold_left (
+                        fun s (k,v) ->
+                            try begin
+                                match Sbl.find k s with
+                                |`Mtlist(l) -> Sbl.add k (`Mtlist(l#addlist v)) s
+                                |`Set(l) -> Sbl.add k (`Set(l#addlist v)) s
+                                |#Comptypes.mixlist -> failwith "Sbl.add : type node allowed"
+                                end
+                            with Not_found -> (
+                                Sbl.add k (
+                                    `Mtlist((new Comptypes.Mtlist.listobj)#addlist v)
+                                    ) s 
+                                )
+                    ) sbl l
+                in {< sbl = sbl' >}
 
-let add sbl l =
-    List.fold_left (
-        fun s (k,v) ->
-            try
-                begin
-                    match Data.Substlist.find k s with
-                        |`Mtlist(l) -> Data.Substlist.add k (`Mtlist(l#addlist v)) s
-                        |`Set(l) -> Data.Substlist.add k (`Set(l#addlist v)) s
-                        |#Comptypes.mixlist -> failwith "add type node allowed"
-                end
-            with Not_found -> (
-                Data.Substlist.add k (
-                    `Mtlist((new Comptypes.Mtlist.listobj)#addlist v)
-                    ) s 
-                )
-    ) sbl l
-;;
+            (* XXX: this method could return the container ... *)
+            method find k = Sbl.find k sbl
+            
+            method mem p f =
+                try
+                    match Sbl.find p sbl with
+                    |`Mtlist(l) -> l#mem f
+                    |#Comptypes.mixlist -> failwith "Sbl.mem : type node allowed"
+                with Not_found -> raise Not_found
 
-let mem sbl p f =
-    try
-        match Data.Substlist.find p sbl with
-        |`Mtlist(l) -> l#mem f
-        |#Comptypes.mixlist -> failwith "add type node allowed"
-    with Not_found -> raise Not_found
-;;
+            method is_empty = 
+                try
+                    Sbl.fold (fun _ v b ->
+                        match v,b with
+                        |`Mtlist(l),true -> l#is_empty 
+                        |`Set(l),true -> l#is_empty
+                        |`Mtlist(l),false -> raise Stop
+                        |`Set(l),false -> raise Stop
+                        |#Comptypes.mixlist,_ -> failwith "Sbl.is_empty : type node allowed"
+                    ) sbl true
+                with Stop -> false
+                
+            method copy = {< >}
 
-(* XXX: FINISH ME *)
-let to_string sbl =
-    Data.Substlist.iter ( fun k e ->
-        print_endline k ;
-        print_endline (Comptypes.string_of_mixlist e)
-    ) sbl
-;;
+            method empty = 
+                let sbl' = 
+                    Sbl.map (function
+                        |`Mtlist(l) -> `Mtlist(l#empty)
+                        |`Set(l) -> `Set(l#empty)
+                        |#Comptypes.mixlist -> failwith "Sbl.is_empty : type node allowed"
+                    ) sbl
+                in {< sbl = sbl' >}
 
+            (* XXX: FINISH ME *)
+            method to_string = 
+                Sbl.fold ( fun k e s ->
+                    Printf.sprintf "%skey:%s = %s\n" s k (Comptypes.string_of_mixlist e)
+                ) sbl ""
+        end
+    end

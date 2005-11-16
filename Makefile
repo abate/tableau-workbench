@@ -1,20 +1,28 @@
 -include Makefile.conf
 
-all: bc
+ifndef NOEXTLIB
+all: extlib nc
+extlib:
+	cd extlib && make && make opt
+endif
+
+ifdef NOEXTLIB
+all: nc
+endif
 
 bc:
 	cd core && make bcl && cp twbcore.* *.cmi ../twb/
 	cd types && make bcl && cp twbtypes* *.cmi ../twb/
 	cd sequent && make bcl && cp twbseq* *.cmi ../twb/
-	cd syntax && make bcl && cp *.cma *.cmi ../twb/
-	cd cli && make twbbc && cp logic.cm* ../twb/
+	cd syntax && make bcl && cp *.cm* *.a  ../twb/
+	cd cli && make twbbc && cp *.cmi *.cmxa *.a ../twb/
 
 nc:
 	cd core && make ncl && cp twbcore.* *.cmi ../twb/
 	cd types && make ncl && cp twbtypes.* *.cmi ../twb/
 	cd sequent && make ncl && cp twbseq* *.cmi ../twb/
-	cd syntax && make ncl && cp *.cmxa *.a *.cmi ../twb/
-	cd cli && make twbncl && cp *.cmi *.cmxa *.a ../twb/
+	cd syntax && make bcl ncl && cp *.cm* *.a ../twb/
+	cd cli && make twbncl && cp *.cm* *.a *.o ../twb/
 
 pnc:
 	cd core && make pncl && cp twbcore.* *.cmi ../twb/

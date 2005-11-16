@@ -2,20 +2,16 @@
 #set -x
 . ../Makefile.conf
 
-STDLIB=`ocamlfind printconf stdlib`
+STRLIB=`ocamlfind query str`/str.cma
+EXTLIB=`ocamlfind query extlib`/extLib.cma
 
-if [ -f $STDLIB/extlib/extLib.cma ]; then
-    DESTDIR=$STDLIB
-else
-    DESTDIR=`ocamlfind printconf destdir`
-fi
+camlp4o $STRLIB $EXTLIB ../syntax/tableau.cmo pr_o.cmo $1 > /tmp/${1//.ml}_pp.ml
 
-rm ${1//.ml}_pp.ml
+#ocamlfind ocamlopt -package twb.tableau,twb.thelot,twb.cli -syntax camlp4o -linkpkg -p -o ${1//.ml} $1
 
-#camlp4o $STDLIB/str.cma $DESTDIR/extlib/extLib.cma ../syntax/tableau.cmo pr_o.cmo $1 > ${1//.ml}_pp.ml
+ocamlfind ocamlopt -package twb.thelot,twb.cli -linkpkg -p -o ${1//.ml} /tmp/${1//.ml}_pp.ml
 
-#ocamlfind ocamlc -package twb.core -g -c -o ${1//.ml} ${1//.ml}_pp.ml
+#../twb/twb.cmx
 
-ocamlfind ocamlopt -verbose -package twb.tableau -syntax camlp4o -linkpkg -p -o pc pc.ml ../cli/twb.cmx
 
-#ocamlfind ocamlopt -package twb.thelot -linkpkg -o ${1//.ml} -p ../cli/timer.cmx ../cli/logic.cmx ${1//.ml}_pp.ml ../cli/twb.cmx
+#ocamlfind ocamlmktop -o toploop -package twb.tableau,findlib -syntax camlp4o -linkpkg -o ${1//.ml}top $1

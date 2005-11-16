@@ -116,7 +116,7 @@ let _ =
     strategy#add "b" (R(new id_rule)) "end" "c";
     strategy#add "c" (R(new false_rule)) "end" "s2";
     strategy#add "s2" S "start" "end" ;
-    strategy#add "end" E "end" "end" ;
+    strategy#add "end" E__ "end" "end" ;
 ;;
 
 STRATEGY (A)
