@@ -63,8 +63,8 @@ let list_to_exprlist _loc l =
     ) l <:expr< [] >>
 ;;
 
-(* extend the parser with the tokens declared in the 
- * CONNECTIVES part. binary connectives *)
+(* extend the parser with tokens declared in the 
+ * CONNECTIVES section. binary connectives *)
 let add_biconn lev op co =
     EXTEND
       patt_term: LEVEL $lev$

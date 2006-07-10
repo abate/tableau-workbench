@@ -11,14 +11,17 @@ CONNECTIVES
   ExF, "ExF_", Simple;
   AxG, "AxG_", Simple;
   AxF, "AxF_", Simple;
+  ExU, "Ex_U_", Simple;
+  AxU, "Ax_U_", Simple;
   Falsum, Const;
   Verum, Const
 END
 
 HISTORIES
-  Ev : Set.set ;
+  Fev : Set.set ;
   Br : Listofsets.listobj ;
   uev : Setoftermint.set ; 
+  iev : Set.set ; 
   status : String
 END
 
@@ -49,38 +52,25 @@ let push (dia,box,br) =
 let termfalse = `Formula ( term ( Falsum ) ) ;; 
 let setclose br = (new Setoftermint.set)#add (termfalse, br#length) ;;
 
-let beta (uev1, uev2, br) =
-    let m = (br#length - 1) in
+let setuev_beta (uev1, uev2, br) =
+    let l = (br#length -1) in
     let _ =
         if !debug then
         Printf.printf "BETA\nm:%d\nuev1: %s\nuev2: %s\nBr: %s\n"
-        m uev1#to_string uev2#to_string br#to_string
+        l uev1#to_string uev2#to_string br#to_string
         else ()
     in 
-    if uev1#is_empty || uev2#is_empty then (new Setoftermint.set)
-    
-    else if List.exists (function 
+    if (List.exists (function
         |(`Formula ( term ( Falsum ) ),_) -> true
-        |_ -> false) uev1#elements
+        | _ -> false) uev2#elements) 
+    then uev1
+
+    else if (List.exists (function
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        | _ -> false) uev1#elements) 
     then uev2
     
-    else if List.exists (function
-        |(`Formula ( term ( Falsum ) ),_) -> true
-        | _ -> false) uev2#elements
-    then uev1
-    
-    else if List.for_all ( fun (_,n) -> n > m ) (uev1#union uev2)#elements
-    then (new Setoftermint.set)#add (termfalse,m+1)
-    
-    else if List.for_all ( fun (_,n) -> n <= m ) uev1#elements &&
-    List.for_all ( fun (_,n) -> n > m ) uev2#elements 
-    then uev1
-    
-    else if List.for_all ( fun (_,n) -> n <= m ) uev2#elements &&
-    List.for_all ( fun (_,n) -> n > m ) uev1#elements
-    then uev2
-    
-    else
+    else 
         let a = 
         (new Setoftermint.set)#addlist(
             ExtLib.List.filter_map (fun (x,nx) ->
@@ -93,6 +83,28 @@ let beta (uev1, uev2, br) =
             ) uev2#elements
         )
         in if !debug then (Printf.printf "INTER %s\n" a#to_string ; a) else a
+;;
+
+let setiev_beta(uev1,uev2,iev1,iev2,ev) =
+    let _ =
+        if !debug then
+        Printf.printf "iev1: %s\niev2: %s\n"
+        iev1#to_string iev2#to_string
+        else ()
+    in 
+    if (List.exists (function
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        | _ -> false) uev2#elements) ||
+        uev1#is_empty
+    then iev1#addlist ev
+
+    else if (List.exists (function
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        | _ -> false) uev1#elements) ||
+        uev2#is_empty
+    then iev2#addlist ev
+
+    else (iev1#union iev2)#addlist ev
 ;;
 
 exception Stop of int ;;
@@ -113,19 +125,21 @@ let loop_check (dia,box,br) =
     not(List.exists (fun s -> set#is_equal s) br#elements)
 ;;
 
-let setuev (diax,box,ev,br) =
+let setuev_loop (diax,box,ev,br) =
     let checkuev node ev br =
         let set = (new Set.set)#addlist node in
         if List.exists ( fun s -> set#is_equal s ) br#elements then
             let i = index br set in
-            let loopset = ev#elements in
+            let fev = ev#elements in
             Some(
                 (new Setoftermint.set)#addlist (
                     List.filter_map (function
-                        |`Formula term (ExX (ExF d)) as e
-                        when not(List.mem (`Formula d) loopset) -> Some(e,i)
-                        |`Formula term (AxX (AxF d)) as e
-                        when not(List.mem (`Formula d) loopset) -> Some(e,i)
+                        |`Formula term (ExX ExF d)
+                        when not(List.mem (`Formula term (ExF d)) fev) ->
+                            Some(`Formula term (ExF d),i)
+                        |`Formula term (AxX AxF d)
+                        when not(List.mem (`Formula term (AxF d)) fev) ->
+                            Some(`Formula term (AxF d),i)
                         |_ -> None
                     ) (node)
             )
@@ -157,26 +171,46 @@ let setuev (diax,box,ev,br) =
     uev
 ;;
 
-let pi (uev1, uev2, br, ev) =
-    let m = br#length in
-    let loopset = ev#elements in
-    let uevlist = [uev1;uev2] in
-    let uev = List.fold_left (fun s e -> s#union e) 
-        (new Setoftermint.set) uevlist
+let setuev_pi (uev1, uev2, iev1, iev2, br, ev) =
+    let l = (br#length -1) in
+    let fev = ev#elements in
+    (* all iterated eventualities that don't have a witness in the next
+     * zone, but that were supposed to be fulfilled *)
+    let uev1' = uev1#filter (function
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        |(d, _) -> (List.mem (d) (iev1#union iev2)#elements)
+    )
+    in
+    (* all iterated eventualities that have a witness in the next zone *)
+    let iev1' = iev1#filter (fun d ->
+        not(List.exists (function |(d',_) -> d = d') (uev1#elements))
+    )
+    in
+    (* all iterated eventualities that were supposed to be fulfilled in
+     * the next zone, and don't have a false witness *)
+    let uev = (uev1'#union uev2)#filter (function
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        |(`Formula d, _) ->
+                not(List.mem (`Formula d) (iev1'#union iev2)#elements)
+        |_ -> false
+    )
     in
     let _ =
         if !debug then
-        Printf.printf "PI\nm:%d\nloopset: %s\nuev: %s\n"
-        m ev#to_string uev#to_string
+        Printf.printf "PI\nm:%d\nfev: %s\nuev: %s\n"
+        l ev#to_string uev#to_string
         else ()
     in 
-    uev#filter (function
-        |(`Formula term (ExX (ExF d)), n) when (n > m+1) ->
-              not(List.mem (`Formula d) loopset)
-        |(`Formula term (AxX (AxF d)), n) when (n > m+1) ->
-              not(List.mem (`Formula d) loopset)
-        |_ -> true
-    )
+    if List.exists ( fun (_,n) -> n > l ) (uev1'#union uev2)#elements
+    then (new Setoftermint.set)#add (termfalse,l+1)
+    else if List.exists (function
+        |(`Formula ( term ( Falsum ) ),_) -> true
+        |_ -> false) (uev1'#union uev2)#elements
+    then (new Setoftermint.set)#add (termfalse,l+1)
+    else if List.for_all ( fun (_,n) -> n <= l ) (uev1'#union uev2)#elements
+    then
+    uev#filter (fun (d, _) -> not(List.mem d fev))
+    else failwith ("pi: impossible")
 ;;
 
 let rec nnf_term f = 
@@ -287,7 +321,10 @@ TABLEAU
   { A } ; { ~ A } ; Z
   ===============
      Stop
-  BACKTRACK [ uev := setclose (Br) ]
+  BACKTRACK [
+      uev := setclose (Br);
+      iev := emptyset(Fev)
+    ]
   END
   
   RULE False
@@ -295,7 +332,10 @@ TABLEAU
   ===============
      Stop
 
-  BACKTRACK [ uev := setclose (Br) ]
+  BACKTRACK [
+      uev := setclose (Br);
+      iev := emptyset(Fev)
+  ]
   END
 
   RULE Axf
@@ -303,20 +343,26 @@ TABLEAU
   ===================
    P ||| AxX AxF P
 
-  ACTION [ [ Ev := add(P,Ev) ] ; [] ]
-  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ]
+  ACTION [ [ Fev := add(AxF P,Fev) ] ; [] ]
+  BACKTRACK [
+      uev := setuev_beta(uev(1), uev(2), Br);
+      iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), AxF P)
+  ]
   BRANCH [ [ not_empty(uev(1)) ] ] 
-  END (cache)
+  END
 
   RULE Exf
       { ExF P }
   ===================
    P ||| ExX ExF P
 
-  ACTION [ [ Ev := add(P,Ev) ] ; [] ]
-  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ] 
+  ACTION [ [ Fev := add(ExF P,Fev) ] ; [] ]
+  BACKTRACK [
+      uev := setuev_beta(uev(1), uev(2), Br);
+      iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), ExF P)
+  ] 
   BRANCH [ [ not_empty(uev(1)) ] ] 
-  END (cache)
+  END 
 
   RULE Axg
      not_empty_list(AxG P)
@@ -337,32 +383,31 @@ TABLEAU
       
   COND [ loop_check(ExX P, AxX Y, Br) ]
   ACTION [ [
-      Ev := emptyset(Ev);
+      Fev := emptyset(Fev);
       Br := push(ExX P, AxX Y, Br)
   ] ; [] ]
-  BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
-  BRANCH [ [ not_false(uev(1)) ] ]
+  BACKTRACK [
+      uev := setuev_pi(uev(1), uev(2), iev(1), iev(2), Br, Fev);
+      iev := emptyset(Fev)
+  ]
+  BRANCH [ [ not_false(uev(1)) ; not_empty_list(ExX S) ] ]
   END (cache)
 
-  RULE Axx
-  { AxX P } ; is_empty_list(ExX S) ; AxX Y ; Z
-  ============================================
-              P ; Y
-      
-  COND [ loop_check(AxX P, AxX Y, Br) ]
-  ACTION [
-      Ev := emptyset(Ev);
-      Br := push(AxX P, AxX Y, Br)
-  ] 
-  BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
-  END (cache)
-  
+  RULE Ref
+  is_empty_list(ExX P) ; X
+  ====================
+      ExX Verum ; X
+  END
+
   RULE Loop
        ExX X ; AxX Y ; Z
   =============================
             Stop
 
-  BACKTRACK [ uev := setuev(ExX X, AxX Y, Ev, Br) ]
+  BACKTRACK [ 
+      uev := setuev_loop(ExX X, AxX Y, Fev, Br);
+      iev := emptyset(Fev)
+  ]
   END
 
   RULE Or
@@ -370,7 +415,10 @@ TABLEAU
   =========
    A ||| B
 
-  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ] 
+  BACKTRACK [
+      uev := setuev_beta(uev(1), uev(2), Br);
+      iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), [])
+  ] 
   BRANCH [ [ not_empty(uev(1)) ] ] 
   END
 
@@ -381,24 +429,6 @@ TABLEAU
   END
   
 END
-
-let strategy = new Strategy.strategy "start";;
-let _ = 
-    strategy#add "start" (R(new and_rule))   "start" "a" ;
-    strategy#add "a"     (R(new or_rule))    "a" "i2" ;
-    strategy#add "i2"    (R(new axf_rule))   "i2" "i3" ;
-    strategy#add "i3"    (R(new axg_rule))   "i3" "i4" ;
-    strategy#add "i4"    (R(new exf_rule))   "i4" "i5" ;
-    strategy#add "i5"    (R(new exg_rule))   "i5" "b" ;
-    strategy#add "b"     (R(new id_rule))    "b" "c";
-    strategy#add "c"     (R(new false_rule)) "c" "s1";
-    strategy#add "s1"    S                   "start" "d1" ;
-    strategy#add "d1"    (R(new exx_rule))   "s2" "d2";
-    strategy#add "d2"    (R(new axx_rule))   "s2" "s2";
-    strategy#add "s2"    S                   "start" "meta" ;
-    strategy#add "meta"  (R(new loop_rule))  "end" "end" ;
-    strategy#add "end"   E__                  "end" "end"
-;;
 
 let exit (uev) =
     match uev#elements with
@@ -415,5 +445,8 @@ OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
 
+let saturation = tactic ( (Id; And; Or; Axf; Axg; Exf; Exg; False)* )
 
-STRATEGY (A)
+let modal = tactic ( ( saturation ; Ref; Exx )* )
+
+STRATEGY ( (modal ; Loop)* )

@@ -182,8 +182,8 @@ ENDIF
                 let _ = OutputBroker.print node "initial node" 0 in
                 let cache = (new Cache.cache) in
                 let visit =
-                    if (!Logic.__use_cache) then Visit.visit
-                    else Visit.visit
+                    (* if (!Logic.__use_cache) then Visit.visit
+                    else *) Visit.visit cache
                 in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
                 let result = visit strategy node 
@@ -192,7 +192,9 @@ ENDIF
                 Printf.printf "%s\nResult: %s\n%s\n"
                 (Timer.to_string time)
                 (exit_function result)
-                (if !Options.nocache || not(!Logic.__use_cache) then "" else cache#stats);
+                (* (if !Options.nocache || not(!Logic.__use_cache) then ""
+                 * else*)
+                cache#stats;
                 Gc.major ();
                 flush_all ()
             with Timer.Timeout -> Printf.printf "Timeout elapsed\n"

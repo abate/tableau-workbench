@@ -386,25 +386,6 @@ TABLEAU
   
 END
 
-let strategy = new Strategy.strategy "start";;
-let _ = 
-    strategy#add "start" (R(new and_rule))   "start" "a" ;
-    strategy#add "a"     (R(new false_rule))    "a" "i2" ;
-    strategy#add "i2"    (R(new id_rule))   "i2" "i3" ;
-    strategy#add "i3"    (R(new edia_rule))   "i3" "i4" ;
-    strategy#add "i4"    (R(new cbox_rule))   "i4" "i5" ;
-    strategy#add "i5"    (R(new ebox_rule))   "i5" "c" ;
-    strategy#add "c"     (R(new or_rule)) "c" "s1";
-    strategy#add "s1"    S                   "start" "b" ;
-    strategy#add "b"     (R(new cdia_rule))  "start" "s3";
-    strategy#add "s3"    S                   "start" "d1" ;
-    strategy#add "d1"    (R(new dia1_rule))   "s2" "d2";
-    strategy#add "d2"    (R(new dia2_rule))   "s2" "s2";
-    strategy#add "s2"    S                   "start" "meta" ;
-    strategy#add "meta"  (R(new loop_rule))  "end" "end" ;
-    strategy#add "end"   E__                  "end" "end"
-;;
-
 let exit (uev) =
     match uev#elements with
     |[] -> "Open"
@@ -420,4 +401,8 @@ OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
 
-STRATEGY (A)
+let saturation = tactic ( (Id; And; Or; Edia; Cbox; Ebox; Cdia; False)* )
+
+let modal = tactic ( ( saturation ; Dia1 ; Dia2 )* )
+
+STRATEGY ( (modal ; Loop)* )

@@ -107,7 +107,7 @@ TABLEAU
         DIAMONDS := add(Dia Y,DIAMONDS) ]; [DIAMONDS := add(Dia A,DIAMONDS) ] ] 
   
   BRANCH [ not_empty(Dia Y) ] 
-  END
+  END (cache)
 
   RULE S4IMP
   { Dia A } ; Z

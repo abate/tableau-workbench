@@ -4,10 +4,10 @@ sig
     type node
     class cache :
           object('cache)
-              method add  : node -> node -> unit
+              method add  : node -> node Tree.tree -> unit
               method mem  : node -> bool
-              method find : node -> node option
-              method empty : 'cache
+              method find : node -> node Tree.tree
+              method clear : 'cache
               method to_string : string
               method stats : string
           end
@@ -29,7 +29,7 @@ module Make (N:Node.S) =
         
         class cache =
             object(self)
-                val data : node Hash.t = Hash.create 2879
+                val data : node Tree.tree Hash.t = Hash.create 2879
                 
                 val mutable hits = 0
                 val mutable miss = 0
@@ -40,24 +40,27 @@ module Make (N:Node.S) =
                     else (miss <- miss +1; false)
                 
                 method find k =
-                    try Some(Hash.find data k)
-                    with Not_found -> None
+                    try 
+                        let v = Hash.find data k in
+                        (hits <- hits +1; v)
+                    with Not_found ->
+                        (miss <- miss +1; raise Not_found)
                     
                 method add k v = Hash.add data k v
-                    
-                method to_string =
-                    Hash.fold (
+
+                method to_string = ""
+(*                    Hash.fold (
                         fun k v s ->
                             Printf.sprintf "%s\nkey:%s\nvalue:%s"
                             s k#to_string v#to_string
                     ) data ""
-
+*)
                 method stats = 
                     Printf.sprintf
                     "Cache results:\nHits:%d\nMiss:%d\nElements in the cache:%d\n"
                     hits miss (Hash.length data)
 
-                method empty = {< data = Hash.create 2879 >}
+                method clear = {< data = Hash.create 2879 >}
             end
     end
 

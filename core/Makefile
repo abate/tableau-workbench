@@ -4,8 +4,8 @@ SOURCES := \
 	llist.ml \
 	data.ml \
 	node.ml \
-	cache.ml \
 	tree.ml \
+	cache.ml \
 	rule.ml \
 	strategy.ml \
 	visit.ml \
