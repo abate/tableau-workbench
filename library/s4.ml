@@ -170,22 +170,9 @@ TABLEAU
 
 END
 
-let strategy = new Strategy.strategy "start";;
-let _ = 
-    strategy#add "start" (R(new and_rule))  "start" "a" ;
-    strategy#add "a"     (R(new or_rule))   "a" "i1" ;
-    strategy#add "i1"    (R(new imp_rule))  "i1" "i2" ;
-    strategy#add "i2"    (R(new dimp_rule)) "i2" "i3" ;
-    strategy#add "i3"    (R(new tnew_rule)) "i3" "i4" ;
-    strategy#add "i4"    (R(new told_rule)) "i4" "b" ;
-    strategy#add "b"     (R(new id_rule))   "b" "s1";
-    strategy#add "s1"    S                  "start" "d" ;
-    strategy#add "d"     (R(new s4imp_rule))   "d" "s2";
-    strategy#add "s2"    S                  "start" "end" ;
-    strategy#add "end"   E__                  "end" "end"
-;;
-
 PP := nnf
 NEG := neg
 
-STRATEGY (A)
+let saturation = tactic ( (And;Or;Imp;Dimp;Tnew;Told;Id)* )
+
+STRATEGY ( saturation ; S4imp )*

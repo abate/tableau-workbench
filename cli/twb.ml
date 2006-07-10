@@ -145,7 +145,7 @@ IFNDEF NATIVE THEN
 ELSE ()
 ENDIF
     in
-    let strategy : Strategy.strategy = 
+    let strategy = 
         try (Option.get (!Logic.__strategy))
         with Option.No_value -> failwith "Strategy not specified"
     in
@@ -182,20 +182,11 @@ ENDIF
                 let _ = OutputBroker.print node "initial node" 0 in
                 let cache = (new Cache.cache) in
                 let visit =
-                    if (!Logic.__use_cache) then
-                        if (!Options.norec) && (!Options.nocache) then
-                            Visit.visit_min
-                        else if (!Options.norec) then Visit.visit_norec cache
-                        else if (!Options.nocache) then Visit.visit_nocache
-                        else Visit.visit cache
-                    else Visit.visit_min
+                    if (!Logic.__use_cache) then Visit.visit
+                    else Visit.visit
                 in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
-                let result =
-                    visit 
-                    strategy
-                    strategy#start
-                    node 
+                let result = visit strategy node 
                 in
                 let time = Timer.stop_timing start in
                 Printf.printf "%s\nResult: %s\n%s\n"

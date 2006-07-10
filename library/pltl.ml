@@ -296,22 +296,6 @@ TABLEAU
   
 END
 
-let strategy = new Strategy.strategy "start";;
-let _ = 
-    strategy#add "start" (R(new and_rule))  "start" "a" ;
-    strategy#add "a"     (R(new or_rule))   "a" "i2" ;
-    strategy#add "i2"    (R(new until_rule)) "i2" "i3" ;
-    strategy#add "i3"    (R(new ge_rule)) "i3" "i4" ;
-    strategy#add "i4"    (R(new before_rule)) "i4" "b" ;
-    strategy#add "b"     (R(new id_rule))   "b" "c";
-    strategy#add "c"     (R(new false_rule))   "c" "s1";
-    strategy#add "s1"    S                  "start" "d" ;
-    strategy#add "d"     (R(new next_rule)) "d" "s2";
-    strategy#add "s2"    S                  "start" "meta" ;
-    strategy#add "meta"  (R(new loop_rule)) "end" "end" ;
-    strategy#add "end"   E__                "end" "end"
-;;
-
 let exit (uev) = 
     match uev#elements with
     |[] -> "Open"
@@ -323,7 +307,9 @@ PP := nnf
 NEG := neg
 EXIT := exit (uev(1))
 
-STRATEGY (A)
+let saturation = tactic ( (And ; Or ; Until ; Ge ; Before ; Id ; False)* )
+
+STRATEGY ( ((saturation ; Next)* ; Loop)* )
 
 OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")

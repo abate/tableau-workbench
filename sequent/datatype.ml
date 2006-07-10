@@ -106,6 +106,6 @@ module Rule =
         end
     end
 
-module Strategy = UserStrategy.Make(Rule) 
-module Visit = Visit.Make(Node)(Cache)(Rule)(Strategy)
+module Strategy = Strategy.Make(Node)(Rule) 
+module Visit = Visit.Make(Node)(Rule)(Strategy)
 

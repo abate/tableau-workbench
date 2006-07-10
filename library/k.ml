@@ -136,17 +136,7 @@ END
 PP := nnf
 NEG := neg
 
-let strategy = new Strategy.strategy "start";;
-let _ = 
-    strategy#add "start" (R(new and_rule))  "start" "a" ;
-    strategy#add "a"     (R(new or_rule))   "a" "i1" ;
-    strategy#add "i1"    (R(new imp_rule))  "i1" "i2" ;
-    strategy#add "i2"    (R(new dimp_rule)) "i2" "b" ;
-    strategy#add "b"     (R(new id_rule))   "b" "s1";
-    strategy#add "s1"    S                  "start" "d" ;
-    strategy#add "d"     (R(new k_rule))    "d" "s2";
-    strategy#add "s2"    S                  "start" "end" ;
-    strategy#add "end"   E__                "end" "end"
-;;
+let t = tactic ( (Id;And;Or)* )
 
-STRATEGY (A)
+STRATEGY ( t ; K )*
+

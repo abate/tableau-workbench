@@ -137,19 +137,4 @@ let nnf = Basictype.map nnf_term ;;
 PP := nnf
 NEG := neg
 
-
-(* STRATEGY ((Id; And; Or; Not)* ; K)* *)
-
-let strategy = new Strategy.strategy "start";;
-let _ =
-    strategy#add "start" (R(new and_rule)) "start" "a" ;
-    strategy#add "a" (R(new or_rule)) "a" "i1" ;
-    strategy#add "i1" (R(new imp_rule)) "i1" "b" ;
-(*    strategy#add "i2" (R(new dimp_rule)) "i2" "b" ; *)
-    strategy#add "b" (R(new id_rule)) "end" "c";
-    strategy#add "c" (R(new false_rule)) "end" "s2";
-    strategy#add "s2" S "start" "end" ;
-    strategy#add "end" E__ "end" "end" ;
-;;
-
-STRATEGY (A)
+STRATEGY (Id;And;Or)*

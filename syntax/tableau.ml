@@ -1226,9 +1226,8 @@ rewrite_expr_term rewrite_patt_term;
     |"OPTIONS"; olist = LIST1 options SEP ";"; "END" ->
             let ol = list_to_exprlist _loc olist in
             <:str_item< Logic.__options.val := Some ([ $list:ol$ ]) >>
-    |"STRATEGY"; s = strategy ->
-            (* <:str_item< declare $list:expand_strategy _loc s$ end >> *)
-            let str = <:str_item< Logic.__strategy.val := Some(strategy) >> in
+    |"STRATEGY"; OPT ":="; s = tactic ->
+            let str = <:str_item< Logic.__strategy.val := Some(Strategy.strategy $s$) >> in
             let main = <:str_item< Twb.main () >> in
             <:str_item< declare $list:[str;main]$ end >>
   ]];
@@ -1258,19 +1257,23 @@ rewrite_expr_term rewrite_patt_term;
               (v,s,"Single","Variable", e)
   ]]; *)
 
-  strategy:
+  tactic:
   [ "One" LEFTA
-      [ s1 = strategy LEVEL "Simple"; ";";
-        s = LIST1 strategy LEVEL "Simple" SEP ";" -> Seq (s1::s)
-      | s1 = strategy LEVEL "Simple"; "|";
-        s = LIST1 strategy LEVEL "Simple" SEP "|" -> Choice (s1::s)
-      | s = strategy LEVEL "Simple"; "*" -> Star ( s )
-      | s1 = strategy LEVEL "Simple" -> Seq([s1])
+      [ 
+        id = LIDENT -> <:expr< $lid:id$ >>
+      | s1 = tactic; ";"; s2 = tactic -> <:expr< Seq ($s1$,$s2$) >>
+      | s1 = tactic; "|"; s2 = tactic -> <:expr< Alt ($s1$,$s2$) >>
       ]
-  | "Simple" NONA
-      [ "("; s = strategy; ")" -> s
-      | lid = UIDENT -> Rule( lid^"_rule")
-      | uid = UIDENT; "."; lid = UIDENT -> Rule(uid^ lid^"_rule")
+  | 
+      [ 
+        "("; s = tactic; ")" -> s
+      | "("; s = tactic; ")"; "*" -> <:expr< Repeat ($s$) >>
+      | lid = UIDENT -> 
+              let id = String.lowercase lid in
+              <:expr< Rule( new $lid:id^"_rule"$ ) >>
+      | uid = UIDENT; "."; lid = UIDENT ->
+              let id = String.lowercase lid in
+              <:expr< Rule( new $uid:uid$.$lid:id^"_rule"$) >>
       ]
   ];
 
@@ -1406,8 +1409,8 @@ rewrite_expr_term rewrite_patt_term;
     ];
     
   Pcaml.expr: LEVEL "simple"  
-      [[ "term"; "("; e = rewrite_expr_term; ")" ->
-          <:expr< $e$ >> 
+      [[ "term";   "("; e = rewrite_expr_term; ")" -> <:expr< $e$ >> 
+      | "tactic"; "("; t = tactic; ")" -> <:expr< $t$ >>
   ]];
   Pcaml.patt: LEVEL "simple"
       [[ "term"; "("; p = rewrite_patt_term; ")"->

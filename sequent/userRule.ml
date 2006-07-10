@@ -205,7 +205,7 @@ let unbox_tree = function
 (* up method - simple. explore the first branch, if the
  * branch condition is true, then explore the second branch. 
  * On backtrack apply a synth action, but the status is set
- * accrding the the branch condition *)
+ * according the the branch condition *)
 let up_explore_simple context treelist synthlist branchll =
     let (_, sbl, node) = context#get in
     let (_, hist, _) = node#get in

@@ -6,11 +6,12 @@ SOURCES := \
 	build.ml \
 	partition.ml \
 	ruleContext.ml \
-	userStrategy.ml \
 	datatype.ml \
 	outputBroker.ml \
 	userRule.ml \
 	
+#	userStrategy.ml
+
 RESULT := twbseq
 PACKS := twb.core twb.types
 
