@@ -5,8 +5,8 @@ CONNECTIVES
   Imp, "_->_", One;
   DImp, "_<->_", One;
   Not, "~_",   Simple;
-  Dia, "<>_", Simple;
- (*  Box, "[]_", Simple; doesn't work *)
+  Dia, "Dia_", Simple;
+  Box, "Box_", Simple;
   Boxi, "[_]_", Simple;
   Diai, "<_>_", Simple
 END
@@ -65,21 +65,21 @@ let rec nnf_term f =
     |term ( ~ .a ) as f -> f
     |term ( .a ) as f -> f
 
-    | term ( <i> a ) -> 
+    | term ( Dia a ) -> 
             let x = nnf_term a
-            in term ( <i> x )
+            in term ( Dia x )
             
-    | term ( ~ ( <i> a ) ) -> 
+    | term ( ~ ( Dia a ) ) -> 
             let x = nnf_term ( term ( ~ a ) )
-            in term ( [i] x )
+            in term ( Box x )
             
-    | term ( [i] a ) -> 
+    | term ( Box a ) -> 
             let x = nnf_term a
-            in term ( [i] x )
+            in term ( Box x )
             
-    | term ( ~ ( [i] a ) ) -> 
+    | term ( ~ ( Box a ) ) -> 
             let x = nnf_term ( term ( ~ a ) )
-            in term ( <i> x )
+            in term ( Dia x )
             
     | _ -> failwith "nnf_term"
 ;;
@@ -96,30 +96,30 @@ let nnf = Basictype.map nnf_term ;;
 TABLEAU
 
   RULE S4 
-  { <1> A } ; <1> Y ; Z
+  { Dia A } ; Dia Y ; Z
   =====================
-  A ; BOXES || <1> Y 
+  A ; BOXES || Dia Y 
   
-  COND notin(<1> A, DIAMONDS)
+  COND notin(Dia A, DIAMONDS)
   
   ACTION [
-      [ DIAMONDS := add(<1> A,DIAMONDS);
-        DIAMONDS := add(<1> Y,DIAMONDS) ]; [DIAMONDS := add(<1> A,DIAMONDS) ] ] 
+      [ DIAMONDS := add(Dia A,DIAMONDS);
+        DIAMONDS := add(Dia Y,DIAMONDS) ]; [DIAMONDS := add(Dia A,DIAMONDS) ] ] 
   
-  BRANCH [ not_empty(<1> Y) ] 
+  BRANCH [ not_empty(Dia Y) ] 
   END
 
   RULE S4IMP
-  { <1> A } ; Z
+  { Dia A } ; Z
   ----------------------
   A ; BOXES 
   
-  COND notin(<1> A, DIAMONDS)
-  ACTION [ DIAMONDS := add(<1> A,DIAMONDS) ]
+  COND notin(Dia A, DIAMONDS)
+  ACTION [ DIAMONDS := add(Dia A,DIAMONDS) ]
   END
 
   RULE TNEW
-  { [1] A }
+  { Box A }
   =========
      A 
 
@@ -131,7 +131,7 @@ TABLEAU
   END
 
   RULE TOLD
-  { [1] A }
+  { Box A }
   =========
      A 
 
@@ -182,7 +182,7 @@ let _ =
     strategy#add "s1"    S                  "start" "d" ;
     strategy#add "d"     (R(new s4imp_rule))   "d" "s2";
     strategy#add "s2"    S                  "start" "end" ;
-    strategy#add "end"   E                  "end" "end"
+    strategy#add "end"   E__                  "end" "end"
 ;;
 
 PP := nnf

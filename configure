@@ -1,9 +1,7 @@
 #!/bin/sh
 
 
-echo
-echo "twb auto configuration (attempt 3)"
-echo
+echo "Configure..."
 
 TWBPATH=`pwd`
 OCAMLPATH=`ocamlc -where`
@@ -12,11 +10,11 @@ OCAMLVERSION=`ocamlc -v | grep version | cut -d " " -f 6`
 echo -n "Checking for ocaml version ... "
 echo -n "$OCAMLVERSION. "; 
 case $OCAMLVERSION in
-    3.0[6789]* )
+    3.0[9]* )
     	echo " Ok." ; break;;
     *)
     	echo
-	echo "Version of ocaml is too old... 3.06 or greater is needed."
+	echo "Version of ocaml is too old... 3.09 or greater is needed."
 	exit 1
 esac
 
@@ -31,9 +29,11 @@ fi
 
 echo -n "Checking for extlib ... "
 EXTLIB=`ocamlfind query extlib 2> /dev/null`
-
 if [ -z $EXTLIB ]; then
 	echo "Not found.  Using local version."
+	if [ -d $TWBPATH/extlib-not-used ]; then
+	    mv -f extlib-not-used extlib
+	fi
 else
 	if [ -d $EXTLIB ]; then
     		echo "Ok. Using system library."
@@ -51,16 +51,16 @@ fi
 
 
 echo
-echo
 rm -f Makefile.conf
 echo "Writing Makefile.conf ..."
 echo "OCAMLPATH=$TWBPATH" >> Makefile.conf
 echo "OCAMLMAKEFILE=$TWBPATH/utils/OCamlMakefile" >> Makefile.conf
-echo "NOEXTLIB=$NOEXTLIB" >> Makefile.conf
-echo "export OCAMLPATH OCAMLMAKEFILE NOEXTLIB" >> Makefile.conf
+if [ -z $NOEXTLIB ]; then
+    echo "NOEXTLIB=$NOEXTLIB" >> Makefile.conf
+    echo "export NOEXTLIB" >> Makefile.conf
+fi
+echo "export OCAMLPATH OCAMLMAKEFILE " >> Makefile.conf
 echo >> Makefile.conf
 
-echo
 echo "now type \"make\""
 echo
-

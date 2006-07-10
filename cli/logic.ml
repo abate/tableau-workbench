@@ -10,3 +10,4 @@ let __pp : (Type.bt list -> Type.bt list) option ref = ref None
 let __neg : (Type.bt list -> Type.bt list) option ref = ref None
 let __exit : (Variable.store list -> string) option ref = ref None
 let __options : (Arg.key * Arg.spec * Arg.doc) list option ref = ref None
+let __use_cache : bool ref = ref false

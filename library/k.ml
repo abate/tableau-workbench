@@ -6,7 +6,7 @@ CONNECTIVES
   DImp, "_<->_", One;
   Not, "~_",   Simple;
   Box, "Box_", Simple;
-  Dia, "<>_", Simple;
+  Dia, "Dia_", Simple;
   Falsum, Const;
   Verum, Const
 END
@@ -56,11 +56,11 @@ let rec nnf_term f =
     |term ( ~ .a ) as f -> f
     |term ( .a ) as f -> f
 
-    |term ( <> a ) -> 
+    |term ( Dia a ) -> 
             let x = nnf_term a
-            in term ( <> x )
+            in term ( Dia x )
             
-    |term ( ~ ( <> a ) ) -> 
+    |term ( ~ ( Dia a ) ) -> 
             let x = nnf_term ( term ( ~ a ) )
             in term ( Box x )
             
@@ -70,7 +70,7 @@ let rec nnf_term f =
             
     |term ( ~ ( Box a ) ) -> 
             let x = nnf_term ( term ( ~ a ) )
-            in term ( <> x )
+            in term ( Dia x )
 
     |term ( ~ Falsum ) -> term ( Verum )
     |term ( ~ Verum ) -> term ( Falsum )
@@ -88,15 +88,15 @@ let always () = true ;;
 TABLEAU
 
   RULE K1
-  { <> A } ; Box X ; <> Y ; Z
+  { Dia A } ; Box X ; Dia Y ; Z
   ===========================
-      A ; X || <> Y ; Box X
+      A ; X || Dia Y ; Box X
 
-  BRANCH [ not_empty(<> Y) ]
+  BRANCH [ not_empty(Dia Y) ]
   END
 
   RULE K
-  { <> A } ; Box X ; Z
+  { Dia A } ; Box X ; Z
   ----------------------
     A ; X
   END

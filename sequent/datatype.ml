@@ -62,12 +62,13 @@ module NodeType =
     struct
         type elt = ( Store.store * History.store * Variable.store )
         let copy (m,h,v) = ( Store.copy m, History.copy h, Variable.copy v )
-        let equal (m1,h1,_) (m2,h2,_) = (m1 = m2) && (h1 = h2)
         let to_string (m,h,v) =
             Printf.sprintf "%s\n%s\n%s"
             (Store.to_string m)
             (History.to_string h)
             (Variable.to_string v)
+        let marshal (m,h,v) =
+            string_of_int (Hashtbl.hash (m#to_string ^ h#to_string))
     end
 
 module Node = Node.Make(NodeType)
@@ -101,6 +102,7 @@ module Rule =
             method virtual check : node -> context
             method virtual down  : context -> tree
             method virtual up    : context -> tree Llist.llist -> tree
+            method virtual use_cache : bool
         end
     end
 

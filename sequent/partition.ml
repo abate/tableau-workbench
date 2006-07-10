@@ -32,6 +32,7 @@ module Make(P: NodePattern.S) =
                 let newstore = store#del f in
                 Some(s,newstore)
             with FailedMatch -> None
+    ;;
         
     let init (sbl,store) = (sbl#copy, store#copy)
     
@@ -54,6 +55,7 @@ module Make(P: NodePattern.S) =
                         ) (List.enum el)
                     )
         in enum_aux store patternlist
+    ;;
 
     (* we get all formulae associated with a patter minus the
      * formulae that have been selected to be principal formulae.

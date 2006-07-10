@@ -12,14 +12,26 @@ module Make (N: Node.S)
     :
         sig
             val visit : C.cache -> S.strategy -> S.state -> N.node -> R.tree
-            val visit_nocache : S.strategy -> S.state -> N.node -> R.tree
             val visit_min : S.strategy -> S.state -> N.node -> R.tree
+            val visit_norec : C.cache -> S.strategy -> S.state -> N.node -> R.tree
+            val visit_nocache : S.strategy -> S.state -> N.node -> R.tree
         end
 = struct
 
-    let is_none = function None -> true | _ -> false
-    let is_some e = not(is_none e)
+    let is_none = function None -> true  | _ -> false
+    let is_some = function None -> false | _ -> true
     let get = function None -> raise Not_found |Some(n) -> n
+
+    let visit_min ( strategy : S.strategy ) state node =
+        let rec __visit strategy state node = 
+            try
+                let (rule,context,newstate) = strategy#next state None node in
+                match rule#down context with
+                |Tree(l) ->
+                        rule#up context (Llist.map (__visit strategy newstate) l)
+                |Leaf(_) as n -> rule#up context (LList(n,lazy(Empty)))
+            with Strategy.NoMoreRules -> Leaf(node)
+        in __visit strategy state node
 
     let visit (cache : C.cache) ( strategy : S.strategy ) state node =
         let rec __visit strategy state ?resnode node =
@@ -39,12 +51,14 @@ module Make (N: Node.S)
                             rule#up context (LList(n,lazy(Empty)))
                             with Leaf(n) -> n |_ -> failwith "visit" end
                 in
-                if cache#mem node then
-                    __visit strategy newstate ~resnode:(get(cache#find node)) node
-                else 
-                    let res = resultnode () in
-                    let _ = cache#add node res in
-                    __visit strategy newstate ~resnode:res node
+                if rule#use_cache then
+                    if cache#mem node then
+                        __visit strategy newstate ~resnode:(get(cache#find node)) node
+                    else 
+                        let res = resultnode () in
+                        let _ = cache#add node res in
+                        __visit strategy newstate ~resnode:res node
+                else __visit strategy newstate ~resnode:(resultnode ()) node
             with Strategy.NoMoreRules ->
                 if is_none resnode then Leaf(node)
                 else Leaf(get resnode)
@@ -72,16 +86,32 @@ module Make (N: Node.S)
                 if is_none resnode then Leaf(node)
                 else Leaf(get resnode)
         in __visit strategy state node
-
-    let visit_min ( strategy : S.strategy ) state node =
+        
+    let visit_norec (cache : C.cache) ( strategy : S.strategy ) state node =
         let rec __visit strategy state node = 
             try
                 let (rule,context,newstate) = strategy#next state None node in
-                match rule#down context with
-                |Tree(l) ->
-                        rule#up context (Llist.map (__visit strategy newstate) l)
-                |Leaf(_) as n -> rule#up context (LList(n,lazy(Empty)))
+                let resultnode () = 
+                    match rule#down context with
+                    |Tree(l) ->
+                            begin match
+                            rule#up context
+                            (Llist.map (fun n -> __visit strategy newstate n) l)
+                            with Leaf(n) -> n |_ -> failwith "visit" end
+                    |Leaf(_) as n -> 
+                            begin match
+                            rule#up context (LList(n,lazy(Empty)))
+                            with Leaf(n) -> n |_ -> failwith "visit" end
+                in
+                if rule#use_cache then
+                    if cache#mem node then
+                        __visit strategy newstate node
+                    else 
+                        let res = resultnode () in
+                        let _ = cache#add node res in
+                        __visit strategy newstate node
+                else __visit strategy newstate node
             with Strategy.NoMoreRules -> Leaf(node)
         in __visit strategy state node
-        
+
 end

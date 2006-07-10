@@ -24,5 +24,6 @@ module type S =
                 method virtual check : node -> context
                 method virtual down : context -> tree
                 method virtual up : context -> tree Llist.llist -> tree
+                method virtual use_cache : bool
             end
       end

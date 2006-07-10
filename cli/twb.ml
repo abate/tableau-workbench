@@ -21,8 +21,8 @@ IFNDEF NATIVE THEN let libdir = ref "./" ENDIF
   let outdir = ref "trace"
   let outtype = ref ""
 
-  let nocache = ref true
-  let norec   = ref true
+  let nocache = ref false
+  let norec   = ref false
 end
 ;;
 
@@ -149,12 +149,6 @@ ENDIF
         try (Option.get (!Logic.__strategy))
         with Option.No_value -> failwith "Strategy not specified"
     in
-    let cache = (new Cache.cache) in
-    let visit =
-        if (!Options.norec) then Visit.visit_min
-        else if (!Options.nocache) then Visit.visit_nocache
-        else Visit.visit cache
-    in
     let file_ch =
         match !input_file with
         |Some(f) -> open_in f
@@ -186,9 +180,19 @@ ENDIF
                 let _ = UserRule.nodeid := 0 in
                 let _ = OutputBroker.trace := !Options.trace in
                 let _ = OutputBroker.print node "initial node" 0 in
+                let cache = (new Cache.cache) in
+                let visit =
+                    if (!Logic.__use_cache) then
+                        if (!Options.norec) && (!Options.nocache) then
+                            Visit.visit_min
+                        else if (!Options.norec) then Visit.visit_norec cache
+                        else if (!Options.nocache) then Visit.visit_nocache
+                        else Visit.visit cache
+                    else Visit.visit_min
+                in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
                 let result =
-                    visit
+                    visit 
                     strategy
                     strategy#start
                     node 
@@ -197,8 +201,8 @@ ENDIF
                 Printf.printf "%s\nResult: %s\n%s\n"
                 (Timer.to_string time)
                 (exit_function result)
-                (if !Options.nocache || !Options.norec 
-                then "" else cache#stats);
+                (if !Options.nocache || not(!Logic.__use_cache) then "" else cache#stats);
+                Gc.major ();
                 flush_all ()
             with Timer.Timeout -> Printf.printf "Timeout elapsed\n"
         done

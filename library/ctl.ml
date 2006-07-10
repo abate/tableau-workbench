@@ -100,7 +100,7 @@ let index br s =
     let i = ref 0 in
     try begin
         List.iter (fun e ->
-            if s#equal e then raise ( Stop !i) else incr i
+            if s#is_equal e then raise ( Stop !i) else incr i
         ) br#elements;
         failwith "index: list empty"
         end
@@ -110,13 +110,13 @@ let index br s =
 (* true if there is not an element in the list equal to (dia@box) *)
 let loop_check (dia,box,br) =
     let set = (new Set.set)#addlist (dia@box) in
-    not(List.exists (fun s -> set#equal s) br#elements)
+    not(List.exists (fun s -> set#is_equal s) br#elements)
 ;;
 
 let setuev (diax,box,ev,br) =
     let checkuev node ev br =
         let set = (new Set.set)#addlist node in
-        if List.exists ( fun s -> set#equal s ) br#elements then
+        if List.exists ( fun s -> set#is_equal s ) br#elements then
             let i = index br set in
             let loopset = ev#elements in
             Some(
@@ -157,7 +157,6 @@ let setuev (diax,box,ev,br) =
     uev
 ;;
 
-
 let pi (uev1, uev2, br, ev) =
     let m = br#length in
     let loopset = ev#elements in
@@ -172,9 +171,9 @@ let pi (uev1, uev2, br, ev) =
         else ()
     in 
     uev#filter (function
-        |(`Formula term (ExX (ExF d)), n) when (n > m) ->
+        |(`Formula term (ExX (ExF d)), n) when (n > m+1) ->
               not(List.mem (`Formula d) loopset)
-        |(`Formula term (AxX (AxF d)), n) when (n > m) ->
+        |(`Formula term (AxX (AxF d)), n) when (n > m+1) ->
               not(List.mem (`Formula d) loopset)
         |_ -> true
     )
@@ -307,7 +306,7 @@ TABLEAU
   ACTION [ [ Ev := add(P,Ev) ] ; [] ]
   BACKTRACK [ uev := beta(uev(1), uev(2), Br) ]
   BRANCH [ [ not_empty(uev(1)) ] ] 
-  END
+  END (cache)
 
   RULE Exf
       { ExF P }
@@ -317,7 +316,7 @@ TABLEAU
   ACTION [ [ Ev := add(P,Ev) ] ; [] ]
   BACKTRACK [ uev := beta(uev(1), uev(2), Br) ] 
   BRANCH [ [ not_empty(uev(1)) ] ] 
-  END
+  END (cache)
 
   RULE Axg
      not_empty_list(AxG P)
@@ -343,7 +342,7 @@ TABLEAU
   ] ; [] ]
   BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
   BRANCH [ [ not_false(uev(1)) ] ]
-  END
+  END (cache)
 
   RULE Axx
   { AxX P } ; is_empty_list(ExX S) ; AxX Y ; Z
@@ -356,7 +355,7 @@ TABLEAU
       Br := push(AxX P, AxX Y, Br)
   ] 
   BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
-  END
+  END (cache)
   
   RULE Loop
        ExX X ; AxX Y ; Z
@@ -401,8 +400,6 @@ let _ =
     strategy#add "end"   E__                  "end" "end"
 ;;
 
-STRATEGY (A)
-
 let exit (uev) =
     match uev#elements with
     |(termfalse,_)::[] -> "Closed"
@@ -418,3 +415,5 @@ OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
 
+
+STRATEGY (A)

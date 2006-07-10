@@ -21,6 +21,7 @@ let new_id =
 let hist_table  = Hashtbl.create 50 ;;
 let const_table = Hashtbl.create 50 ;;
 let patt_table  = Hashtbl.create 50 ;;
+let use_cache   = ref false ;;
 
 (* given a patter, returns an pattern where all lid as
  * substituted with _ *)
@@ -217,7 +218,7 @@ let expand_set _loc ?cond formula l =
             function 
             |a when a =~ "atom___\\(.*\\)" ->
                     <:expr< `Formula (Atom (nc,$lid:get_match 1 a$)) >>
-            |a -> <:expr< `Formula $lid:String.lowercase a$ >>
+            |a -> <:expr< `Formula ($lid:String.lowercase a$) >>
         ) l 
         in <:expr< ( $list:l$ ) >>
     in
@@ -288,7 +289,7 @@ let expand_single _loc ?cond formula l =
             function 
             |a when a =~ "atom___\\(.*\\)" ->
                     <:expr< `Formula (Atom (nc,$lid:get_match 1 a$)) >>
-            |a -> <:expr< `Formula $lid:String.lowercase a$ >>
+            |a -> <:expr< `Formula ($lid:String.lowercase a$) >>
         ) l 
         in list_to_exprlist _loc l
     in
@@ -451,7 +452,7 @@ let expand_build_formula _loc (sl,formula) newid =
             match $ex3$ with
             [ $pa2$ ->
                     List.map (fun
-                        [$pa4$ -> `Formula $formula$
+                        [$pa4$ -> `Formula ($formula$)
                         | _ -> failwith ($str:newid$^" type node allowed" )]
                     ) (split $ex4$)
             | _ -> failwith ($str:newid$^" type node allowed") ]
@@ -860,7 +861,7 @@ let expand_rule_den _loc t dl hl bll bt =
             let al = list_to_exprlist _loc al 
             in (al,strld)
         in
-        let (actidl, actstrl) = expand_actionlist _loc (dl::tl) hl in
+        let (actidl,actstrl) = expand_actionlist _loc (dl::tl) hl in
         let (firstal,strld) = __exp dl in
         (* first node of the action list *)
         let firsthl = list_to_exprlist _loc (List.hd actidl) in
@@ -899,17 +900,17 @@ let expand_rule_den _loc t dl hl bll bt =
                 match t with
 (*                | NotInv when not(nextal = []) ->
                         failwith "Not Invertible rule cannot branch" *)
-                | Inv ->
+                |Inv ->
                         <:expr<
                         UserRule.down_explicit name context
                         (fun [ n -> [ $h$ :: $tl$ ] ] ) 
                         >>
-                | NotInv when not(nextal = []) ->
+                |NotInv when not(nextal = []) ->
                         <:expr<
                         UserRule.down_explicit name context
                         (fun [ n -> [ $h$ :: $tl$ ] ] ) 
                         >>
-                | NotInv ->
+                |NotInv ->
                         <:expr<
                         UserRule.down_implicit name context $firstal$ $firsthl$ 
                         >>
@@ -932,7 +933,7 @@ let expand_rule_den _loc t dl hl bll bt =
             let up =
                 <:expr< UserRule.up_explore_simple context treelist 
                 $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
-            in (up ,exp, strl@synthstrl@branchstrl)
+            in (up, exp, strl@synthstrl@branchstrl)
     (* <> a ; [] x ; <> y ; z ==== a ; b || <> y ; [] x *)
     |Exists (dl::tl),Inv ->  
             let (exp,strl) = expand dl tl hl in
@@ -943,14 +944,14 @@ let expand_rule_den _loc t dl hl bll bt =
             let up =
                 <:expr< UserRule.up_explore_simple context treelist 
                 $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
-            in (up ,exp, strl@synthstrl@branchstrl)
+            in (up, exp, strl@synthstrl@branchstrl)
     (* a & b === a ; b *)
     |Forall ([dl]),Inv ->
             let (exp,strl) = expand dl [] hl in
             let up =
                 <:expr< UserRule.up_explore_linear context treelist 
                 $list_to_exprlist _loc sythidl$ >>
-            in (up ,exp, strl@synthstrl)
+            in (up, exp, strl@synthstrl)
     (* a v b === a | b *)
     |Forall (dl::tl),Inv ->
             let (exp,strl) = expand dl tl hl in
@@ -961,7 +962,7 @@ let expand_rule_den _loc t dl hl bll bt =
             let up =
                 <:expr< UserRule.up_explore_simple context treelist 
                 $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
-            in (up ,exp, strl@synthstrl@branchstrl)
+            in (up, exp, strl@synthstrl@branchstrl)
     (* a v b === a ||| b *)
     (* a v b --- a ||| b *)
     |User   (dl::tl),_ ->
@@ -971,15 +972,19 @@ let expand_rule_den _loc t dl hl bll bt =
             let up =
                 <:expr< UserRule.up_explore_simple context treelist
                 $list_to_exprlist _loc sythidl$ $list_to_exprlist _loc bidl$ >>
-            in (up ,exp, strl@synthstrl@branchstrl)
+            in (up, exp, strl@synthstrl@branchstrl)
     |_ -> failwith "expand_rule_den"
 ;; 
 
 let expand_rule_back _loc bt = <:expr< () >> ;;
 
-let expand_rule_class _loc s (nl,fl) dl cl hl bl bt t =
+let expand_rule_class _loc s (nl,fl) dl cl hl bl bt t cache =
     let (pl,strln)    = expand_rule_num _loc (nl,fl) cl in
     let (up,al,strld) = expand_rule_den _loc t dl hl bl bt in
+    let cache =
+        if Option.is_none cache then <:expr< False >>
+        else (use_cache := true ; <:expr< True >> )
+    in
     strln@strld@
     [<:str_item< 
         class $lid:(String.lowercase s)^"_rule"$ = 
@@ -990,6 +995,7 @@ let expand_rule_class _loc s (nl,fl) dl cl hl bl bt t =
                 method check node = $pl$ ;
                 method down context = $al$ ;
                 method up context treelist = $up$ ;
+                method use_cache = $cache$;
                 end 
     >>
     ]
@@ -1197,11 +1203,17 @@ rewrite_expr_term rewrite_patt_term;
     |"TABLEAU"; l = LIST1 rule; "END" ->
       (*      let _ = Grammar.Entry.print expr_term in *)
             let l = (expand_matchpatt _loc )::l in 
+            let cache = 
+                if !use_cache then 
+                    <:str_item< Logic.__use_cache.val := True >>
+                else 
+                    <:str_item< Logic.__use_cache.val := False >>
+            in
             (* if the history is empty, then I've to add status to it *)
             if not(Hashtbl.mem hist_table "status") then
                 let hl = expand_history _loc [] in
                 let h = <:str_item< Logic.__history_list.val := Some($hl$) >>
-                in <:str_item< declare $list:(h::l)$ end >>
+                in <:str_item< declare $list:(cache::h::l)$ end >>
             else
                 <:str_item< declare $list:l$ end >>
     |"PP"; OPT ":="; e = Pcaml.expr ->
@@ -1269,8 +1281,8 @@ rewrite_expr_term rewrite_patt_term;
       hl = OPT actionlist;
       bt = OPT backtracklist;
       bl = OPT branchlist;
-      "END" ->
-          let rl = expand_rule_class _loc id (nl,n) dl cl hl bl bt t in 
+      "END"; cache = OPT [ "("; "cache"; ")" ] ->
+          let rl = expand_rule_class _loc id (nl,n) dl cl hl bl bt t cache in
           <:str_item< declare $list:rl$ end >>
   ]];
 
@@ -1316,7 +1328,7 @@ rewrite_expr_term rewrite_patt_term;
   ]];
 
   varindex: [[
-      "("; "all"; ")" -> (<:expr< "_dummy" >>,Var)
+       "("; "all"; ")" -> (<:expr< "_dummy" >>,Var)
       |"("; "last"; ")" -> (<:expr< "_dummy" >>,Var)
       |"("; i = INT; ")" -> (<:expr< $int:i$ >>, Term)
   ]];

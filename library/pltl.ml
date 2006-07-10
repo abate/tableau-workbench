@@ -61,7 +61,7 @@ let beta (uev1, uev2, n1, n2, br) =
  * the list to look up the index *)
 let rec index n s l =
     if List.length l > 0 then
-        if s#equal (List.nth l n) then n
+        if s#is_equal (List.nth l n) then n
         else
             if n < ((List.length l) - 1) then index (n+1) s l
             else failwith "index: core not found"
@@ -72,7 +72,7 @@ let rec index n s l =
 let loop_check (xa,xb,z,br) =
     let (br1, br2) = List.split br#elements in
     let set = (new Set.set)#addlist (xa@xb@z) in
-    not(List.exists (fun s -> set#equal s) br1)
+    not(List.exists (fun s -> set#is_equal s) br1)
 ;;
 
 let setuev (xa,xb,z,ev,br) =

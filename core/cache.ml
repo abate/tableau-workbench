@@ -7,6 +7,7 @@ sig
               method add  : node -> node -> unit
               method mem  : node -> bool
               method find : node -> node option
+              method empty : 'cache
               method to_string : string
               method stats : string
           end
@@ -17,40 +18,32 @@ module Make (N:Node.S) =
   struct
 
         type node = N.node
+        let hash n = Hashtbl.hash n#marshal
+        
         module Hash = Hashtbl.Make(
             struct 
                 type t = node
-                let equal n1 n2 = print_string "equal" ; n1#is_equal n2
-                let hash n = Hashtbl.hash n#get
+                let equal n1 n2 = (n1#to_string) = (n2#to_string)
+                let hash = hash
             end)
         
         class cache =
             object(self)
-                val data : node Hash.t = Hash.create 51
+                val data : node Hash.t = Hash.create 2879
+                
                 val mutable hits = 0
                 val mutable miss = 0
                 
                 method mem k = 
-                    if Hash.mem data k then
-                        ( print_string "Hit";
-                             hits <- hits +1; true)
-                    else (
-                        print_string "Mem:";
-                        print_endline k#to_string;
-                        print_endline self#to_string;
-                        print_endline "Miss--";
-                        miss <- miss +1; false)
+                    if Hash.mem data k
+                    then (hits <- hits +1; true)
+                    else (miss <- miss +1; false)
                 
                 method find k =
                     try Some(Hash.find data k)
                     with Not_found -> None
                     
-                method add k v = 
-                    print_string "Add: ";
-                    print_int (Hashtbl.hash k);
-                    print_string k#to_string;
-                    print_endline "-----";
-                    Hash.replace data k v
+                method add k v = Hash.add data k v
                     
                 method to_string =
                     Hash.fold (
@@ -63,6 +56,8 @@ module Make (N:Node.S) =
                     Printf.sprintf
                     "Cache results:\nHits:%d\nMiss:%d\nElements in the cache:%d\n"
                     hits miss (Hash.length data)
+
+                method empty = {< data = Hash.create 2879 >}
             end
     end
 

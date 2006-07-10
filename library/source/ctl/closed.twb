@@ -53,9 +53,10 @@ ExG p <-> ExG ExG p
 (ExG (p -> AxX p)) -> (p -> ExG p)
 # T.18
 (AxF AxG p) -> AxG AxF p
+# T.19
+ExG ((p v ExG q) & ( ExG p v q )) <-> (ExG p v ExG q)
 # T.20
 (AxX AxG p) <-> AxG AxX p
 # T.21
 ExX ExG p -> ExG ExX p
-# T.19
-ExG ((p v ExG q) & ( ExG p v q )) <-> (ExG p v ExG q)
+

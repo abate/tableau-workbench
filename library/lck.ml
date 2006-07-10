@@ -100,7 +100,7 @@ let index br s =
     let i = ref 0 in
     try begin
         List.iter (fun e ->
-            if s#equal e then raise ( Stop !i) else incr i
+            if s#is_equal e then raise ( Stop !i) else incr i
         ) br#elements;
         failwith "index: list empty"
         end
@@ -116,13 +116,13 @@ let index br s =
 (* true if there is not an element in the list equal to (dia@box) *)
 let loop_check (dia,box,br) =
     let set = (new Set.set)#addlist (dia@box) in
-    not(List.exists (fun s -> set#equal s) br#elements)
+    not(List.exists (fun s -> set#is_equal s) br#elements)
 ;;
 
 let setuev (dia1,box1,dia2,box2,ev,br) =
     let checkuev node ev br =
         let set = (new Set.set)#addlist node in
-        if List.exists ( fun s -> set#equal s ) br#elements then
+        if List.exists ( fun s -> set#is_equal s ) br#elements then
             let i = index br set in
             let loopset = ev#elements in
             Some(
@@ -132,7 +132,7 @@ let setuev (dia1,box1,dia2,box2,ev,br) =
                         when not(List.mem (`Formula d) loopset) ->
                             Some(`Formula term (dC d),i)
                         |_ -> None
-                    ) (node)
+                    ) (node) (* here I don't need to check all boxes as well. *)
             )
             )
         else begin
@@ -177,7 +177,7 @@ let pi (uev1, uev2, br, ev) =
     in 
     let a =
         uev#filter (function
-            |(`Formula term (dC d), n) when (n > m) ->
+            |(`Formula term (dC d), n) when (n > m+1) ->
                   not(List.mem (`Formula d) loopset)
             |_ -> true
         )
@@ -299,7 +299,6 @@ TABLEAU
   Falsum ; Z
   ===============
      Stop
-
   BACKTRACK [ uev := setclose (Br) ]
   END
 
@@ -346,7 +345,7 @@ TABLEAU
   ] ; [] ]
   BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
   BRANCH [ [ not_false(uev(1)) ] ]
-  END
+  END (cache)
 
   RULE Dia2 
   { <2> P } ; [2] X ; Z
@@ -360,7 +359,7 @@ TABLEAU
   ] ; [] ]
   BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
   BRANCH [ [ not_false(uev(1)) ] ]
-  END
+  END (cache)
   
   RULE Loop
   <1> X1 ; <2> X2 ; [1] Y1 ; [2] Y2 ; Z
@@ -406,8 +405,6 @@ let _ =
     strategy#add "end"   E__                  "end" "end"
 ;;
 
-STRATEGY (A)
-
 let exit (uev) =
     match uev#elements with
     |[] -> "Open"
@@ -423,3 +420,4 @@ OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
 
+STRATEGY (A)

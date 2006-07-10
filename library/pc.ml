@@ -55,6 +55,39 @@ let rec nnf_term f =
     | f -> failwith "nnf_term"
 ;;
 
+let cnf t =
+    let rec distrib = function
+        |t1, term ( t2 & t3 ) ->
+                let a = distrib(t1,t2)
+                and b = distrib(t1,t3)
+                in term ( a & b )
+        |term (t1 & t2), t3 ->
+                let a = distrib(t1,t3)
+                and b = distrib(t2,t3)
+                in term (a & b)
+        |t1,t2 -> term (t1 v t2)
+    in
+    let rec conjnf t =
+        match t with
+        | term (t1 & t2) ->
+                let a = conjnf(t1)
+                and b = conjnf(t2)
+                in term (a & b)
+        | term (t1 v t2) -> distrib (conjnf(t1),conjnf(t2))
+        | _ -> t
+in conjnf (nnf_term t)
+;;
+
+(* formula list -> formula list *)
+let listfy t =
+    let rec split = function
+        |term (a & b) -> split ( term (a) ) @ split ( term (b) )
+        |_ as f -> [`Formula f]
+    in
+    match t with
+    |[`Formula t] -> Basictype.open_bt_list (split (cnf t))
+    |_ -> failwith "listfy"
+;;
 
 TABLEAU
 
@@ -71,7 +104,7 @@ TABLEAU
   END
 
   RULE And
-  { A & B }
+   A & B 
  ==========
     A ; B
   END
@@ -89,9 +122,9 @@ TABLEAU
   END
 
   RULE DImp 
-  { A <-> B }
- ===============
-    A -> B | B -> A
+  A <-> B
+  ===============
+  A -> B ; B -> A
   END
 
 END

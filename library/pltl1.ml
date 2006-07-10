@@ -89,7 +89,7 @@ let index br s =
     let i = ref 0 in
     try begin
         List.iter (fun e ->
-            if s#equal e then raise ( Stop !i) else incr i
+            if s#is_equal e then raise ( Stop !i) else incr i
         ) br#elements;
         failwith "index: list empty"
         end
@@ -98,7 +98,7 @@ let index br s =
 
 let loop_check (xa,xb,z,br) =
     let set = (new Set.set)#addlist (xa@xb@z) in
-    not(List.exists (fun s -> set#equal s) br#elements)
+    not(List.exists (fun s -> set#is_equal s) br#elements)
 ;;
 
 let setuev (xa,xb,z,ev,br) =
@@ -125,7 +125,7 @@ let pi (uev, br, ev) =
     let m = br#length in
     let loopset = ev#elements in
     uev#filter (function
-        |(`Formula term (X (c Un d)), n) when (n > m) ->
+        |(`Formula term (X (c Un d)), n) when (n > m+1) ->
               not(List.mem (`Formula d) loopset)
         |_ -> true
     )
@@ -332,9 +332,8 @@ PP := nnf
 NEG := neg
 EXIT := exit (uev(1))
 
-STRATEGY (A)
-
 OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
 
+STRATEGY (A)

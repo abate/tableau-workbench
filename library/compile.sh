@@ -1,5 +1,5 @@
 #!/bin/bash 
-#set -x
+set -x
 . ../Makefile.conf
 
 STRLIB=`ocamlfind query str`/str.cma

@@ -35,7 +35,7 @@ module Make(T: ValType) :
         ) h (Hashtbl.create (Hashtbl.length h))
 
     class map matchpatt =
-        object(self)
+        object(self : 'a)
 
             val data : (string,T.c) Hashtbl.t = Hashtbl.create 10
 

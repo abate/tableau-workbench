@@ -3,6 +3,7 @@
 type 'a llist = LList of 'a * 'a llist Lazy.t | Empty ;;
 
 let empty = Empty
+
 let push hd tl = LList (hd, lazy(tl))
 
 let hd = function
@@ -16,6 +17,16 @@ let tl = function
 let rec map f = function
     | Empty -> Empty
     | LList (x, xs) -> LList (f x, lazy( map f (Lazy.force xs)))
+
+(* this is not tail rec  ! *)
+let rec append l r = match l with
+    | Empty -> r
+    | LList (x, xs) ->
+        LList (x, lazy (append (Lazy.force xs) r))
+    
+let rec flatten = function
+    | Empty -> Empty
+    | LList (x, xs) -> append x (flatten (Lazy.force xs))
 
 let rec of_list = function
     |[] -> Empty
