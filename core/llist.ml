@@ -2,12 +2,18 @@
 
 type 'a llist = LList of 'a * 'a llist Lazy.t | Empty ;;
 
+exception LlistEmpty
+
 let empty = Empty
 
 let push hd tl = LList (hd, lazy(tl))
 
+let pop = function
+    | Empty -> raise LlistEmpty
+    | LList (x, xs) -> (x,(Lazy.force xs))
+
 let hd = function
-    | Empty -> failwith "hd: empty list"
+    | Empty -> raise LlistEmpty
     | LList (x, _) -> x
 
 let tl = function
@@ -55,9 +61,15 @@ let rec to_list = function
     |Empty -> []
     |LList (x, xs) -> x::(to_list (Lazy.force xs))
 
+let is_empty = function
+    |Empty -> true
+    |_ -> false
+
 (* monadic operators *)
-let zero = empty
+let mzero = empty
 let return x = push x empty
 let bind l f = flatten (map f l)
-let plus = append
+let mplus = append
+let guard b = if b then return () else mzero
+let determ m = if is_empty m then mzero else return (hd m)
 
