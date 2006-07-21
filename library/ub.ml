@@ -443,8 +443,8 @@ OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
 
-let saturation = tactic ( (Id; And; Or; Axf; Axg; Exf; Exg; False)* )
+let saturation = tactic ( (Id | False | And | Axg | Exg | Or | Axf | Exf )* )
 
-let modal = tactic ( ( saturation ; Ref; Exx )* )
+let modal = tactic ( ( saturation | Ref | Exx )* )
 
-STRATEGY ( (modal ; Loop)* )
+STRATEGY ( (modal | Loop)* )
