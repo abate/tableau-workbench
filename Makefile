@@ -1,15 +1,18 @@
 -include Makefile.conf
 
 ifndef NOEXTLIB
-all: nc
+all: nc utils
 endif
 
 ifdef NOEXTLIB
-all: extlib nc
+all: extlib nc utils
 endif
 
 extlib:
 	cd extlib && make && make opt
+
+utils: 
+	cd utils && make && cp compile ../library
 
 bc:
 	cd core && make bcl && cp twbcore.* *.cmi ../twb/
@@ -25,6 +28,7 @@ nc:
 	cd sequent && make ncl && cp twbseq* *.cmi ../twb/
 	cd syntax && make bcl ncl && cp *.cm* *.a ../twb/
 	cd cli && make twbncl && cp *.cm* *.a *.o ../twb/
+	cd utils && make && cp compile ../library
 	ranlib twb/*.a
 
 pnc:
@@ -57,4 +61,5 @@ clean:
 	cd sequent && make clean
 	cd syntax && make clean
 	cd cli && make clean
+	cd utils && make clean
 	cd twb && rm *.cm* *.a twb*
