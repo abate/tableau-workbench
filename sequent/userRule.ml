@@ -19,9 +19,9 @@ let printer n name ruleid =
 
 let rec branchcond context tl tLl bll =
     let treelist = 
-        match tLl with
-        |Empty -> tl
-        | _ -> (Llist.hd tLl)::tl in
+        try (Llist.hd tLl)::tl
+        with Llist.LListEmpty -> tl
+    in
     let checknext cxt tl = function
         |[] -> true
         |bl -> 
@@ -36,7 +36,7 @@ let rec branchcond context tl tLl bll =
             List.for_all ( fun f -> f sbl hist varlist ) bl
     in
     (* we have to check tLl to take into account implicit backtracking *)
-    match bll,tLl with
+    match bll,Lazy.force(tLl) with
     |[],Empty -> List.rev treelist
     |[],_ -> branchcond context treelist (Llist.tl tLl) []
     |[]::btl,_ -> branchcond context treelist (Llist.tl tLl) btl
@@ -129,13 +129,14 @@ let down_explicit name context makelist =
     let n = node#set (newmap, newhist, varhist) in
     let _ = printer n name ruleid in n
   in
-  let rec make_llist sbl oldvar =
-    function
-      [] -> Empty
-    | (node, al, hl) :: t ->
-            let next = action_all node sbl oldvar al hl in
-            let (_, _, nextvar) = next#get in
-            LList (next, lazy (make_llist sbl (nextvar::oldvar) t))
+  let rec make_llist sbl oldvar = function
+      |[] -> Llist.empty
+      | (node, al, hl) :: t ->
+              Llist.bind
+              (Llist.return (lazy(action_all node sbl oldvar al hl))) (fun next ->
+                  let (_, _, nextvar) = (Lazy.force(next))#get in
+                  Llist.push (Lazy.force(next)) (make_llist sbl (nextvar::oldvar) t)
+              )
   in
   let (_, sbl, newnode) = context#get in
   Tree (make_llist sbl [Variable.make ()] (makelist newnode))
@@ -157,13 +158,15 @@ let down_implicit name context actionl historyl =
     let n = node#set (newmap, newhist, varhist) in
     let _ = printer n name ruleid in n
   in
-  let rec make_llist oldvar =
-    function
-      Empty -> Empty
-    | LList ((node, sbl, al, hl), t) ->
-            let next = action_all node sbl oldvar al hl in
-            let (_, _,nextvar) = next#get in
-            LList (next, lazy (make_llist (nextvar::oldvar) (Lazy.force t)))
+  let rec make_llist oldvar l =
+      match Lazy.force l with
+      |Empty -> Llist.empty
+      |LList ((node, sbl, al, hl), t) ->
+              Llist.bind
+              (Llist.return (lazy(action_all node sbl oldvar al hl))) (fun next ->
+                  let (_, _,nextvar) = (Lazy.force(next))#get in
+                  Llist.push (Lazy.force(next)) (make_llist (nextvar::oldvar) t)
+              )
   in
   (* here we dynamically (lazily) generate the tail of the action list *)
   let rec next context =
@@ -180,11 +183,12 @@ let down_implicit name context actionl historyl =
       | None -> (build_sbl (), map)
     in
     if newsbl#is_empty then
-        LList ((node, sbl, actionl, historyl), lazy Empty)
+        Llist.return (node, sbl, actionl, historyl)
     else
         let newnode = node#set (map, hist, vars) in
-        LList ((node, sbl, actionl, historyl),
-           lazy (next (context#set (enum, newsbl, newnode))))
+        Llist.push
+        (node, sbl, actionl, historyl)
+        (next (context#set (enum, newsbl, newnode)))
   in
   Tree (make_llist [Variable.make ()] (next context))
 ;;
@@ -210,11 +214,16 @@ let up_explore_simple context treelist synthlist branchll =
     let (_, sbl, node) = context#get in
     let (_, hist, _) = node#get in
     (* tl holds the results of all branches that have been explored *)
+    (* since the list is lazy, the computation is triggered here *)
     let tl = (branchcond context [] treelist branchll) in
+    let t = match List.rev tl with
+        |[] -> failwith "up_explore_simple : t"
+        |h::_ -> h
+    in
     let varlist = 
         List.map ( function
             |Leaf(n) -> let (_,_,v) = n#get in v 
-            |_ -> failwith "up_explore_simple"
+            |_ -> failwith "up_explore_simple : varlist"
         ) tl
     in
     let newnode =
@@ -225,7 +234,7 @@ let up_explore_simple context treelist synthlist branchll =
                 let (k,v) = f sbl hist varlist in
                 let (m,h,var) = n#get in
                 n#set (m,h,var#add k v)
-        ) (unbox_tree (List.hd (List.rev tl))) synthlist
+        ) (unbox_tree t) synthlist
         (* XXX: hackish .... is it always the case the the last node has
          * the correct status ? *)
     in Leaf (newnode)
@@ -234,7 +243,11 @@ let up_explore_simple context treelist synthlist branchll =
 let up_explore_linear context treelist synthlist =
     let (_, sbl, node) = context#get in
     let (_, hist, _) = node#get in
-    let t = List.hd (Llist.to_list treelist) in
+    let tl = (Llist.to_list treelist) in
+    let t = match tl with
+        |[] -> failwith "up_explore_linear : t"
+        |h::_ -> h
+    in
     let varhist =
         let n = unbox_tree t in
         let (_,_,v) = n#get in v

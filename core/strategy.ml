@@ -1,23 +1,38 @@
-(* this module return the the rule to apply and a new context *)
-
 
 module type S =
 sig
-    type node
+    type node 
     type rule
-    type context
-    
-    exception NoMoreRules of node
-    type ans = (rule * context * cnt list) list
-    and smt = node -> ans
-    and cnt = Cont of (node -> ans) | Nil
+    type context 
+
+    module MState :
+      sig
+        type res = (rule * context)
+        type continuation = Cont of (node -> res m Llist.llist)
+        and csstack = continuation Llist.llist
+        and state = csstack
+        and 'a m = state -> 'a * state
+
+        val return : 'a -> 'b -> 'a * 'b
+        val bind : ('a -> 'b * 'c) -> ('b -> 'c -> 'd) -> 'a -> 'd
+        val run : ('a -> 'b) -> 'a -> 'b
+        val show : ('a Llist.llist -> 'b * 'c) -> 'b
+        val fetch : 'a -> 'a * 'a
+        val store : 'a -> 'b -> unit * 'a
+        val update : ('a -> 'b) -> 'a -> unit * 'b
+      end
     type tactic =
         |Skip
+        |Fail
         |Rule of rule
+        |Cut of tactic
         |Seq of tactic * tactic
         |Alt of tactic * tactic
         |Repeat of tactic
-    val strategy : tactic -> node -> ans
+
+    type m = MState.res MState.m Llist.llist
+    val strategy : tactic -> node -> m
+
 end
 
 module Make(N:Node.S)(R: Rule.S with type node = N.node)
@@ -27,60 +42,67 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
     type rule = R.rule
     type context = R.context
     
-    exception NoMoreRules of node
-    type ans = (R.rule * R.context * cnt list) list 
-    and smt = R.node -> (R.rule * R.context * cnt list) list
-    and cnt = Cont of (R.node -> (R.rule * R.context * cnt list) list) | Nil
+    module MState = struct
+        type res = (rule * context)
+        type continuation = Cont of (node -> res m Llist.llist)
+        and csstack = continuation Llist.llist
+        and state = csstack
+        and 'a m = state -> ('a * state)
+
+        let return a = fun s -> (a,s)
+        let bind m f = fun s -> let (a,s') = m s in f a s'
+
+        let run f = fun s -> f s
+        let show m = let (a,_) = m Llist.empty in a
+        let fetch = fun s -> return s s
+        let store = fun s -> fun _ -> return () s
+        let update f = fun s -> return () (f s)
+    end
 
     type tactic =
         |Skip
+        |Fail
         |Rule of R.rule
+        |Cut of tactic
         |Seq of tactic * tactic
         |Alt of tactic * tactic
         |Repeat of tactic
 
-    (* LIFO stack: element appended at the end of the list *)
-    let push el stack = stack @ [el]
-    let return x = [x]
-    let bind m f = List.flatten (List.map f m)
-    let mzero = []
-    let append = List.append
+    type m = MState.res MState.m Llist.llist
 
-    let rec next tactic ?(cond=true) node =
-        match tactic with
-        |Skip -> raise (NoMoreRules node) 
-        |Rule(rule) ->
-                let cxt = rule#check node in
-                if cxt#is_valid then return (rule,cxt,[])
-                else raise (NoMoreRules node)
-        |Seq(t1, t2) ->
-                begin try
-                    (bind (next t1 ~cond:cond node) (fun (rule,cxt,cnt) ->
-                        return (rule,cxt,push (Cont(next t2 ~cond:true)) cnt))
+    let rec strategy = function
+        |Skip -> fun n -> Llist.return (MState.return (R.skip,R.skip#check n))
+        |Fail -> fun _ -> Llist.mzero
+        |Rule(rule) -> fun n ->
+                (* the check should be delayed as much as possible *)
+                Llist.bind (Llist.return (lazy(rule#check n))) (fun cxt ->
+                    Llist.bind (Llist.guard ((Lazy.force(cxt))#is_valid)) (fun _ ->
+                        Llist.return (MState.return (rule,Lazy.force(cxt)))
                     )
-                with (NoMoreRules newnode) -> next t2 ~cond:false newnode end
-        |Alt(t1,t2) ->
-                (* this is broken ... I think *)
-                append 
-                (try next t1 ~cond:cond node with (NoMoreRules node) -> mzero) 
-                (try next t2 ~cond:cond node with (NoMoreRules node) -> mzero)
-        |Repeat(t1) ->
-            let rec loop t1 cond = fun node ->
-                  (match cond with
-                      |true ->
-                              begin try
-                                  (bind (next t1 ~cond:cond node) (
-                                      fun (rule,cxt,cnt) ->
-                                          return
-                                          (rule,cxt,push (Cont(loop t1 true)) cnt))
-                                  )
-                              with (NoMoreRules newnode) ->
-                                  loop t1 false newnode
-                              end
-                      |false -> raise (NoMoreRules node)
-                  )
-            in loop t1 cond node
-    ;;
+                )
+        |Cut(t1) -> fun n -> Llist.determ (strategy t1 n)
+        |Alt(t1,t2) -> fun n ->
+                Llist.determ(Llist.mplus (strategy t1 n) (strategy t2 n))
+(*        |CAlt(b,t1,t2) -> Llist.mplus (strategy t1 n) (strategy t2 n) *)
+        |Seq(t1,t2) -> fun n ->
+                Llist.bind (strategy t1 n) (fun ms ->
+                    Llist.return (
+                        MState.bind ms (fun a ->
+                            let c = Llist.return (MState.Cont (strategy t2)) in
+                            fun s -> (a,Llist.append s c)
+                            )
+                        )
+                    )
+        |Repeat(t1) -> fun n ->
+            let rec loop t1 n =
+                Llist.bind (strategy t1 n) (fun ms ->
+                    Llist.return (
+                        MState.bind ms (fun a ->
+                            let c = Llist.return (MState.Cont(loop t1)) in
+                            fun s -> (a,Llist.append s c)
+                            )
+                        )
+                    )
+            in loop t1 n
 
-    let strategy tactic node = next tactic node
 end

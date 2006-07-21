@@ -1,9 +1,9 @@
-<> p -> <> p
-<> p -> Box ( Box ~ q v <> q)
-~ ( <> p & Box ~  p )
-~ ( <> p & <> ( <> q & ~  <> q) )
+Dia p -> Dia p
+Dia p -> Box ( Box ~ q v Dia q)
+~ ( Dia p & Box ~  p )
+~ ( Dia p & Dia ( Dia q & ~  Dia q) )
 Box (a -> b) -> (Box a -> Box b)
 ( Box(p0 & p1)  <->  Box p0 & Box p1 )
-( <>(p0 v p1)  <->  <> p0 v <> p1 )
-( ~  Box ~  p0  <-> <> p0 )
+( Dia(p0 v p1)  <->  Dia p0 v Dia p1 )
+( ~  Box ~  p0  <-> Dia p0 )
 ( Box(p0 -> p1) -> (Box p0 -> Box p1) )

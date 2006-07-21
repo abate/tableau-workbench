@@ -1,75 +1,114 @@
-(** lazy list module *)
 
-type 'a llist = LList of 'a * 'a llist Lazy.t | Empty ;;
+type 'a llist = 'a cell Lazy.t
+and 'a cell = LList of 'a * 'a llist | Empty
 
-exception LlistEmpty
+exception LListEmpty
 
-let empty = Empty
+let empty = lazy(Empty)
+let push e l = lazy(LList(e,l))
+let pop s = 
+    match Lazy.force s with
+    | LList (hd, tl) -> (hd,tl)
+    | Empty -> raise LListEmpty
 
-let push hd tl = LList (hd, lazy(tl))
+let hd s =
+    match Lazy.force s with
+    | LList (hd, _) -> hd
+    | Empty -> raise LListEmpty
 
-let pop = function
-    | Empty -> raise LlistEmpty
-    | LList (x, xs) -> (x,(Lazy.force xs))
+let tl s =
+    match Lazy.force s with
+    | LList (_, tl) -> tl
+    | Empty -> raise LListEmpty
 
-let hd = function
-    | Empty -> raise LlistEmpty
-    | LList (x, _) -> x
+let rec append s1 s2 =
+    lazy begin
+        match Lazy.force s1 with
+        | LList (hd, tl) -> LList (hd, append tl s2)
+        | Empty -> Lazy.force s2
+    end
 
-let tl = function
-    | Empty -> Empty
-    | LList (_, xs) -> Lazy.force xs
+let rec flatten ss =
+    lazy begin
+        match Lazy.force ss with
+        | Empty -> Empty
+        | LList (hd, tl) ->
+            match Lazy.force hd with
+            | LList (hd2, tl2) -> LList (hd2, flatten (lazy (LList (tl2, tl))))
+            | Empty -> Lazy.force (flatten tl)
+    end
 
-let rec map f = function
-    | Empty -> Empty
-    | LList (x, xs) -> LList (f x, lazy( map f (Lazy.force xs)))
+let rec map f s =
+    lazy begin
+        match Lazy.force s with
+        | LList (hd, tl) -> LList (f hd, map f tl)
+        | Empty -> Empty
+    end
 
-let rec filter_map f = function
-    | Empty -> Empty
-    | LList (x, xs) ->
-            begin match f x with
-            |Some y -> LList (y, lazy( filter_map f (Lazy.force xs)))
-            |None -> filter_map f (Lazy.force xs)
-            end
+let rec filter_map f s =
+    lazy begin
+        match Lazy.force s with
+        | LList (hd, tl) ->
+                begin match f hd with
+                |Some y -> LList (y, filter_map f tl)
+                |None -> Lazy.force(filter_map f tl)
+                end
+        | Empty -> Empty
+    end
 
-let rec filter f = function
-    | Empty -> Empty
-    | LList (x, xs) ->
-            begin match f x with
-            |true -> LList (x, lazy( filter f (Lazy.force xs)))
-            |false -> filter f (Lazy.force xs)
-            end
+let rec filter f s =
+    lazy begin
+        match Lazy.force s with
+        | LList (hd, tl) ->
+                begin match f hd with
+                |true -> LList (hd, filter f tl)
+                |false -> Lazy.force(filter f tl)
+                end
+        | Empty -> Empty
+    end
 
-let rec append l r = match l with
-    | Empty -> r
-    | LList (x, xs) ->
-        LList (x, lazy (append (Lazy.force xs) r))
-    
-let rec flatten = function
-    | Empty -> Empty
-    | LList (x, xs) -> append x (flatten (Lazy.force xs))
+let reverse =
+    let rec loop stack = function
+        | LList (hd, tl) -> loop (hd :: stack) (Lazy.force tl)
+        | Empty -> stack
+    in
+    fun s ->
+        loop [] (Lazy.force s)
 
-let rec interleave = function
-    | Empty, ys -> ys
-    | LList(x,xs), ys ->  LList(x, lazy(interleave (ys, (Lazy.force xs))))
+let to_list s = List.rev (reverse s)
 
 let rec of_list = function
-    |[] -> Empty
-    |h::t -> LList(h,lazy (of_list t))
+    | [] -> lazy(Empty)
+    | hd :: tl -> lazy (LList (hd, of_list tl))
 
-let rec to_list = function
-    |Empty -> []
-    |LList (x, xs) -> x::(to_list (Lazy.force xs))
-
-let is_empty = function
+let is_empty s =
+    match Lazy.force s with
     |Empty -> true
     |_ -> false
+
+type 'a excp = Nothing | Just of ('a * 'a llist)
 
 (* monadic operators *)
 let mzero = empty
 let return x = push x empty
 let bind l f = flatten (map f l)
 let mplus = append
+
 let guard b = if b then return () else mzero
 let determ m = if is_empty m then mzero else return (hd m)
+
+let msplit s =
+    match Lazy.force s with
+    |Empty -> return (Nothing)
+    |LList (hd, tl) -> return (Just(hd,tl))
+let ifte t th el =
+    bind (msplit t) (function
+        |Nothing -> el
+        |Just (sg1,sg2) -> mplus (th sg1) (bind sg2 th)
+    )
+let once m =
+    bind (msplit m) (function
+        |Nothing -> mzero
+        |Just (sg1,_) -> return sg1
+    )
 

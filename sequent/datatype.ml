@@ -104,7 +104,19 @@ module Rule =
             method virtual up    : context -> tree Llist.llist -> tree
             method virtual use_cache : bool
         end
+    let skip : rule = object
+        method check node =
+            RuleContext.newcontext (
+                Enum.empty (),
+                new Substitution.substitution,
+                node
+                )
+        method down context =
+            let (_,_,node) = context#get in Tree.Tree(Llist.return node)
+        method up _ tl = Llist.hd tl
+        method use_cache = false
     end
+end
 
 module Strategy = Strategy.Make(Node)(Rule) 
 module Visit = Visit.Make(Node)(Rule)(Strategy)

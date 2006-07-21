@@ -1,7 +1,7 @@
 
 open Datatype
 
-let __strategy : Strategy.smt option ref = ref None
+let __strategy : (Strategy.node -> Strategy.m) option ref = ref None
 let __matchpatt : (Type.bt -> string) option ref = ref None
 let __inputparser : (string -> Type.bt list) option ref = ref None
 let __printer : (Basictype.formula -> string) option ref = ref None

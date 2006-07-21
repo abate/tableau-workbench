@@ -1084,14 +1084,17 @@ let expand_printer _loc connlist =
     >>
 ;;
 
+(*
 type 'a tree =
     |Star of 'a tree
     |Seq of 'a tree list
     |Choice of 'a tree list
     |Rule of 'a
 ;;
+*)
 
 let expand_strategy _loc tree = []
+
 (*
 let expand_default_strategy _loc =
     let str = <:expr< value __strategy = new Strategy.strategy "start" >> in
@@ -1314,9 +1317,10 @@ rewrite_expr_term rewrite_patt_term;
   ]];
   
   useract: [[
-      f = LIDENT; "("; args = LIST0 arguments SEP ","; ")" -> (None,f,args)
-      | s = [ s = UIDENT -> s | s = test_variable -> s ] ; ":="; 
+       s = [ s = UIDENT -> s | s = test_variable -> s ] ; ":="; 
         f = LIDENT; "("; args = LIST0 arguments SEP ","; ")" -> (Some(s),f,args)
+(*      |s = [ s = UIDENT -> s | s = test_variable -> s ] ; ":=";
+        args = arguments -> (Some(s),<:expr< id >>,[args]) *)
   ]];
   
   usercond: [[

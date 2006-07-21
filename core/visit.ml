@@ -9,55 +9,44 @@ module Make(N:Node.S)
             with type node = R.node
             with type context = R.context
             )
-(* :
+(*:
     sig
-        val visit : (S.node -> S.ans) -> S.node -> R.tree
+        val visit : (S.node -> S.m) -> R.node -> R.tree Llist.llist
     end
 *)
 = struct
-    
-    let ex = function
-        |S.Cont h -> h
-        |S.Nil -> (fun _ -> [])
 
-   module Cache = Cache.Make(N)
+    module Cache = Cache.Make(N)
+    open S
 
-   let table = ref (new Cache.cache)
+    let table = ref (new Cache.cache)
 
-   let rec traversal rule context str cont = function
-        |Leaf(_) as tree -> rule#up context (Llist.of_list [tree])
-        |Tree(l) -> rule#up context (Llist.map (aux_visit rule#use_cache str cont) l)
+    let tl s =
+        try Llist.tl s
+        with Llist.LListEmpty -> Llist.empty
 
-    and aux_visit cache strategy cont =
-        fun node ->
-            (* here we try to save time by caching previously computed 
-             * results *)
-            try !table#find node with
-            Not_found ->
-                let result =
-                    try
-                        begin match strategy node with
-                        |(rule,cxt,h::l)::_ ->
-                                traversal rule cxt (ex h) (l@cont) (rule#down cxt)
-                        |(rule,cxt,[])::_ -> 
-                                begin match cont with
-                                |h::l -> traversal rule cxt (ex h) (l) (rule#down cxt)
-                                |[] -> (rule#down cxt)
-                                end
-                        |[] -> Leaf(node)
-                        end
-                    with (S.NoMoreRules newnode) ->
-                        begin match cont with
-                        |h::l -> aux_visit cache (ex h) l newnode
-                        |[] -> Leaf(newnode)
-                        end
-                in
-                if cache
-                then begin !table#add node result; result end
-                else result
+    let rec traversal str state rule context = function
+        |Leaf(_) as tree -> Llist.return (rule#up context (Llist.return tree))
+        |Tree(l) -> Llist.return (rule#up context (Llist.bind l (aux_visit str state)))
+
+    and aux_visit str state node =
+        Llist.ifte
+        (str node)
+        (fun ms ->
+            let ((rule,context),newstate) = ms state in
+            Llist.bind (Llist.determ(newstate)) (fun (MState.Cont cont) ->
+                traversal cont (tl(newstate)) rule context (rule#down context)
+            )
+        )
+        (
+            Llist.ifte
+            (Llist.determ(state))
+            (fun (MState.Cont cont) -> aux_visit cont (tl(state)) node)
+            (Llist.return (Leaf(node)))
+        )
 
     let visit cache strategy node =
-        table := cache; 
-        aux_visit false strategy [] node
+        table := cache;
+        aux_visit strategy Llist.empty node
 
 end

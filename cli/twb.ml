@@ -14,15 +14,15 @@ struct
 
   let timeout = ref 0
 
+IFNDEF NATIVE THEN
+  let libdir = ref "./"
   let logic = ref ""
-
-IFNDEF NATIVE THEN let libdir = ref "./" ENDIF
+ENDIF
 
   let outdir = ref "trace"
   let outtype = ref ""
 
   let nocache = ref false
-  let norec   = ref false
 end
 ;;
 
@@ -37,18 +37,16 @@ let options =
      ("-trace", Arg.Set    Options.trace, "print proof trace");
      ("-time",  Arg.Int    (fun l -> Options.timeout := l), "set exec timeout");
 
-     ("-logic", Arg.String (fun l -> Options.logic := l),   "set logic");
-
-
      ("-outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
      ("-out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
 
      ("-nocache", Arg.Set  Options.nocache, "disable default cache");
-     ("-norec",   Arg.Set  Options.norec,   "dfs with no strategy backtracking");
-
     ]@
     IFNDEF NATIVE THEN
-    [("-dir",   Arg.String (fun l -> Options.libdir := l),   "set library directory")]
+    [
+     ("-logic", Arg.String (fun l -> Options.logic := l),   "set logic");
+     ("-dir",   Arg.String (fun l -> Options.libdir := l),   "set library directory")
+    ]
     ELSE [] ENDIF
 ;;
 
@@ -181,19 +179,14 @@ ENDIF
                 let _ = OutputBroker.trace := !Options.trace in
                 let _ = OutputBroker.print node "initial node" 0 in
                 let cache = (new Cache.cache) in
-                let visit =
-                    (* if (!Logic.__use_cache) then Visit.visit
-                    else *) Visit.visit cache
-                in
+
                 let _ = Timer.trigger_alarm (!Options.timeout) in
-                let result = visit strategy node 
-                in
+                let result = Visit.visit cache strategy node in
                 let time = Timer.stop_timing start in
+
                 Printf.printf "%s\nResult: %s\n%s\n"
                 (Timer.to_string time)
-                (exit_function result)
-                (* (if !Options.nocache || not(!Logic.__use_cache) then ""
-                 * else*)
+                (exit_function (Llist.hd result))
                 cache#stats;
                 Gc.major ();
                 flush_all ()
