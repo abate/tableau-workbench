@@ -25,11 +25,7 @@ module Make(N:Node.S)
         try Llist.tl s
         with Llist.LListEmpty -> Llist.empty
 
-    let rec traversal str state rule context = function
-        |Leaf(_) as tree -> Llist.return (rule#up context (Llist.return tree))
-        |Tree(l) -> Llist.return (rule#up context (Llist.bind l (aux_visit str state)))
-
-    and aux_visit str state node =
+    let rec aux_visit traversal str state node =
         Llist.ifte
         (str node)
         (fun ms ->
@@ -41,12 +37,16 @@ module Make(N:Node.S)
         (
             Llist.ifte
             (Llist.determ(state))
-            (fun (MState.Cont cont) -> aux_visit cont (tl(state)) node)
+            (fun (MState.Cont cont) -> aux_visit traversal cont (tl(state)) node)
             (Llist.return (Leaf(node)))
         )
 
+    let rec dfs str state rule context = function
+        |Leaf(_) as tree -> Llist.return (rule#up context (Llist.return tree))
+        |Tree(l) -> Llist.return (rule#up context (Llist.bind l (aux_visit dfs str state)))
+
     let visit cache strategy node =
         table := cache;
-        aux_visit strategy Llist.empty node
+        aux_visit dfs strategy Llist.empty node
 
 end

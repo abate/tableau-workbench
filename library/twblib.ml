@@ -14,3 +14,13 @@ let debug = ref false
 
 (* general functions *)
 let min (a,b) = min a b
+
+let sof f = (!Basictype.string_of_formula f)
+(*let print_verbose fmt_etc =
+    let print s =
+            Printf.printf "%s" s;
+            Pervasives.flush Pervasives.stdout
+    in
+    Printf.ksprintf print fmt_etc
+;;
+*)

@@ -8,8 +8,6 @@ CONNECTIVES
   Falsum, Const
 END
 
-exception Rewrite
-
 let rec nnf_term f =
     match f with
     | term ( a & b ) -> 
@@ -53,7 +51,7 @@ let rec nnf_term f =
     | term ( ~ .a ) as f -> f
     | term ( .a ) as f -> f
  
-    | f -> raise Rewrite
+    | f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
 ;;
 
 let cnf t =
