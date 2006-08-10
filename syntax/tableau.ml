@@ -1415,6 +1415,9 @@ rewrite_expr_term rewrite_patt_term;
   Pcaml.expr: LEVEL "simple"  
       [[ "term";   "("; e = rewrite_expr_term; ")" -> <:expr< $e$ >> 
       | "tactic"; "("; t = tactic; ")" -> <:expr< $t$ >>
+      | "symbol"; "("; x = Pcaml.expr; ")" ->
+              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
+              <:expr< Atom($nc$,$x$)>>
   ]];
   Pcaml.patt: LEVEL "simple"
       [[ "term"; "("; p = rewrite_patt_term; ")"->
@@ -1432,6 +1435,7 @@ rewrite_expr_term rewrite_patt_term;
       | "." ; x = LIDENT ->
           let nc = <:expr< Basictype.newcore 1 [|0|] >> in
           <:expr< Atom($nc$,$str:x$)>>
+      | "["; x = Pcaml.expr; "]" -> x
       | "("; p = rewrite_expr_term; ")" -> p
       ] 
     ];
