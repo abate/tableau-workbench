@@ -34,11 +34,6 @@ let get = function
     |Some v -> v
 ;;
 
-let _ =
-    try (Sys.getenv "OCAMLPATH")
-    with Not_found -> failwith "Cannot find OCAMLPATH - you need to set an environment variable"
-;;
-
 let print_verbose fmt_etc =
     let print s = 
         if (!Options.verbose) then (
@@ -60,6 +55,11 @@ let str_lib_loc =
 
 let ext_lib_loc =
     try Findlib.package_directory "extlib"
+    with No_such_package (p,i) -> failwith p^i
+;;
+
+let twb_lib_loc =
+    try Findlib.package_directory "twb"
     with No_such_package (p,i) -> failwith p^i
 ;;
 
@@ -85,7 +85,8 @@ let pp filename =
        "camlp4o "^
        str_lib_loc ^ "/str.cma "^
        ext_lib_loc ^ "/extLib.cma "^
-       "../syntax/tableau.cmo pr_o.cmo "^ 
+       twb_lib_loc ^ "/tableau.cma "^
+       "pr_o.cmo "^ 
        filename ^ 
        " > "^
        !Options.tmp ^ filename

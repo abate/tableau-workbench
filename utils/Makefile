@@ -1,5 +1,5 @@
 all: 
-	ocamlfind ocamlc -package unix,str,findlib -linkpkg -o compile compile.ml
+	ocamlfind ocamlc -package unix,str,findlib -linkpkg -o twbcompile compile.ml
 
 clean:
-	rm compile *.cm*
+	rm twbcompile *.cm*

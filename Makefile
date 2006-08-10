@@ -12,7 +12,7 @@ extlib:
 	cd extlib && make && make opt
 
 utils: 
-	cd utils && make && cp compile ../library
+	cd utils && make && cp twbcompile ../library
 
 bc:
 	cd core && make bcl && cp twbcore.* *.cmi ../twb/
@@ -28,7 +28,7 @@ nc:
 	cd sequent && make ncl && cp twbseq* *.cmi ../twb/
 	cd syntax && make bcl ncl && cp *.cm* *.a ../twb/
 	cd cli && make twbncl && cp *.cm* *.a *.o ../twb/
-	cd utils && make && cp compile ../library
+	cd utils && make && cp twbcompile ../library
 	ranlib twb/*.a
 
 pnc:
@@ -63,3 +63,12 @@ clean:
 	cd cli && make clean
 	cd utils && make clean
 	cd twb && rm *.cm* *.a twb*
+
+OCAMLLIBDIR=$(DESTDIR)`ocamlc -where`
+INSTALLDIR=$(OCAMLLIBDIR)/twb
+
+install:
+	mkdir -p $(INSTALLDIR)
+	cp twb/* $(INSTALLDIR)
+	cp utils/twbcompile $(DESTDIR)/usr/bin/twbcompile
+
