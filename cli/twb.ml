@@ -1,9 +1,5 @@
-(*pp camlp4o pa_macro.cmo *)
-
 open Datatype
 open ExtLib
-
-IFNDEF NATIVE THEN open Loader ENDIF
 
 module Options =
 struct
@@ -14,11 +10,6 @@ struct
 
   let timeout = ref 0
 
-IFNDEF NATIVE THEN
-  let libdir = ref "./"
-  let logic = ref ""
-ENDIF
-
   let outdir = ref "trace"
   let outtype = ref ""
 
@@ -28,7 +19,7 @@ end
 
 let usage = "usage: twb [-options] [file]"
 
-let options =
+let arg_options =
     [
      ("-nopp",  Arg.Clear  Options.preproc,   "disable preproc function");
      ("-noneg", Arg.Set    Options.noneg, "doesn't use the Negation Procedure");
@@ -41,21 +32,8 @@ let options =
      ("-out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
 
      ("-nocache", Arg.Set  Options.nocache, "disable default cache");
-    ]@
-    IFNDEF NATIVE THEN
-    [
-     ("-logic", Arg.String (fun l -> Options.logic := l),   "set logic");
-     ("-dir",   Arg.String (fun l -> Options.libdir := l),   "set library directory")
     ]
-    ELSE [] ENDIF
 ;;
-
-(** twbpath: location of the twb installation *)
-IFNDEF NATIVE THEN
-let twbpath =
-    try (Sys.getenv "TWBPATH")
-    with Not_found -> failwith "Cannot find TWBPATH"
-ENDIF
 
 let input_file = ref None;;
 let file f =
@@ -102,13 +80,6 @@ let newnode s =
         else (Option.get (!Logic.__neg))
     in 
     let fmap = fmap#addlist (pp ( neg (inputparser s))) in
-    (* XXX: this is a bit of a hack ... the pretty print should be in the
-     * basictype file and should be automatically generated ... *)
-    (* here we set the pretty printer for the formula type *)
-    let _ = 
-        if (Option.is_none !Logic.__printer) then ()
-        else Basictype.string_of_formula := (Option.get !Logic.__printer)
-    in
     new Node.node (fmap,hmap,vmap)
 ;;
 
@@ -128,7 +99,7 @@ let exit_function t =
         (Option.get (!Logic.__exit)) [v]
 ;;
 
-let main () =
+let init ?(options=[]) () = 
     let custom_options =
         try (Option.get (!Logic.__options))
         with Option.No_value -> []
@@ -137,12 +108,17 @@ let main () =
         try Arg.parse (options@custom_options) file usage
         with Arg.Bad s -> failwith s
     in 
+    (* XXX: this is a bit of a hack ... the pretty print should be in the
+     * basictype file and should be automatically generated ... *)
+    (* here we set the pretty printer for the formula type *)
     let _ = 
-IFNDEF NATIVE THEN
-        Loader.load (twbpath^"/twb/") !Options.libdir !Options.logic
-ELSE ()
-ENDIF
-    in
+        if (Option.is_none !Logic.__printer) then ()
+        else Basictype.string_of_formula := (Option.get !Logic.__printer)
+    in ()
+;;
+    
+let main () =
+    ignore(init ~options:arg_options ());
     let strategy = 
         try (Option.get (!Logic.__strategy))
         with Option.No_value -> failwith "Strategy not specified"
