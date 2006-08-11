@@ -6,7 +6,7 @@ open Findlib
 
 module Options = struct
     let verbose = ref false
-    let tmp = ref "/tmp/"
+    let tmp = ref ""
 end
 ;;
 
@@ -14,7 +14,7 @@ end
 
 let options = [
     ("-v",  Arg.Set Options.verbose, "verbose");
-    ("-t",  Arg.String (fun s -> Options.tmp := s),  "temporary directory")
+    ("-t",  Arg.Set_string Options.tmp,  "temporary directory")
 ]
 ;;
 
@@ -63,6 +63,17 @@ let twb_lib_loc =
     with No_such_package (p,i) -> failwith p^i
 ;;
 
+let tmp_dir =
+    match !Options.tmp with
+    |"" ->
+            let str = "/tmp/twb" ^ Unix.getlogin () in
+            let _ = 
+                try ignore(Unix.stat str) with
+                |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
+            in str ^ "/"
+    |s -> s ^ "/"
+;;
+
 let noext filename =
     if Str.string_match (Str.regexp "^\\(.*\\).ml$") filename 0 then
         Str.matched_group 1 filename
@@ -89,7 +100,7 @@ let pp filename =
        "pr_o.cmo "^ 
        filename ^ 
        " > "^
-       !Options.tmp ^ filename
+       tmp_dir ^ filename
    in
    ignore(system cmd);
    print_verbose "%s\n" cmd
@@ -116,14 +127,14 @@ let rec loop ch l =
 let rec deps deplist filename =
     let cmd =
        "ocamldep " ^
-       !Options.tmp ^ filename ^
+       tmp_dir ^ filename ^
        " > " ^
-       !Options.tmp ^ filename ^
+       tmp_dir ^ filename ^
        ".deps.txt"
     in
     pp filename;
     ignore(system cmd);
-    let fc = open_in (!Options.tmp ^ filename ^ ".deps.txt") in
+    let fc = open_in (tmp_dir ^ filename ^ ".deps.txt") in
     let ch = read_lines fc in
     let l = loop ch [] in
     List.append
@@ -134,8 +145,8 @@ let rec deps deplist filename =
 let compile elem =
     let cmd =
         "ocamlfind ocamlopt -package twb.thelot,twb.cli -c " ^
-        "-I " ^ !Options.tmp ^ " "^
-        !Options.tmp ^ elem ^ ".ml"
+        "-I " ^ tmp_dir ^ " "^
+        tmp_dir ^ elem ^ ".ml"
     in
     print_verbose "Compiling: %s\n" cmd;
     ignore(system cmd)
@@ -146,7 +157,7 @@ let link l filename =
         "ocamlfind ocamlopt -package twb.thelot,twb.cli -linkpkg -o " ^ 
         noext(filename) ^ " "
     in
-    let cmd = List.fold_left (fun s f -> s^ !Options.tmp ^ f ^ ".cmx ") c l in
+    let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ".cmx ") c l in
     print_verbose "Linking: %s\n" cmd;
     ignore(system cmd)
 ;;
