@@ -170,6 +170,17 @@ let test_sep strm =
 ;;
 let test_sep = Grammar.Entry.of_parser Pcaml.gram "test_sep" test_sep ;;
 
+let test_str str strm =
+    match Stream.peek strm with
+    | Some(_,s) when s =~ str -> Stream.junk strm; s
+    | _ -> raise Stream.Failure
+;;
+let test_normpar = test_str "(" ;;
+let test_curlypar = test_str "{" ;;
+
+let test_normpar = Grammar.Entry.of_parser Pcaml.gram "test_normpar" test_normpar ;;
+let test_curlypar = Grammar.Entry.of_parser Pcaml.gram "test_curlypar" test_curlypar ;;
+
 let test_variable strm =
     match Stream.peek strm with
     | Some (("LIDENT", s)) when Hashtbl.mem hist_table s -> Stream.junk strm; s
@@ -1076,7 +1087,7 @@ let expand_printer _loc connlist =
         <:expr< failwith "this printer prints formulae only" >>
     in
     let atom = <:patt< Atom(nc,s) >> , None, <:expr< s >> in
-    let const = <:patt< ( Constant(nc,a) ) >>, None, <:expr< a >>
+    let const = <:patt< Constant(nc,a) >>, None, <:expr< a >>
     in
     <:str_item< Logic.__printer.val := 
         Some (let rec pr_aux = fun [ $list:List.rev([default;atom;const]@l)$ ] in
@@ -1084,34 +1095,47 @@ let expand_printer _loc connlist =
     >>
 ;;
 
-(*
-type 'a tree =
-    |Star of 'a tree
-    |Seq of 'a tree list
-    |Choice of 'a tree list
-    |Rule of 'a
+let expand_substitute _loc connlist =
+    let l = List.filter_map(function
+        | (v,s,r) when s =~ mu_re ->
+                Some(<:patt< ( $lid:v$(i,nc,a) ) >>,
+                None,
+                <:expr<
+                if a = t then $lid:v$ (nc, s) else substitute s t a >>)
+        | (v,s,r) when s =~ u_re ->
+                Some(<:patt< ( $lid:v$(nc,a)) >>,
+                None,
+                <:expr<
+                if a = t then $lid:v$ (nc, s) else substitute s t a >>)
+        | (v,s,r) when s =~ bi_re ->
+                Some(<:patt< ( $lid:v$(nc,a,b) ) >>,
+                None,
+                <:expr<
+                 if a = t then
+                     if b = t then $lid:v$ (nc, s, s)
+                     else $lid:v$ (nc, s, substitute s t b)
+                 else
+                     if b = t then $lid:v$ (nc, substitute s t a, s)
+                     else $lid:v$ (nc, substitute s t a, substitute s t b)
+                >>)
+        | (v,"Const",_) -> None
+        | (_,s,_) -> failwith (s^" substitute error")
+    ) connlist
+    in
+    let default =
+        <:patt< _ >> ,
+        None,
+        <:expr< failwith "can subsitute only formulae " >>
+    in
+    let atom = <:patt< ( Atom(nc,s) as f ) >> , None, <:expr< f >> in
+    let const = <:patt< ( Constant(nc,a) as f ) >>, None, <:expr< f >>
+    in
+    <:str_item< Logic.__substitute.val := 
+        Some (let rec substitute s t = fun [ $list:List.rev([default;atom;const]@l)$ ] in
+        substitute )
+    >>
 ;;
-*)
 
-let expand_strategy _loc tree = []
-
-(*
-let expand_default_strategy _loc =
-    let str = <:expr< value __strategy = new Strategy.strategy "start" >> in
-    let sat = 
-        List.map (fun id ->
-            <:expr< __strategy#add newid (R new $lid:id^"_rule") newid nextid >>
-        ) inv_rule_list
-    in
-    let star = strategy#add "star1" S "start" "trans";
-    let trans =
-        List.map (fun id ->
-            <:expr< __strategy#add newid (R new $lid:id^"_rule") newid nextid >>
-        ) notinv_rule_list
-    in
-    <:expr< $list:sat$
-    *)
-    
 (* this function creates the history list. it also add the synth history
  * "status" if it has not been user defined *)
 let expand_history _loc l =
@@ -1196,13 +1220,11 @@ rewrite_expr_term rewrite_patt_term;
       let preamble = expand_preamble _loc in
       let pa = expand_parser _loc clist in
       let pr = expand_printer _loc clist in 
-      <:str_item< declare $list:[preamble;pa;pr]$ end >>
+      let sb = expand_substitute _loc clist in 
+      <:str_item< declare $list:[preamble;pa;pr;sb]$ end >>
     |"HISTORIES"; hlist = LIST1 history SEP ";"; "END" ->
             let l = expand_history _loc hlist in
             <:str_item< Logic.__history_list.val := Some($l$) >>
-(*    |"VARIABLES"; vlist = LIST1 variable SEP ";"; "END" ->
-            let l = expand_history _loc vlist in
-            <:str_item< Logic.__history_list.val := Some($l$) >> *)
     |"TABLEAU"; l = LIST1 rule; "END" ->
       (*      let _ = Grammar.Entry.print expr_term in *)
             let l = (expand_matchpatt _loc )::l in 
@@ -1220,9 +1242,9 @@ rewrite_expr_term rewrite_patt_term;
             else
                 <:str_item< declare $list:l$ end >>
     |"PP"; OPT ":="; e = Pcaml.expr ->
-            <:str_item< Logic.__pp.val := Some($e$) >>
+            <:str_item< Logic.__pp.val := Some(Basictype.map $e$) >>
     |"NEG"; OPT ":="; e = Pcaml.expr ->
-            <:str_item< Logic.__neg.val := Some($e$) >>
+            <:str_item< Logic.__neg.val := Some(Basictype.map $e$) >>
     |"EXIT"; OPT ":="; f = LIDENT; "("; args = LIST0 arguments SEP ","; ")" ->
             let ex = expand_exit _loc (f,args) in
             <:str_item< Logic.__exit.val := Some($ex$) >> 
@@ -1252,13 +1274,6 @@ rewrite_expr_term rewrite_patt_term;
       e = OPT [ "default"; e = Pcaml.expr LEVEL "simple"-> e ] ->
               (v,s,"Single","Variable", e)
   ]];
-
-(*  variable: [
-      [ v = LIDENT; ":"; s = UIDENT; "."; t = LIDENT -> (v,s,t,"Variable", None)
-      | v = LIDENT; ":"; s = UIDENT; 
-      e = OPT [ "default"; e = Pcaml.expr LEVEL "simple"-> e ] ->
-              (v,s,"Single","Variable", e)
-  ]]; *)
 
   tactic:
   [ "One" LEFTA
@@ -1413,11 +1428,8 @@ rewrite_expr_term rewrite_patt_term;
     ];
     
   Pcaml.expr: LEVEL "simple"  
-      [[ "term";   "("; e = rewrite_expr_term; ")" -> <:expr< $e$ >> 
+      [[ "term";  "("; e = rewrite_expr_term; ")" -> <:expr< $e$ >> 
       | "tactic"; "("; t = tactic; ")" -> <:expr< $t$ >>
-      | "symbol"; "("; x = Pcaml.expr; ")" ->
-              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
-              <:expr< Atom($nc$,$x$)>>
   ]];
   Pcaml.patt: LEVEL "simple"
       [[ "term"; "("; p = rewrite_patt_term; ")"->
@@ -1428,13 +1440,28 @@ rewrite_expr_term rewrite_patt_term;
     [ "One" LEFTA [ ]
     | "Two" RIGHTA [ ]
     | "Simple" NONA
-      [ x = LIDENT -> <:expr< $lid:x$ >>
-      | x = test_constant ->
+      [ 
+        x = test_constant ->
               let nc = <:expr< Basictype.newcore 1 [|0|] >> in
               <:expr< Constant($nc$,$str:x$) >>
+
+      | x = LIDENT; test_curlypar; t = rewrite_expr_term; "/"; s = rewrite_expr_term; "}" ->
+              <:expr< Option.get (Logic.__substitute.val) $t$ $s$ $lid:x$ >>
+
+      | p = LIDENT; test_normpar; x = Pcaml.expr; ")" ->
+              let nc = <:expr< Basictype.newcore 1 [|0|] >> in
+              <:expr< Atom($nc$,$str:p$^string_of_int $x$)>>
+
       | "." ; x = LIDENT ->
           let nc = <:expr< Basictype.newcore 1 [|0|] >> in
           <:expr< Atom($nc$,$str:x$)>>
+
+      | x = UIDENT ->
+          let nc = <:expr< Basictype.newcore 1 [|0|] >> in
+          <:expr< Atom($nc$,$str:x$)>>
+
+      | p = LIDENT -> <:expr< $lid:p$ >>
+
       | "["; x = Pcaml.expr; "]" -> x
       | "("; p = rewrite_expr_term; ")" -> p
       ] 
