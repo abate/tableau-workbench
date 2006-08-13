@@ -12,15 +12,8 @@ sig
         and csstack = continuation Llist.llist
         and state = csstack
         and 'a m = state -> 'a * state
-
-        val return : 'a -> 'b -> 'a * 'b
-        val bind : ('a -> 'b * 'c) -> ('b -> 'c -> 'd) -> 'a -> 'd
-        val run : ('a -> 'b) -> 'a -> 'b
-        val show : ('a Llist.llist -> 'b * 'c) -> 'b
-        val fetch : 'a -> 'a * 'a
-        val store : 'a -> 'b -> unit * 'a
-        val update : ('a -> 'b) -> 'a -> unit * 'b
       end
+
     type tactic =
         |Skip
         |Fail
@@ -58,6 +51,7 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         let store = fun s -> fun _ -> return () s
         let update f = fun s -> return () (f s)
     end
+    type m = MState.res MState.m Llist.llist
 
     type tactic =
         |Skip
@@ -67,8 +61,6 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         |Seq of tactic * tactic
         |Alt of tactic * tactic
         |Repeat of tactic
-
-    type m = MState.res MState.m Llist.llist
 
     let rec strategy = function
         |Skip -> fun n -> Llist.return (MState.return (R.skip,R.skip#check n))

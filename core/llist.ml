@@ -89,9 +89,11 @@ let is_empty s =
 type 'a excp = Nothing | Just of ('a * 'a llist)
 
 (* monadic operators *)
-let mzero = empty
+type 'a m = 'a llist
 let return x = push x empty
 let bind l f = flatten (map f l)
+
+let mzero = empty
 let mplus = append
 
 let guard b = if b then return () else mzero
@@ -106,9 +108,24 @@ let ifte t th el =
         |Nothing -> el
         |Just (sg1,sg2) -> mplus (th sg1) (bind sg2 th)
     )
+
+(*
 let once m =
     bind (msplit m) (function
         |Nothing -> mzero
         |Just (sg1,_) -> return sg1
     )
-
+*)
+module type Seq =
+  sig
+    type 'a m
+    type 'a excp = Nothing | Just of ('a * 'a m)
+    val return : 'a -> 'a m
+    val bind   : 'a m -> ('a -> 'b m) -> 'b m
+    val mzero  : 'a m
+    val mplus  : 'a m -> 'a m -> 'a m
+    val guard  : bool -> unit m
+    val determ : 'a m -> 'a m
+    val msplit : 'a m -> 'a excp m
+    val ifte   : 'a m -> ('a -> 'b m) -> 'b m -> 'b m
+  end
