@@ -33,7 +33,7 @@ TABLEAU
   RULE Or
   { a v b }
  ==========
-   a | b 
+     a | b 
   END
 
   RULE Imp 

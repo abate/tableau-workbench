@@ -6,9 +6,7 @@ CONNECTIVES
   DImp, "_<->_", One;
   Not, "~_",   Simple;
   Dia, "Dia_", Simple;
-  Box, "Box_", Simple;
-  Boxi, "[_]_", Simple;
-  Diai, "<_>_", Simple
+  Box, "Box_", Simple
 END
 
 HISTORIES
@@ -21,21 +19,7 @@ open Klib
 
 TABLEAU
 
-  RULE S4 
-  { Dia a } ; Dia y ; z
-  =====================
-  a ; BOXES || Dia y 
-  
-  COND notin(Dia a, DIAMONDS)
-  
-  ACTION [
-      [ DIAMONDS := add(Dia a,DIAMONDS);
-        DIAMONDS := add(Dia y,DIAMONDS) ]; [DIAMONDS := add(Dia a,DIAMONDS) ] ] 
-  
-  BRANCH [ not_emptylist(Dia y) ] 
-  END (cache)
-
-  RULE S4IMP
+  RULE S4
   { Dia a } ; z
   ----------------------
   a ; BOXES 
@@ -44,7 +28,7 @@ TABLEAU
   ACTION [ DIAMONDS := add(Dia a,DIAMONDS) ]
   END
 
-  RULE TNEW
+  RULE T
   { Box a }
   =========
      a 
@@ -56,14 +40,6 @@ TABLEAU
       DIAMONDS := emptyset (DIAMONDS) ]
   END
 
-  RULE TOLD
-  { Box a }
-  =========
-     a 
-
-  COND isin(a, BOXES)
-  END
-  
   RULE Id
   { a } ; { ~ a }
   ===============
@@ -82,23 +58,11 @@ TABLEAU
     a | b
   END
 
-  RULE Imp 
-  { a -> b }
- ============
-    ~ a | b
-  END
-
-  RULE DImp 
-  { a <-> b }
- ==================
-  a -> b | b -> a
-  END
-
 END
 
 PP := nnf_term
 NEG := neg_term
 
-let saturation = tactic ( (And|Or|Imp|Dimp|Tnew|Told|Id)* )
+let saturation = tactic ( (Id|And|T|Or)* )
 
-STRATEGY ( saturation | S4imp )*
+STRATEGY ( saturation | S4 )*

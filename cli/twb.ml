@@ -4,10 +4,10 @@ open ExtLib
 module Options =
 struct
   let nopp = ref false
-  let debug = ref 0
   let noneg = ref false
-  let trace = ref false
 
+  let debug = ref 0
+  let trace = ref false
   let timeout = ref 0
 
   let outdir = ref "trace"
@@ -71,14 +71,12 @@ let newnode s =
         with Option.No_value -> failwith "Input Parser error"
     in
     let pp = 
-        if (!Options.nopp) then (fun x -> x)
-        else if Option.is_none (!Logic.__pp)
+        if (!Options.nopp) || Option.is_none (!Logic.__pp)
         then (fun x -> x)
         else (Option.get (!Logic.__pp))
     in 
     let neg = 
-        if (!Options.noneg) then (fun x -> x)
-        else if Option.is_none (!Logic.__neg)
+        if (!Options.noneg) || Option.is_none (!Logic.__neg)
         then (fun x -> x)
         else (Option.get (!Logic.__neg))
     in 

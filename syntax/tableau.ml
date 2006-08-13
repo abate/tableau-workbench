@@ -842,7 +842,7 @@ let expand_rule_den _loc t dl hl bll bt =
             in
             match f with
             | <:expr< $lid:"close"$ >>
-            | <:expr< $lid:"unsat"$ >> -> <:expr< $str:"Close"$ >>
+            | <:expr< $lid:"unsat"$ >> -> <:expr< $str:"Closed"$ >>
             | <:expr< $lid:"open"$ >>
             | <:expr< $lid:"sat"$ >> -> <:expr< $str:"Open"$ >>
             | _ -> failwith "exp_reserved : impossible"
@@ -1380,25 +1380,25 @@ rewrite_expr_term rewrite_patt_term;
   (* ( string list list * (expr * cond_t) list ) *)
   num: [[ pl = LIST1 numformula SEP ";" -> List.split pl ]]; 
   
-  (* (expr * cond_t) *)
+  (* ( string list * (expr * cond_t)) *)
   numformula: [[
-       (* one formula *)
-       "{"; (s,p) = patt_term; "}" -> (s,(p,SingleOne))
+      (* one formula *)
+        "{"; (s,p) = patt_term; "}" -> (s,(p,SingleOne))
 
-       (* zero or one formula *)
+      (* zero or one formula *)
       | "("; (s,p) = patt_term; ")" -> (s,(p,SingleZero))
       
       | x = test_constant ->
               ([x], (<:patt< Constant(nc,$str:x$) >>, Const))
 
-       (* set with condition *)
-      |c = LIDENT; "("; (s,p) = patt_term; ")" -> (s,(p,Cond(c))) 
+      (* set with condition *)
+      | c = LIDENT; "("; (s,p) = patt_term; ")" -> (s,(p,Cond(c))) 
     
-      (* single formula with condition *)
-      |c = LIDENT; "("; "{"; (s,p) = patt_term; "}"; ")" -> (s,(p,SingCond(c)))
+      (* principal formula with condition *)
+      | c = LIDENT; "("; "{"; (s,p) = patt_term; "}"; ")" -> (s,(p,SingCond(c)))
     
       (* set with no conditions *)
-      |(s,p) = patt_term           -> (s,(p,NoCond))
+      | (s,p) = patt_term           -> (s,(p,NoCond))
   ]];
   
   (* ( string list * (expr * cond_t)) *)
