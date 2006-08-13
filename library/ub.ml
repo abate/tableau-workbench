@@ -105,16 +105,17 @@ let setiev_beta(uev1,uev2,iev1,iev2,ev) =
     else (iev1#union iev2)#addlist ev
 ;;
 
-exception Stop of int ;;
+exception Stop_exn of int ;;
+
 let index br s =
     let i = ref 0 in
     try begin
         List.iter (fun e ->
-            if s#is_equal e then raise ( Stop !i) else incr i
+            if s#is_equal e then raise ( Stop_exn !i) else incr i
         ) br#elements;
         failwith "index: list empty"
         end
-    with Stop(n) -> n
+    with Stop_exn(n) -> n
 ;;
 
 (* true if there is not an element in the list equal to (dia@box) *)
@@ -251,8 +252,8 @@ let rec nnf_term f =
 
     |term ( ~ ~ a ) -> nnf_term a
 
-    |term ( ~ .a ) as f -> f
-    |term ( .a ) as f -> f
+    |term ( ~ A ) as f -> f
+    |term ( A ) as f -> f
 
     |term ( AxX a ) -> 
             let x = nnf_term a
@@ -310,13 +311,13 @@ let rec nnf_term f =
 ;;
 
 let neg_term = function term ( a ) -> term ( ~ a ) ;;
-let neg = Basictype.map neg_term ;;
+(*let neg = Basictype.map neg_term ;;
 let nnf = Basictype.map nnf_term ;;
-
+*)
 TABLEAU
 
   RULE Id
-  { A } ; { ~ A } ; Z
+  { a } ; { ~ a } ; z
   ===============
      Stop
   BACKTRACK [
@@ -326,7 +327,7 @@ TABLEAU
   END
   
   RULE False
-  Falsum ; Z
+  Falsum ; z
   ===============
      Stop
 
@@ -337,81 +338,81 @@ TABLEAU
   END
 
   RULE Axf
-      { AxF P }
+      { AxF p }
   ===================
-   P ||| AxX AxF P
+   p ||| AxX AxF p
 
-  ACTION [ [ Fev := add(AxF P,Fev) ] ; [] ]
+  ACTION [ [ Fev := add(AxF p,Fev) ] ; [] ]
   BACKTRACK [
       uev := setuev_beta(uev(1), uev(2), Br);
-      iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), AxF P)
+      iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), AxF p)
   ]
   BRANCH [ [ not_empty(uev(1)) ] ] 
   END
 
   RULE Exf
-      { ExF P }
+      { ExF p }
   ===================
-   P ||| ExX ExF P
+   p ||| ExX ExF p
 
-  ACTION [ [ Fev := add(ExF P,Fev) ] ; [] ]
+  ACTION [ [ Fev := add(ExF p,Fev) ] ; [] ]
   BACKTRACK [
       uev := setuev_beta(uev(1), uev(2), Br);
-      iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), ExF P)
+      iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), ExF p)
   ] 
   BRANCH [ [ not_empty(uev(1)) ] ] 
   END 
 
   RULE Axg
-     not_empty_list(AxG P)
+     not_empty_list(AxG p)
   ===================
-    P ; AxX AxG P
+    p ; AxX AxG p
   END
 
   RULE Exg
-     not_empty_list(ExG P)
+     not_empty_list(ExG p)
   ===================
-    P ; ExX ExG P
+    p ; ExX ExG p
   END
 
   RULE Exx
-  { ExX P } ; ExX S ; AxX Y ; Z
+  { ExX p } ; ExX s ; AxX y ; z
   =============================
-  P ; Y ||| ExX S ; AxX Y
+  p ; y ||| ExX s ; AxX y
       
-  COND [ loop_check(ExX P, AxX Y, Br) ]
+  COND [ loop_check(ExX p, AxX y, Br) ]
   ACTION [ [
       Fev := emptyset(Fev);
-      Br := push(ExX P, AxX Y, Br)
+      Br := push(ExX p, AxX y, Br)
   ] ; [] ]
   BACKTRACK [
       uev := setuev_pi(uev(1), uev(2), iev(1), iev(2), Br, Fev);
       iev := emptyset(Fev)
   ]
-  BRANCH [ [ not_false(uev(1)) ; not_empty_list(ExX S) ] ]
+  BRANCH [ [ not_false(uev(1)) ; not_empty_list(ExX s) ] ]
   END (cache)
 
   RULE Ref
-  is_empty_list(ExX P) ; X
+  is_empty_list(ExX p) ; x
   ====================
-      ExX Verum ; X
+      ExX Verum ; x
   END
 
   RULE Loop
-       ExX X ; AxX Y ; Z
+       ExX x ; AxX y ; z
   =============================
             Stop
 
   BACKTRACK [ 
-      uev := setuev_loop(ExX X, AxX Y, Fev, Br);
+      uev := setuev_loop(ExX x, AxX y, Fev, Br);
       iev := emptyset(Fev)
   ]
   END
 
   RULE Or
-  { A v B }
+  { a v b }
   =========
-   A ||| B
+   a ||| b
 
   BACKTRACK [
       uev := setuev_beta(uev(1), uev(2), Br);
@@ -421,9 +422,9 @@ TABLEAU
   END
 
   RULE And
-  not_empty_list(A & B)
+    a & b
   =========
-    A ; B
+    a ; b
   END
   
 END
@@ -435,8 +436,8 @@ let exit (uev) =
     |_ -> "Closed"
 ;;
 
-PP := nnf
-NEG := neg
+PP := nnf_term
+NEG := neg_term
 EXIT := exit (uev(1))
 
 OPTIONS

@@ -55,8 +55,8 @@ let rec nnf_term f =
 
     |term ( ~ ~ a ) -> nnf_term a
 
-    |term ( ~ .a ) as f -> f
-    |term ( .a ) as f -> f
+    |term ( ~ A ) as f -> f
+    |term ( A ) as f -> f
 
     |term ( X a ) -> 
             let x = nnf_term a

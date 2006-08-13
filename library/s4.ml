@@ -19,88 +19,85 @@ END
 open Twblib
 open Klib
 
-let neg = Basictype.map neg_term ;;
-let nnf = Basictype.map nnf_term ;;
-
 TABLEAU
 
   RULE S4 
-  { Dia A } ; Dia Y ; Z
+  { Dia a } ; Dia y ; z
   =====================
-  A ; BOXES || Dia Y 
+  a ; BOXES || Dia y 
   
-  COND notin(Dia A, DIAMONDS)
+  COND notin(Dia a, DIAMONDS)
   
   ACTION [
-      [ DIAMONDS := add(Dia A,DIAMONDS);
-        DIAMONDS := add(Dia Y,DIAMONDS) ]; [DIAMONDS := add(Dia A,DIAMONDS) ] ] 
+      [ DIAMONDS := add(Dia a,DIAMONDS);
+        DIAMONDS := add(Dia y,DIAMONDS) ]; [DIAMONDS := add(Dia a,DIAMONDS) ] ] 
   
-  BRANCH [ not_emptylist(Dia Y) ] 
+  BRANCH [ not_emptylist(Dia y) ] 
   END (cache)
 
   RULE S4IMP
-  { Dia A } ; Z
+  { Dia a } ; z
   ----------------------
-  A ; BOXES 
+  a ; BOXES 
   
-  COND notin(Dia A, DIAMONDS)
-  ACTION [ DIAMONDS := add(Dia A,DIAMONDS) ]
+  COND notin(Dia a, DIAMONDS)
+  ACTION [ DIAMONDS := add(Dia a,DIAMONDS) ]
   END
 
   RULE TNEW
-  { Box A }
+  { Box a }
   =========
-     A 
+     a 
 
-  COND notin(A, BOXES)
+  COND notin(a, BOXES)
   
   ACTION [
-      BOXES    := add(A,BOXES);
+      BOXES    := add(a,BOXES);
       DIAMONDS := emptyset (DIAMONDS) ]
   END
 
   RULE TOLD
-  { Box A }
+  { Box a }
   =========
-     A 
+     a 
 
-  COND isin(A, BOXES)
+  COND isin(a, BOXES)
   END
   
   RULE Id
-  { A } ; { ~ A }
+  { a } ; { ~ a }
   ===============
     Close
   END
   
   RULE And
-  { A & B }
+   a & b 
   =========
-    A ; B
+    a ; b
   END
   
   RULE Or
-  { A v B }
+  { a v b }
  ==========
-    A | B
+    a | b
   END
 
   RULE Imp 
-  { A -> B }
+  { a -> b }
  ============
-    ~ A | B
+    ~ a | b
   END
 
   RULE DImp 
-  { A <-> B }
+  { a <-> b }
  ==================
-  A -> B | B -> A
+  a -> b | b -> a
   END
 
 END
 
-PP := nnf
-NEG := neg
+PP := nnf_term
+NEG := neg_term
 
 let saturation = tactic ( (And|Or|Imp|Dimp|Tnew|Told|Id)* )
 

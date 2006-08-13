@@ -3,7 +3,7 @@ open ExtLib
 
 module Options =
 struct
-  let preproc = ref false
+  let nopp = ref false
   let debug = ref 0
   let noneg = ref false
   let trace = ref false
@@ -21,8 +21,8 @@ let usage = "usage: twb [-options] [file]"
 
 let arg_options =
     [
-     ("-nopp",  Arg.Clear  Options.preproc,   "disable preproc function");
-     ("-noneg", Arg.Set    Options.noneg, "doesn't use the Negation Procedure");
+     ("-nopp",  Arg.Set    Options.nopp,  "disable preproc function");
+     ("-noneg", Arg.Set    Options.noneg, "disable negation function");
 
      ("-debug", Arg.Int    (fun l -> Options.debug := l ), "debug level");
      ("-trace", Arg.Set    Options.trace, "print proof trace");
@@ -71,11 +71,14 @@ let newnode s =
         with Option.No_value -> failwith "Input Parser error"
     in
     let pp = 
-        if Option.is_none (!Logic.__pp) then (fun x -> x)
+        if (!Options.nopp) then (fun x -> x)
+        else if Option.is_none (!Logic.__pp)
+        then (fun x -> x)
         else (Option.get (!Logic.__pp))
     in 
     let neg = 
-        if Option.is_none (!Logic.__neg) || (!Options.noneg)
+        if (!Options.noneg) then (fun x -> x)
+        else if Option.is_none (!Logic.__neg)
         then (fun x -> x)
         else (Option.get (!Logic.__neg))
     in 

@@ -11,63 +11,59 @@ CONNECTIVES
   Verum, Const
 END
 
+open Twblib
 open Klib
-
-let not_empty = function [] -> false | _ -> true
 
 TABLEAU
 
   RULE K1
-  { Dia A } ; Box X ; Dia Y ; Z
+  { Dia a } ; Box x ; Dia y ; z
   ===========================
-      A ; X || Dia Y ; Box X
+      a ; x || Dia y ; Box x
 
-  BRANCH [ not_empty(Dia Y) ]
+  BRANCH [ not_emptylist(Dia y) ]
   END
 
   RULE K
-  { Dia A } ; Box X ; Z
+  { Dia a } ; Box x ; z
   ----------------------
-    A ; X
+    a ; x
   END
  
   RULE Id
-  { A } ; { ~ A }
+  { a } ; { ~ a }
   ===============
     Close
   END
   
   RULE And
-  { A & B }
- ==========
-    A ; B
+   a & b
+  ==========
+    a ; b
   END
   
   RULE Or
-  { A v B }
+  { a v b }
  ==========
-    A | B
+    a | b
   END
 
   RULE Imp 
-  { A -> B }
+  { a -> b }
  ============
-    ~ A | B
+    ~ a | b
   END
 
   RULE DImp 
-  { A <-> B }
+  { a <-> b }
  ==================
-  A -> B | B -> A
+  a -> b | b -> a
   END
 
 END
 
-let neg = Basictype.map neg_term ;;
-let nnf = Basictype.map nnf_term ;;
-
-PP := nnf
-NEG := neg
+PP := nnf_term
+NEG := neg_term
 
 let t = tactic ( (Id|And|Or)* )
 

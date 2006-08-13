@@ -32,7 +32,7 @@ let nnf = Basictype.map nnf_term ;;
 TABLEAU
 
   RULE Id
-  { A } ; { ~ A } ; Z
+  { a } ; { ~ a } ; z
   ===============
      Stop
 
@@ -44,7 +44,7 @@ TABLEAU
   END
   
   RULE False
-  Falsum ; Z
+  Falsum ; z
   ===============
      Stop
 
@@ -56,43 +56,43 @@ TABLEAU
   END
 
   RULE Loop
-  { X A } ; X B ; Z
+  { X a } ; X b ; z
   =================
        Stop
 
   BACKTRACK [
-      uev := setuev(X A, X B, Z, Ev, Br);
-      n   := setn (X A, X B, Z, Br)
+      uev := setuev(X a, X b, z, Ev, Br);
+      n   := setn (X a, X b, z, Br)
   ]
 
   END
 
   RULE Next
-  { X A } ; X B ; Z
+  { X a } ; X b ; z
   =================
-      A ; B
+      a ; b
       
-  COND [ loop_check(X A, X B, Z, Br) ]
+  COND [ loop_check(X a, X b, z, Br) ]
   ACTION [
       Ev := emptyset(Ev);
-      Br := push(X A, X B, Z, Ev, Br)
+      Br := push(X a, X b, z, Ev, Br)
   ]
 
   END
 
   RULE Before
-    {A Bf C}
+    {a Bf c}
   ==========================
-   nnf (~ C) ; A v X (A Bf C)
+   nnf (~ c) ; a v X (a Bf c)
 
   END
 
   RULE Until
-           { C Un D } 
+           { c Un d } 
   =============================
-      D ||| C ; X ( C Un D ) 
+      d ||| c ; X ( c Un d ) 
 
-  ACTION    [ [ Ev := add(D, Ev) ] ; [] ]
+  ACTION    [ [ Ev := add(d, Ev) ] ; [] ]
   BACKTRACK [ 
       uev := beta(uev(1), uev(2), n(1), n(2), Br);
       n := min (n(1), n(2))
@@ -102,9 +102,9 @@ TABLEAU
   END
  
   RULE Or
-  { A v B }
+  { a v b }
   =========
-   A ||| B
+   a ||| b
 
   BACKTRACK [ 
       uev := beta(uev(1), uev(2), n(1), n(2), Br);
@@ -115,15 +115,15 @@ TABLEAU
   END
 
   RULE And
-  { A & B }
+    a & b 
   =========
-    A ; B
+    a ; b
   END
 
   RULE GE
-     { G A }
+     { G a }
   =============
-   A ; X (G A)
+   a ; X (G a)
   END
   
 END
@@ -135,8 +135,8 @@ let exit (uev) =
     |_ -> "Closed"
 ;;
 
-PP := nnf
-NEG := neg
+PP := nnf_term
+NEG := neg_term
 EXIT := exit (uev(1))
 
 let saturation = tactic ( (And ; Or ; Until ; Ge ; Before ; Id ; False)* )
