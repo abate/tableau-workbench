@@ -5,52 +5,36 @@ CONNECTIVES
   Imp, "_->_", One;
   DImp, "_<->_", One;
   Not, "~_",   Simple;
-  Falsum, Const
+  Falsum, Const;
+  Verum, Const
 END
 
-let rec nnf_term f =
-    match f with
-    | term ( a & b ) -> 
-        let x = nnf_term a  
-        and y = nnf_term b
-        in term ( x & y )
-        
-    | term ( ~ ( a & b ) ) -> 
-        let x = nnf_term term ( ~ a ) 
-        and y = nnf_term term ( ~ b )
-        in term ( x v y )
+let rec nnf = function
+    |term ( a & b ) -> term ( [nnf a] & [nnf b] )
+    |term ( ~ ( a & b ) ) -> 
+            term ( [ nnf term ( ~ a )] v [nnf term ( ~ b )] )
 
-    | term ( a v b ) ->
-            let x = nnf_term a
-            and y = nnf_term b
-            in term ( x v y )
-            
-    | term ( ~ ( a v b ) ) ->
-            let x = nnf_term term ( ~ a )
-            and y = nnf_term term ( ~ b )
-            in term ( x & y )
+    |term ( a v b ) -> term ([nnf a] v [nnf b])
+    |term ( ~ ( a v b ) ) ->
+            term ( [ nnf term ( ~ a )] & [nnf term ( ~ b )] )
 
     |term ( a <-> b ) ->
-            let x = nnf_term term ( a -> b )
-            and y = nnf_term term ( b -> a )
-            in term ( x & y )
-
+            term ( [nnf term ( a -> b )] & [nnf term ( b -> a )] )
     |term ( ~ ( a <-> b ) ) ->
-            let x = nnf_term term ( ~ (a -> b) )
-            and y = nnf_term term ( ~ (b -> a) )
-            in term ( x v y )
+            term ( [nnf term ( ~ (a -> b) )] v [nnf term ( ~ (b -> a) )] )
             
-    |term ( a -> b ) ->
-            nnf_term term ( (~ a) v b )
+    |term ( a -> b ) -> nnf term ( (~ a) v b )
+    |term ( ~ (a -> b) ) -> nnf term ( a & (~ b) )
+    |term ( ~ ~ a ) -> nnf a
 
-    |term ( ~ (a -> b) ) ->
-            nnf_term term ( a & (~ b) )
-
-    | term ( ~ ~ a ) -> nnf_term a
-
-    | term ( ~ A ) as f -> f
-    | term ( A ) as f -> f
+    |term ( ~ A ) as f -> f
+    |term ( A ) as f -> f
  
+    |term (Verum) -> term (Verum)
+    |term (Falsum) -> term (Falsum)
+    |term (~ Verum) -> term (Falsum)
+    |term (~ Falsum) -> term (Verum)
+
     | f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
 ;;
 
@@ -74,7 +58,7 @@ let cnf t =
                 in term (a & b)
         | term (t1 v t2) -> distrib (conjnf(t1),conjnf(t2))
         | _ -> t
-in conjnf (nnf_term t)
+in conjnf (nnf t)
 ;;
 
 (* formula list -> formula list *)
@@ -89,4 +73,5 @@ let listfy t =
 ;;
 
 let neg_term = function term ( a ) -> term ( ~ a ) ;;
+let nnf_term = nnf
 

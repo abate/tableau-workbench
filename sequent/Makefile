@@ -18,6 +18,6 @@ PACKS := twb.core twb.types
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)
 
-all: byte-code-library
+all: ncl
 
 include $(OCAMLMAKEFILE)

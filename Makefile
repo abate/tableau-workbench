@@ -15,11 +15,11 @@ utils:
 	cd utils && make && cp twbcompile ../library
 
 nc:
-	cd core && make ncl && cp twbcore.* *.cmi ../twb/
-	cd types && make ncl && cp twbtypes.* *.cmi ../twb/
-	cd sequent && make ncl && cp twbseq* *.cmi ../twb/
-	cd syntax && make bcl ncl && cp *.cm* *.a ../twb/
-	cd cli && make twbncl && cp *.cm* *.a *.o ../twb/
+	cd core && make && cp twbcore.* *.cm* ../twb/
+	cd types && make && cp twbtypes.* *.cm* ../twb/
+	cd sequent && make && cp *.cm* *.a ../twb/
+	cd syntax && make && cp *.cm* *.a ../twb/
+	cd cli && make && cp *.cm* *.a ../twb/
 	cd utils && make && cp twbcompile ../library
 	ranlib twb/*.a
 
@@ -30,7 +30,7 @@ clean:
 	cd syntax && make clean
 	cd cli && make clean
 	cd utils && make clean
-	cd twb && rm *.cm* *.a twb*
+	cd twb && rm -f *.cm* *.a *.o twb*
 
 OCAMLLIBDIR=$(DESTDIR)`ocamlc -where`
 INSTALLDIR=$(OCAMLLIBDIR)/twb

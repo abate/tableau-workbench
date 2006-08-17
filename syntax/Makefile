@@ -8,14 +8,6 @@ define PROJ_tableau
 endef
 export PROJ_tableau
 
-define PROJ_sequent
-  USE_CAMLP4 = yes
-  SOURCES := sequent.ml
-  RESULT := sequent
-  export PACKS := str extlib twb.types
-endef
-export PROJ_sequent
-
 define PROJ_input
   USE_CAMLP4 = yes
   SOURCES := inputParser.ml
@@ -25,7 +17,7 @@ endef
 export PROJ_input
 
 ifndef SUBPROJS
-  export SUBPROJS = tableau sequent input
+  export SUBPROJS = tableau input
 endif
 
 all: bcl inputncl

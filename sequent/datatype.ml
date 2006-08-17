@@ -16,13 +16,13 @@ module Fmap = Gmap.Make(
 
 (*
 with Comptypes.Mtlist.listobj are multisets
-module Fmap = Gmap.Make(
+*)
+module FmapM = Gmap.Make(
     struct
         type t = Type.bt
         type c = Comptypes.Mtlist.listobj
         let make () = new Comptypes.Mtlist.listobj
     end)
-*)
 
 module Hmap = Hmap.Make(
     struct
