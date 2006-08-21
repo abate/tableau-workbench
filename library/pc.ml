@@ -25,7 +25,7 @@ TABLEAU
   END
 
   RULE And
-   a & b 
+  { a & b } 
  ==========
     a ; b
   END
@@ -36,28 +36,10 @@ TABLEAU
      a | b 
   END
 
-  RULE Imp 
-  { a -> b }
- ===========
-    ~ a | b
-  END
-
-  RULE Mp 
-  { a } ; { a -> b }
- ===========
-    b
-  END
-
-  RULE DImp 
-  a <-> b
-  ===============
-  a -> b ; b -> a
-  END
-
 END
 
-PP := nnf_term
-NEG := neg_term
+PP := nnf
+NEG := neg
 
 (* STRATEGY (Id;And;Or)*  *)
 STRATEGY (Id|And|Or)*

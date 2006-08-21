@@ -13,64 +13,37 @@ END
 
 let neg_term = function term ( a ) -> term ( ~ a ) ;;
 
-let rec nnf_term f = 
+let rec nnf f = 
     match f with
-    |term ( a & b ) ->
-        let x = nnf_term a
-        and y = nnf_term b
-        in term ( x & y )
-
+    |term ( a & b ) -> term ( [nnf a] & [nnf b] )
     |term ( ~ ( a & b ) ) ->
-        let x = nnf_term term ( ~ a )
-        and y = nnf_term term ( ~ b )
-        in term ( x v y )
+            term ( [nnf term ( ~ a )] v [nnf term ( ~ b )] )
 
     |term ( a v b ) ->
-            let x = nnf_term a
-            and y = nnf_term b
-            in term ( x v y )
-
+            term ( [nnf a] v [nnf b] )
     |term ( ~ ( a v b ) ) ->
-            let x = nnf_term term ( ~ a )
-            and y = nnf_term term ( ~ b )
-            in term ( x & y )
+            term ( [nnf term ( ~ a )] & [nnf term ( ~ b )] )
 
     |term ( a <-> b ) ->
-            let x = nnf_term term ( a -> b )
-            and y = nnf_term term ( b -> a )
-            in term ( x & y )
-
+            term ( [nnf term ( a -> b )] & [nnf term ( b -> a )] )
     |term ( ~ ( a <-> b ) ) ->
-            let x = nnf_term term ( ~ (a -> b) )
-            and y = nnf_term term ( ~ (b -> a) )
-            in term ( x v y )
+            term ( [nnf term ( ~ (a -> b) )] v [nnf term ( ~ (b -> a) )] )
 
-    |term ( a -> b ) ->
-            nnf_term term ( (~ a) v b )
+    |term ( a -> b ) -> nnf term ( (~ a) v b )
+    |term ( ~ (a -> b) ) -> nnf term ( a & (~ b) )
 
-    |term ( ~ (a -> b) ) ->
-            nnf_term term ( a & (~ b) )
-
-    |term ( ~ ~ a ) -> nnf_term a
+    |term ( ~ ~ a ) -> nnf a
 
     |term ( ~ A ) as f -> f
     |term ( A ) as f -> f
 
-    |term ( Dia a ) -> 
-            let x = nnf_term a
-            in term ( Dia x )
+    |term ( Dia a ) -> term ( Dia [nnf a] )
             
-    |term ( ~ ( Dia a ) ) -> 
-            let x = nnf_term ( term ( ~ a ) )
-            in term ( Box x )
+    |term ( ~ ( Dia a ) ) -> term ( Box [nnf ( term ( ~ a ) )] )
             
-    |term ( Box a ) -> 
-            let x = nnf_term a
-            in term ( Box x )
+    |term ( Box a ) -> term ( Box [nnf a] )
             
-    |term ( ~ ( Box a ) ) -> 
-            let x = nnf_term ( term ( ~ a ) )
-            in term ( Dia x )
+    |term ( ~ ( Box a ) ) -> term ( Dia [nnf ( term ( ~ a ) )] )
 
     |term ( ~ Falsum ) -> term ( Verum )
     |term ( ~ Verum ) -> term ( Falsum )
@@ -78,5 +51,24 @@ let rec nnf_term f =
     |term ( Constant ) -> f
     |term ( ~ Constant ) -> f
 
-    | _ -> failwith ("nnf_term"^(!Basictype.string_of_formula f))
+    |f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
 ;;
+
+let nnf_term = nnf
+
+let rec cnf t =
+    let rec distrib = function
+        |t1, term ( t2 & t3 ) -> term ([distrib(t1,t2)] & [distrib(t1,t3)])
+        |term (t1 & t2), t3 -> term ([distrib(t1,t3)] & [distrib(t2,t3)])
+        |t1,t2 -> term (t1 v t2)
+    in
+    let rec conjnf t =
+        match t with
+        |term (t1 & t2) -> term ([conjnf(t1)] & [conjnf(t2)])
+        |term (t1 v t2) -> distrib (conjnf(t1),conjnf(t2))
+        |term (Box t1) -> term ( Box [cnf t1] )
+        |term (Dia t1) -> term ( Dia [cnf t1] )
+        |_ -> t
+in conjnf t
+;;
+

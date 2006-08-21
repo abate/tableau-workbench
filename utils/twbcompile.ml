@@ -124,6 +124,11 @@ let rec loop ch l =
     with End_of_file |Stream.Failure -> l
 ;;
 
+let rec uniq = function
+    |[] -> []
+    |h::t -> h:: uniq (List.filter (fun x -> not(x = h)) t)
+;;
+
 let rec deps deplist filename =
     let cmd =
        "ocamldep " ^
@@ -162,6 +167,7 @@ let link l filename =
     ignore(system cmd)
 ;;
 
+
 let main () =
     let _ =
         try Arg.parse options file usage
@@ -169,7 +175,7 @@ let main () =
      in 
     let filename = get(!input_file) in
     (* XXX: the deplist should not have duplicates *)
-    let deplist = List.rev (deps [noext(filename)] filename) in
+    let deplist = uniq(List.rev (deps [noext(filename)] filename)) in
     List.iter compile deplist;
     link deplist filename;
     print_endline "Done.";

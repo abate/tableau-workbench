@@ -1130,6 +1130,11 @@ let expand_substitute _loc connlist =
         | (_,s,_) -> failwith (s^" __substitute error")
     ) connlist
     in
+    let equiv =
+        <:patt< f >>,
+        Some(<:expr< f = t >>),
+        <:expr< s >>
+    in
     let default =
         <:patt< _ >> ,
         None,
@@ -1139,7 +1144,7 @@ let expand_substitute _loc connlist =
     let const = <:patt< ( Constant(nc,a) as f ) >>, None, <:expr< f >> in
     let p = <:patt< __substitute >> in
     let e = <:expr< fun s -> fun t -> fun [
-        $list:List.rev([default;atom;const]@l)$ ] >>
+        $list:List.rev([default;atom;const]@l@[equiv])$ ] >>
     in
     <:str_item< value rec $list:[(p,e)]$ >>
 ;;

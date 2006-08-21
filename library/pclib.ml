@@ -9,6 +9,8 @@ CONNECTIVES
   Verum, Const
 END
 
+let neg = function term ( a ) -> term ( ~ a ) ;;
+
 let rec nnf = function
     |term ( a & b ) -> term ( [nnf a] & [nnf b] )
     |term ( ~ ( a & b ) ) -> 
@@ -35,30 +37,56 @@ let rec nnf = function
     |term (~ Verum) -> term (Falsum)
     |term (~ Falsum) -> term (Verum)
 
-    | f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
+    |f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
 ;;
 
 let cnf t =
-    let rec distrib = function
-        |t1, term ( t2 & t3 ) ->
-                let a = distrib(t1,t2)
-                and b = distrib(t1,t3)
-                in term ( a & b )
-        |term (t1 & t2), t3 ->
-                let a = distrib(t1,t3)
-                and b = distrib(t2,t3)
-                in term (a & b)
-        |t1,t2 -> term (t1 v t2)
+    let rec distr = function
+        |term ( x v ( y & z ) ) ->
+                term ([distr( term ( x v y) )] & [distr( term ( x v z) )])
+        |x -> x
     in
-    let rec conjnf t =
-        match t with
-        | term (t1 & t2) ->
-                let a = conjnf(t1)
-                and b = conjnf(t2)
-                in term (a & b)
-        | term (t1 v t2) -> distrib (conjnf(t1),conjnf(t2))
-        | _ -> t
-in conjnf (nnf t)
+    let rec distl = function
+        |term ( ( y & z ) v x ) -> term ( [distl term (y v x)] & [distl term ( z v x ) ])
+        |x -> x
+    in
+    let dist x = distr(distl x) 
+    in
+    let rec conjnf = function
+        |term (t1 & t2) -> term ([conjnf(t1)] & [conjnf(t2)])
+        |term (t1 v t2) -> dist (term ( [conjnf(t1)] v [conjnf(t2)]))
+        |x -> x
+in conjnf t
+;;
+
+let cnfl t =
+    let i = ref 0 in
+    let rec uniq = function
+        |[] -> []
+        |h::t -> h:: uniq (List.filter (fun x -> not(x = h)) t)
+    in
+    let rec lits = function
+        |term ( A v B ) as t -> [t]
+        |term ( A & B ) as t -> [t]
+        |term ( ~ A v B ) as t -> [t]
+        |term ( ~ A & B ) as t -> [t]
+        |term ( A v ~ B ) as t -> [t]
+        |term ( A & ~ B ) as t -> [t]
+
+        |term ( a v b ) -> ( lits a ) @ (lits b )
+        |term ( a & b ) -> ( lits a ) @ (lits b )
+        |_ -> []
+    in
+    let rec aux t acc = function
+        |hd::tl ->
+                let j = incr i ; !i in
+                let a = ( term (p(j) <-> hd ) ) in
+                let b = term( t{p(j)/hd} ) in
+                aux b a tl
+        |[] -> term (t & acc)
+    in
+    let t1 = cnf ( nnf t ) in
+    aux t1 term ( Verum ) (uniq ( lits t1 ))
 ;;
 
 (* formula list -> formula list *)
@@ -71,7 +99,4 @@ let listfy t =
     |[`Formula t] -> Basictype.open_bt_list (split (cnf t))
     |_ -> failwith "listfy"
 ;;
-
-let neg_term = function term ( a ) -> term ( ~ a ) ;;
-let nnf_term = nnf
 
