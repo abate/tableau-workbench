@@ -1109,12 +1109,13 @@ let expand_substitute _loc connlist =
                 Some(<:patt< ( $lid:v$(i,nc,a) ) >>,
                 None,
                 <:expr<
-                if a = t then $lid:v$ (i,nc,s) else __substitute s t a >>)
+                if a = t then $lid:v$ (i,nc,s) else $lid:v$(i,nc,__substitute s
+                t a) >>)
         | (v,s,r) when s =~ u_re ->
                 Some(<:patt< ( $lid:v$(nc,a)) >>,
                 None,
                 <:expr<
-                if a = t then $lid:v$ (nc,s) else __substitute s t a >>)
+                if a = t then $lid:v$ (nc,s) else $lid:v$(nc,__substitute s t a) >>)
         | (v,s,r) when s =~ bi_re ->
                 Some(<:patt< ( $lid:v$(nc,a,b) ) >>,
                 None,

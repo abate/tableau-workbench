@@ -37,7 +37,7 @@ let rec nnf = function
     |term (~ Verum) -> term (Falsum)
     |term (~ Falsum) -> term (Verum)
 
-    |f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
+    |f -> failwith (Printf.sprintf "nnf:%s\n" (Twblib.sof(f)))
 ;;
 
 let cnf t =
@@ -82,7 +82,8 @@ let cnfl t =
                 let j = incr i ; !i in
                 let a = ( term (p(j) <-> hd ) ) in
                 let b = term( t{p(j)/hd} ) in
-                aux b a tl
+                let acc' = term ( a & acc ) in
+                aux b acc' tl
         |[] -> term (t & acc)
     in
     let t1 = cnf ( nnf t ) in

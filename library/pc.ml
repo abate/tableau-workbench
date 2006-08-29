@@ -5,7 +5,8 @@ CONNECTIVES
   Imp, "_->_", One;
   DImp, "_<->_", One;
   Not, "~_",   Simple;
-  Falsum, Const
+  Falsum, Const;
+  Verum, Const
 END
 
 open Pclib
