@@ -333,13 +333,20 @@ let expand_single _loc term =
     >>
 ;;
 
-let build_term _loc ?(single=false) ?(action=false) term =
+let build_term _loc ?(naked=false) ?(action=false) term =
     let ids = unique (get_term_ids term) in
     let expr = expand_term_expr _loc term in
     let term_type = List.map (expand_term_type _loc) ids in
     let term_cont = List.map (expand_term_cont _loc term) ids in
     let patt_list = List.map (fun x -> <:patt< `Formula $lid:x$ >> ) ids in
-    let count = if single then "head" else "elements" in
+    let dressedcont id = <:expr< $lid:id$#elements >> in
+    let nakedcont id inner =
+        <:expr<
+        match $lid:id$#head with
+            [`$inner$ i -> i
+            |_ -> failwith "__build"]
+        >>
+    in
     let build_term_aux1 term ex = 
         <:expr<
         fun sbl hist varl ->
@@ -351,7 +358,7 @@ let build_term _loc ?(single=false) ?(action=false) term =
     in
     let build_term_aux2 term = 
         let term_elem = 
-            List.map (fun x -> <:expr< $lid:String.lowercase x^"cont"$#$lid:count$ >> ) ids
+            List.map (fun x -> dressedcont (String.lowercase x^"cont") ) ids
         in
             <:expr<
             fun sbl hist varl ->
@@ -368,7 +375,9 @@ let build_term _loc ?(single=false) ?(action=false) term =
     in
     match term with
     |Ast.Var(_) ->
-            let ex = <:expr< $lid:String.lowercase (List.hd ids)^"cont"$#$lid:count$ >>
+            let ex =
+                if naked then nakedcont (String.lowercase (List.hd ids)^"cont") "Formula"
+                else dressedcont (String.lowercase (List.hd ids)^"cont")
             in build_term_aux1 term ex
     |Ast.History(_)
     |Ast.Variable(_,_) ->
@@ -376,16 +385,14 @@ let build_term _loc ?(single=false) ?(action=false) term =
             let (outer,inner,_,_) = Hashtbl.find hist_table hist in
             let ex =
                 match outer, action with
-                |"Singleton",_ ->
-                        <:expr<
-                        match $lid:String.lowercase hist^"cont"$#head with
-                        [`$inner$ i -> i
-                        |_ -> failwith "__build"]
-                        >>
+                |"Singleton",_ -> nakedcont (String.lowercase hist^"cont") inner
                 |_, true -> <:expr< $lid:String.lowercase hist^"cont"$#elements >>
                 |_, false -> <:expr< $lid:String.lowercase hist^"cont"$ >>
             in build_term_aux1 term ex
-    |Ast.Const(id) -> <:expr< Constant($str:id$) >>
+    |Ast.Const(id) ->
+            let ex = <:expr< Constant($str:id$) >> in
+            if naked then <:expr< fun _ _ _ -> $ex$ >>
+            else <:expr< fun _ _ _ -> `Formula $ex$ >>
     |_ -> build_term_aux2 term
 ;;
 
@@ -400,17 +407,6 @@ let expand_constant _loc s =
         >>
     in
     <:expr< fun sbl fl -> let f = $ex$ in sbl#add [ ( $str:s$, [f] ) ] >>
-;;
-
-let rec build_expression _loc = function
-    |Ast.Filter("__single",[Ast.Term t]) -> build_term ~single:true _loc t 
-    |Ast.Filter("__empty",[Ast.Term t]) -> build_term ~single:true _loc t
-    |Ast.Filter(f,l) -> failwith "build_expression not implemented"
-    |Ast.Apply(f,[]) -> <:expr< $lid:f$ () >>
-    |Ast.Apply(f,l) ->
-            let tl = List.map (build_expression _loc) l in
-            <:expr< $lid:f$ ( $list:tl$ ) >>
-    |Ast.Term(t) -> build_term _loc t
 ;;
 
 let rec expand_expression_patt _loc = function
@@ -431,8 +427,8 @@ let rec expand_expression_expr ?(action=false) _loc = function
                 List.flatten (
                     List.map (function
                     |Ast.Apply("__simpl",[Ast.Term s;Ast.Term v]) ->
-                            [(new_id "term", build_term ~single:true _loc s);
-                             (new_id "term", build_term ~single:true _loc v)]
+                            [(new_id "term", build_term ~naked:true _loc s);
+                             (new_id "term", build_term ~naked:true _loc v)]
                     |_ -> failwith "expand_expression_expr not implemented 3"
                     ) l
                 )
@@ -440,8 +436,8 @@ let rec expand_expression_expr ?(action=false) _loc = function
             let (id,term) = (new_id "term", build_term _loc t) in
             let rec mapt = function
                 |(s1,_)::(s2,_)::t ->
-                        let t1 = <:expr< $lid:s1$ >> in
-                        let t2 = <:expr< $lid:s2$ >> in
+                        let t1 = <:expr< $lid:s1$ sbl hist varl >> in
+                        let t2 = <:expr< $lid:s2$ sbl hist varl >> in
                         <:expr< ( $list:[t1;t2]$ ) >> :: mapt t
                 |[] -> []
                 |_ -> failwith "expand_expression_expr"
@@ -454,9 +450,9 @@ let rec expand_expression_expr ?(action=false) _loc = function
                 <:expr<
                 let $list:pel$ in
                 fun sbl hist varl ->
-                    __simplification (List.fold_left (fun t (s,v) ->
-                            __substitute t s v
-                        ) $lid:id$ $sublist$ 
+                    __simplification (List.fold_left (fun l (s,v) ->
+                            Basictype.map (fun t -> __substitute t s v) l
+                        ) ($lid:id$ sbl hist varl) $sublist$ 
                     )
                 >>
             in (new_id "apply", appex )
