@@ -4,7 +4,7 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
+  Not, "~_", Zero;
   Falsum, Const;
   Verum, Const
 END
@@ -29,15 +29,15 @@ let rec nnf = function
     |term ( ~ (a -> b) ) -> nnf term ( a & (~ b) )
     |term ( ~ ~ a ) -> nnf a
 
-    |term ( ~ A ) as f -> f
-    |term ( A ) as f -> f
+    |term ( ~ Atom ) as f -> f
+    |term ( Atom ) as f -> f
  
     |term (Verum) -> term (Verum)
     |term (Falsum) -> term (Falsum)
     |term (~ Verum) -> term (Falsum)
     |term (~ Falsum) -> term (Verum)
 
-    |f -> failwith (Printf.sprintf "nnf:%s\n" (Twblib.sof(f)))
+    |f -> failwith (Printf.sprintf "nnf:%s" (Twblib.sof(f)))
 ;;
 
 let cnf t =
@@ -101,3 +101,42 @@ let listfy t =
     |_ -> failwith "listfy"
 ;;
 
+let rec simpl = function
+    |term (~ Falsum)    -> term (Verum)
+    |term (~ Verum)     -> term (Falsum)
+    |term (a & Falsum)  -> term (Falsum)
+    |term (Falsum & a)  -> term (Falsum)
+    |term (a v Verum)   -> term (Verum)
+    |term (Verum v a)   -> term (Verum)
+
+    |term (a & Verum)   -> simpl a
+    |term (Verum & a)   -> simpl a
+    |term (a v Falsum)  -> simpl a 
+    |term (Falsum v a)  -> simpl a
+
+    |term (a & b) ->
+            (match simpl a with
+            |term (Falsum) -> term (Falsum)
+            |_ as sx ->
+                    (match simpl a with
+                    |term (Falsum) -> term (Falsum)
+                    |_ as sy ->
+                            if sx = sy then
+                                sx
+                            else
+                                term (sx & sy) )
+            )
+    |term (a v b) ->
+            (match simpl a with
+            |term (Verum) -> term (Verum)
+            |_ as sx ->
+                    (match simpl b with
+                    |term (Verum) -> term (Verum)
+                    |_ as sy ->
+                            if sx = sy then
+                                sx
+                            else
+                                term (a v b) )
+            )
+    |_ as f -> f
+;;

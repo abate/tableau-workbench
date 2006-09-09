@@ -4,7 +4,7 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
+  Not, "~_", Zero;
   Falsum, Const;
   Verum, Const
 END
@@ -28,7 +28,7 @@ TABLEAU
   RULE And
   { a & b } 
  ==========
-    a ; b
+     a ; b
   END
   
   RULE Or

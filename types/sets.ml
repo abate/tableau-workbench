@@ -7,6 +7,7 @@ class type ['t] st =
         method del : 't -> 'a
         method mem : 't -> bool
         method elements : 't list
+        method head : 't
         method is_empty : bool
         method filter : ('t -> bool) -> 'a
         method length : int
@@ -96,6 +97,8 @@ module Make ( T : ValType ) :
             >}
 
             method elements = Set.elements data
+
+            method head = Set.min_elt data
 
             method is_empty = Set.is_empty data
 

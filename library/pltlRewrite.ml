@@ -6,10 +6,10 @@ CONNECTIVES
   DImp, "_<->_", One;
   Until, "_Un_", One;
   Before, "_Bf_", One;
-  Not, "~_",   Simple;
-  Next, "X_", Simple;
-  Generally, "G_", Simple;
-  Sometimes, "F_", Simple;
+  Not, "~_",   Zero;
+  Next, "X_", Zero;
+  Generally, "G_", Zero;
+  Sometimes, "F_", Zero;
   Falsum, Const;
   Verum, Const
 END
@@ -55,8 +55,8 @@ let rec nnf_term f =
 
     |term ( ~ ~ a ) -> nnf_term a
 
-    |term ( ~ A ) as f -> f
-    |term ( A ) as f -> f
+    |term ( ~ Atom ) as f -> f
+    |term ( Atom ) as f -> f
 
     |term ( X a ) -> 
             let x = nnf_term a

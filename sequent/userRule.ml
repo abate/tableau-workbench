@@ -57,7 +57,7 @@ let status s
     in
     try
         (match varhist#find "status" with
-        `Set l -> 
+        `Singleton l -> 
             (match l#elements with
             |[`String str] when s = str -> true
             |[`String _] -> false
@@ -193,7 +193,8 @@ let down_implicit name context actionl historyl =
   Tree (make_llist [Variable.make ()] (next context))
 ;;
 
-let down_axiom name context status =
+let down_axiom name context arglist =
+    let status = List.hd arglist in
     let (enum,sbl,newnode) = context#get in
     let (m, h, varhist) = newnode#get in
     let newnode = newnode#set(m#empty, h#empty, status varhist) in
@@ -261,3 +262,52 @@ let up_explore_linear context treelist synthlist =
         ) (unbox_tree t) synthlist
     in Leaf (newnode)
 ;; 
+
+module ExtList = struct
+
+    exception Different_list_size of string
+    let map1 = List.map
+    let map2 f (l1,l2) =
+        let rec _aux acc = function
+            |h1::t1,h2::t2 -> _aux (f (h1,h2)::acc) (t1,t2)
+            |[],[] -> List.rev acc
+            |_ -> raise (Different_list_size "map3")
+        in _aux [] (l1,l2)
+    ;;
+
+    let map3 f (l1,l2,l3) =
+        let rec _aux acc = function
+            |h1::t1,h2::t2,h3::t3 -> _aux (f (h1,h2,h3)::acc) (t1,t2,t3)
+            |[],[],[] -> List.rev acc
+            |_ -> raise (Different_list_size "map3")
+        in _aux [] (l1,l2,l3)
+    ;;
+    let map4 f (l1,l2,l3,l4) =
+        let rec _aux acc = function
+            |h1::t1,h2::t2,h3::t3,h4::t4 -> _aux (f (h1,h2,h3,h4)::acc) (t1,t2,t3,t4)
+            |[],[],[],[] -> List.rev acc
+            |_ -> raise (Different_list_size "map4")
+        in _aux [] (l1,l2,l3,l4)
+    ;;
+    let map5 f (l1,l2,l3,l4,l5) =
+        let rec _aux acc = function
+            |h1::t1,h2::t2,h3::t3,h4::t4,h5::t5 ->
+                    _aux (f (h1,h2,h3,h4,h5)::acc) (t1,t2,t3,t4,t5)
+            |[],[],[],[],[] -> List.rev acc
+            |_ -> raise (Different_list_size "map5")
+        in _aux [] (l1,l2,l3,l4,l5)
+    ;;
+
+    let fold f l s =
+        let n = List.length s in
+        let rec def acc = function
+            |0 -> acc
+            |i -> def ([]::acc) (i-1)
+        in
+        let r = List.fold_left (fun l el ->
+            let rl = f el in List.map2 (fun r l -> r::l) rl l
+            ) (def [] n) l
+        in List.combine s r
+    ;;
+end
+

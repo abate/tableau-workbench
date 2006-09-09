@@ -4,9 +4,9 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
-  Box, "Box_", Simple;
-  Dia, "Dia_", Simple;
+  Not, "~_",   Zero;
+  Box, "Box_", Zero;
+  Dia, "Dia_", Zero;
   Falsum, Const;
   Verum, Const
 END
@@ -62,8 +62,8 @@ TABLEAU
 
 END
 
-PP := nnf_term
-NEG := neg_term
+PP := nnf
+NEG := neg
 
 let t = tactic ( (Id|And|Or)* )
 

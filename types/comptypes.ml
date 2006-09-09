@@ -61,29 +61,32 @@ module Listofsets = Listobj.Make(
 ;;
 
 type mixlist = [
-    |`Mtlist of Mtlist.listobj
-    |`Listofsets of Listofsets.listobj
+    |`List of Mtlist.listobj
+    |`ListSet of Listofsets.listobj
     |`Set of Set.set
-    |`Setofsets of Setofsets.set
-    |`Setoftermint of Setoftermint.set
-    |`Setoftupleset of Setoftupleset.set
-    |`Listoftupleset of Listoftupleset.listobj
+    |`Singleton of Set.set
+    |`SetSet of Setofsets.set
+    |`SetFormulaInt of Setoftermint.set
+    |`SetSetSet of Setoftupleset.set
+    |`ListSetSet of Listoftupleset.listobj
 ]
 
 let copy : mixlist -> mixlist = function 
-    |`Mtlist(l) -> `Mtlist(l#copy)
-    |`Listofsets(l) -> `Listofsets(l#copy)
+    |`List(l) -> `List(l#copy)
+    |`ListSet(l) -> `ListSet(l#copy)
     |`Set(s) -> `Set(s#copy)
-    |`Setofsets(s) -> `Setofsets(s#copy)
-    |`Setoftermint(s) -> `Setoftermint(s#copy)
-    |`Setoftupleset(s) -> `Setoftupleset(s#copy)
-    |`Listoftupleset(s) -> `Listoftupleset(s#copy)
+    |`Singleton(s) -> `Singleton(s#copy)
+    |`SetSet(s) -> `SetSet(s#copy)
+    |`SetFormulaInt(s) -> `SetFormulaInt(s#copy)
+    |`SetSetSet(s) -> `SetSetSet(s#copy)
+    |`ListSetSet(s) -> `ListSetSet(s#copy)
 
 let string_of_mixlist : mixlist -> string = function
-    |`Mtlist(l) -> l#to_string 
-    |`Listofsets(l) -> l#to_string 
+    |`List(l) -> l#to_string 
+    |`ListSet(l) -> l#to_string 
     |`Set(s) -> s#to_string
-    |`Setofsets(s) -> s#to_string
-    |`Setoftermint(s) -> s#to_string
-    |`Setoftupleset(s) -> s#to_string
-    |`Listoftupleset(s) -> s#to_string
+    |`Singleton(s) -> s#to_string
+    |`SetSet(s) -> s#to_string
+    |`SetFormulaInt(s) -> s#to_string
+    |`SetSetSet(s) -> s#to_string
+    |`ListSetSet(s) -> s#to_string

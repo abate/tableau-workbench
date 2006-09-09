@@ -2,9 +2,9 @@
 
 define PROJ_tableau
   USE_CAMLP4 = yes
-  SOURCES := tableau.ml
-  RESULT := tableau
-  export PACKS := str extlib twb.types
+  SOURCES := ast.ml parselib.ml ast2code.ml pa_tableau.ml
+  RESULT := pa_tableau
+  export PACKS := str twb.types
 endef
 export PROJ_tableau
 

@@ -4,14 +4,14 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
-  Dia, "Dia_", Simple;
-  Box, "Box_", Simple
+  Not, "~_",   Zero;
+  Dia, "Dia_", Zero;
+  Box, "Box_", Zero
 END
 
 HISTORIES
-  DIAMONDS : Set.set;
-  BOXES : Set.set
+  (DIAMONDS : Set of Formula := new Set.set);
+  (BOXES : Set of Formula := new Set.set)
 END
 
 open Twblib
@@ -47,7 +47,7 @@ TABLEAU
   END
   
   RULE And
-   a & b 
+  a & b
   =========
     a ; b
   END
@@ -60,8 +60,8 @@ TABLEAU
 
 END
 
-PP := nnf_term
-NEG := neg_term
+PP := nnf
+NEG := neg
 
 let saturation = tactic ( (Id|And|T|Or)* )
 

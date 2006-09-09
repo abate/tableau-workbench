@@ -1,49 +1,42 @@
 
-type core = {
-    id: int;
-    star: int array;
-}
-
-let newcore id star = { id = id; star = star } ;;
-
 type formula =
     (* Classical logic *)
-    |And of core * formula * formula
-    |Or of core * formula * formula
-    |Imp of core * formula * formula
-    |DImp of core * formula * formula
-    |Not of core * formula
-    |Atom of core * string 
-    |Constant of core * string
+    |And  of  formula * formula
+    |Or   of  formula * formula
+    |Imp  of  formula * formula
+    |DImp of  formula * formula
+    |Not  of  formula
+    |Atom of  string 
+    |Constant of  string
 
     (* basic modal logic *)
-    |Dia of core * formula
-    |Box of core * formula
+    |Dia of  formula
+    |Box of  formula
    
     (* multi-modal logic *) 
-    |Diai of int * core * formula
-    |Boxi of int * core * formula
+    |Diai of int *  formula
+    |Boxi of int *  formula
     
     (* temporal logic *)
-    |Generally of core * formula
-    |Sometimes of core * formula
-    |Next of core * formula
-    |Until of core * formula * formula
-    |Before of core * formula * formula
+    |Generally of  formula
+    |Sometimes of  formula
+    |Next   of  formula
+    |Until  of  formula * formula
+    |Before of  formula * formula
     
     (* ctl *)
-    |ExX of core * formula
-    |AxX of core * formula
-    |ExG of core * formula
-    |ExF of core * formula
-    |AxG of core * formula
-    |AxF of core * formula
+    |ExX of  formula
+    |AxX of  formula
+    |ExG of  formula
+    |ExF of  formula
+    |AxG of  formula
+    |AxF of  formula
 
     (* lck *)
-    |EDia of core * formula
-    |EBox of core * formula
-    |CDia of core * formula
-    |CBox of core * formula
+    |EDia of  formula
+    |EBox of  formula
+    |CDia of  formula
+    |CBox of  formula
 type label = int list
 
 type mixtype = [

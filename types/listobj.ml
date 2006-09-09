@@ -69,6 +69,8 @@ module Make (T : ValType) :
             (* we return elements as a stack *)
             method elements = List.rev data
 
+            method head = List.hd data
+
             method is_empty = match data with [] -> true | _ -> false
 
             method length = List.length data

@@ -4,14 +4,14 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
-  Box, "Box_", Simple;
-  Dia, "Dia_", Simple;
+  Not, "~_",   Zero;
+  Box, "Box_", Zero;
+  Dia, "Dia_", Zero;
   Falsum, Const;
   Verum, Const
 END
 
-let neg_term = function term ( a ) -> term ( ~ a ) ;;
+let neg = function term ( a ) -> term ( ~ a ) ;;
 
 let rec nnf f = 
     match f with
@@ -34,8 +34,8 @@ let rec nnf f =
 
     |term ( ~ ~ a ) -> nnf a
 
-    |term ( ~ A ) as f -> f
-    |term ( A ) as f -> f
+    |term ( ~ Atom ) as f -> f
+    |term ( Atom ) as f -> f
 
     |term ( Dia a ) -> term ( Dia [nnf a] )
             
@@ -53,8 +53,6 @@ let rec nnf f =
 
     |f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
 ;;
-
-let nnf_term = nnf
 
 let rec cnf t =
     let rec distrib = function

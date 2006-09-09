@@ -89,7 +89,7 @@ let exit_function t =
         let (_,_,v) = (unbox t)#get in
         try
             match v#find "status" with
-            `Set s -> 
+            `Singleton s -> 
                 (match List.hd s#elements with
                 |`String s -> s
                 |_ -> failwith "exit function not specified and type mismatch")

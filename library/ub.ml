@@ -4,23 +4,23 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
-  ExX, "ExX_", Simple;
-  AxX, "AxX_", Simple;
-  ExG, "ExG_", Simple;
-  ExF, "ExF_", Simple;
-  AxG, "AxG_", Simple;
-  AxF, "AxF_", Simple;
+  Not, "~_",   Zero;
+  ExX, "ExX_", Zero;
+  AxX, "AxX_", Zero;
+  ExG, "ExG_", Zero;
+  ExF, "ExF_", Zero;
+  AxG, "AxG_", Zero;
+  AxF, "AxF_", Zero;
   Falsum, Const;
   Verum, Const
 END
 
 HISTORIES
-  Fev : Set.set ;
-  Br : Listofsets.listobj ;
-  uev : Setoftermint.set ; 
-  iev : Set.set ; 
-  status : String
+  (Fev : Set of Formula := new Set.set) ;
+  (Br  : Set of Formula := new Listofsets.listobj) ;
+  (uev : Set of (Formula * Int) := new Setoftermint.set) ; 
+  (iev : Set of Formula := new Set.set) ; 
+  (status : String := new Set.set)
 END
 
 (* debug flag *)
@@ -343,11 +343,11 @@ TABLEAU
    p ||| AxX AxF p
 
   ACTION [ [ Fev := add(AxF p,Fev) ] ; [] ]
+  BRANCH [ [ not_empty(uev(1)) ] ] 
   BACKTRACK [
       uev := setuev_beta(uev(1), uev(2), Br);
       iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), AxF p)
   ]
-  BRANCH [ [ not_empty(uev(1)) ] ] 
   END
 
   RULE Exf
@@ -356,11 +356,11 @@ TABLEAU
    p ||| ExX ExF p
 
   ACTION [ [ Fev := add(ExF p,Fev) ] ; [] ]
+  BRANCH [ [ not_empty(uev(1)) ] ] 
   BACKTRACK [
       uev := setuev_beta(uev(1), uev(2), Br);
       iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), ExF p)
   ] 
-  BRANCH [ [ not_empty(uev(1)) ] ] 
   END 
 
   RULE Axg
@@ -381,6 +381,7 @@ TABLEAU
   p ; y ||| ExX s ; AxX y
       
   COND [ loop_check(ExX p, AxX y, Br) ]
+  BRANCH [ [ not_false(uev(1)) ; not_empty_list(ExX s) ] ]
   ACTION [ [
       Fev := emptyset(Fev);
       Br := push(ExX p, AxX y, Br)
@@ -389,7 +390,6 @@ TABLEAU
       uev := setuev_pi(uev(1), uev(2), iev(1), iev(2), Br, Fev);
       iev := emptyset(Fev)
   ]
-  BRANCH [ [ not_false(uev(1)) ; not_empty_list(ExX s) ] ]
   END (cache)
 
   RULE Ref
@@ -414,11 +414,11 @@ TABLEAU
   =========
    a ||| b
 
+  BRANCH [ [ not_empty(uev(1)) ] ] 
   BACKTRACK [
       uev := setuev_beta(uev(1), uev(2), Br);
       iev := setiev_beta(uev(1), uev(2), iev(1), iev(2), [])
   ] 
-  BRANCH [ [ not_empty(uev(1)) ] ] 
   END
 
   RULE And

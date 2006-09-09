@@ -95,8 +95,8 @@ let pp filename =
    let cmd = 
        "camlp4o "^
        str_lib_loc ^ "/str.cma "^
-       ext_lib_loc ^ "/extLib.cma "^
-       twb_lib_loc ^ "/tableau.cma "^
+(*       ext_lib_loc ^ "/extLib.cma "^ *)
+       twb_lib_loc ^ "/pa_tableau.cma "^
        "pr_o.cmo "^ 
        filename ^ 
        " > "^

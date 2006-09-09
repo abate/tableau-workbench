@@ -13,7 +13,7 @@ let input_line = Grammar.Entry.create gram "input_line";;
 
 let add_uconn op co =
     EXTEND
-      expr_term: LEVEL "Simple"
+      expr_term: LEVEL "Zero"
       [[ $op$; x = expr_term -> co x ]];
     END
 ;;
@@ -27,15 +27,15 @@ let add_biconn lev op co =
 
 let add_muconn op1 op2 co =
     EXTEND
-      expr_term: LEVEL "Simple"
+      expr_term: LEVEL "Zero"
       [[ $op1$; i = INT; $op2$; x = expr_term -> co (int_of_string i,x) ]];
     END
 ;;
 
 let add_const name =
     EXTEND
-      expr_term: LEVEL "Simple"
-      [[ $name$ -> Constant (Basictype.newcore 1 [|0|],name) ]];
+      expr_term: LEVEL "Zero"
+      [[ $name$ -> Constant (name) ]];
     END
 ;;
 
@@ -50,8 +50,8 @@ GLOBAL : expr_term input_line;
   expr_term:
     [ "One" LEFTA [ ]
     | "Two" RIGHTA [ ]
-    | "Simple" NONA
-    [ x = LIDENT -> Atom(Basictype.newcore 1 [|0|],x)
+    | "Zero" NONA
+    [ x = LIDENT -> Atom(x)
       | "("; p = expr_term; ")" -> p ]
     ];
 
@@ -64,8 +64,8 @@ let buildParser table s =
     let _ =
         List.iter(function
             |"Const",[name],`Const -> add_const name
-            |"Simple",[op],`Uconn(co) -> add_uconn op co
-            |"Simple",[op1;op2],`Muconn(co) -> add_muconn op1 op2 co
+            |"Zero",[op],`Uconn(co) -> add_uconn op co
+            |"Zero",[op1;op2],`Muconn(co) -> add_muconn op1 op2 co
             |lev,[op],`Biconn(co) -> add_biconn lev op co
             |_ -> failwith "buildParser"
         ) table

@@ -4,9 +4,9 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
-  Box, "Box_", Simple;
-  Dia, "<>_", Simple;
+  Not, "~_",   Zero;
+  Box, "Box_", Zero;
+  Dia, "Dia_", Zero;
   Falsum, Const;
   Verum, Const
 END
@@ -17,7 +17,7 @@ open Klib
 TABLEAU
 
   RULE KD
-  ( <> a ) ; Box x ; z
+  ( Dia a ) ; Box x ; z
   --------------------
         a ; x 
   END
@@ -54,9 +54,9 @@ TABLEAU
 
 END
 
-PP := nnf_term
-NEG := neg_term
+PP := nnf
+NEG := neg
 
-let saturation = tactic ( (And;Or;Imp;Dimp;Id)* )
+let saturation = tactic ( (And|Or|Imp|Dimp|Id)* )
 
-STRATEGY ( saturation ; Kd )*
+STRATEGY ( saturation | Kd )*
