@@ -426,9 +426,9 @@ let rec expand_expression_expr ?(action=false) _loc = function
             let aux_fun =
                 List.flatten (
                     List.map (function
-                    |Ast.Apply("__simpl",[Ast.Term s;Ast.Term v]) ->
-                            [(new_id "term", build_term ~naked:true _loc s);
-                             (new_id "term", build_term ~naked:true _loc v)]
+                    |Ast.Apply("__simpl",[Ast.Term t;Ast.Term s]) ->
+                            [(new_id "term", build_term ~naked:true _loc t);
+                             (new_id "term", build_term ~naked:true _loc s)]
                     |_ -> failwith "expand_expression_expr not implemented 3"
                     ) l
                 )
@@ -438,7 +438,7 @@ let rec expand_expression_expr ?(action=false) _loc = function
                 |(s1,_)::(s2,_)::t ->
                         let t1 = <:expr< $lid:s1$ sbl hist varl >> in
                         let t2 = <:expr< $lid:s2$ sbl hist varl >> in
-                        <:expr< ( $list:[t1;t2]$ ) >> :: mapt t
+                        <:expr< ( $list:[t2;t1]$ ) >> :: mapt t
                 |[] -> []
                 |_ -> failwith "expand_expression_expr"
             in
@@ -451,7 +451,7 @@ let rec expand_expression_expr ?(action=false) _loc = function
                 let $list:pel$ in
                 fun sbl hist varl ->
                     __simplification (List.fold_left (fun l (s,t) ->
-                            Basictype.map (fun v -> __substitute s t v) l
+                            Basictype.map (fun f -> __substitute s t f) l
                         ) ($lid:id$ sbl hist varl) $sublist$ 
                     )
                 >>
@@ -865,7 +865,7 @@ let expand_options _loc olist =
 let expand_rewrite_expr _loc = function
     |Ast.Term(Ast.Expr(e)) -> <:expr< $e$ >>
     |Ast.Term(t) -> <:expr< $expand_term_expr _loc t$ >>
-    |Ast.Apply("__substitute",[Ast.Term v; Ast.Term s ; Ast.Term t]) ->
+    |Ast.Apply("__substitute",[Ast.Term v; Ast.Term t ; Ast.Term s]) ->
             let ext = expand_term_expr _loc t in
             let exs = expand_term_expr _loc s in
             let exv = expand_term_expr _loc v in

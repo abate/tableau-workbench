@@ -161,10 +161,11 @@ let main () =
                 let result = Visit.visit cache strategy node in
                 let time = Timer.stop_timing start in
 
-                Printf.printf "%s\nResult: %s\n%s\n"
+                Printf.printf "%s\nResult: %s\n%sTotal Rules applications:%d\n\n"
                 (Timer.to_string time)
                 (exit_function (Llist.hd result))
-                cache#stats;
+                cache#stats
+                !UserRule.nodeid;
                 Gc.major ();
                 flush_all ()
             with Timer.Timeout -> Printf.printf "Timeout elapsed\n"
@@ -172,5 +173,3 @@ let main () =
     with
     |End_of_file |Stream.Failure -> exit 0
 ;;
-
-(* main ();; *)

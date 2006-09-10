@@ -102,6 +102,7 @@ let listfy t =
 ;;
 
 let rec simpl f = 
+(*    Printf.printf "simpl:%s\n" (Twblib.sof(f)); *)
     match f with
     |term (~ Falsum)    -> term (Verum)
     |term (~ Verum)     -> term (Falsum)

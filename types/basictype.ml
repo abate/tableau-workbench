@@ -55,17 +55,17 @@ type mixtype = [
 let open_bt v = (v : mixtype :> [> mixtype] ) ;;
 let open_bt_list v = (v : mixtype list :> [> mixtype] list ) ;;
 
-(* is this needed (?) *)
-let map f l = open_bt_list
-    (List.map (function
-        |`Formula t -> `Formula (f t)
-        |_ -> failwith "only works for `Formula")
-    l )
+let unbox f =
+    match open_bt f with
+    |`Formula t -> t
+    |_ -> failwith "only works for `Formula"
 ;;
 
-(* FIXME: this doesn't copy anything !!! *)
-(* XXX: copy of formulae might be expensive ... *)
-(* what's about a mutable part and an immutable part ??? *)
+let map f l = open_bt_list
+    (List.map (fun t -> `Formula ( f (unbox t) ) ) l)
+;;
+
+(* ???? *)
 let copy f = f ;;
 
 let string_of_formula = ref (fun _ -> failwith "printer not defined") ;;
