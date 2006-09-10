@@ -11,7 +11,7 @@ END
 
 open Pclib
 
-let __simplification x = Basictype.map simpl x ;;
+let __simplification l = Basictype.map simpl l ;;
 
 TABLEAU
 

@@ -68,7 +68,7 @@ let status s
 ;;
 
 let is_open = status "Open";;
-let is_closed = status "Closed";;
+let is_closed = status "Close";;
 
 (* check method for any rule *)
 let check name node patternl historyl =

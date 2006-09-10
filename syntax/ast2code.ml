@@ -450,8 +450,8 @@ let rec expand_expression_expr ?(action=false) _loc = function
                 <:expr<
                 let $list:pel$ in
                 fun sbl hist varl ->
-                    __simplification (List.fold_left (fun l (s,v) ->
-                            Basictype.map (fun t -> __substitute t s v) l
+                    __simplification (List.fold_left (fun l (s,t) ->
+                            Basictype.map (fun v -> __substitute s t v) l
                         ) ($lid:id$ sbl hist varl) $sublist$ 
                     )
                 >>
@@ -865,11 +865,11 @@ let expand_options _loc olist =
 let expand_rewrite_expr _loc = function
     |Ast.Term(Ast.Expr(e)) -> <:expr< $e$ >>
     |Ast.Term(t) -> <:expr< $expand_term_expr _loc t$ >>
-    |Ast.Apply("__substitute",[Ast.Term t; Ast.Term e ; Ast.Term s]) ->
+    |Ast.Apply("__substitute",[Ast.Term v; Ast.Term s ; Ast.Term t]) ->
             let ext = expand_term_expr _loc t in
-            let exe = expand_term_expr _loc e in
             let exs = expand_term_expr _loc s in
-            <:expr< __substitute $ext$ $exe$ $exs$ >>
+            let exv = expand_term_expr _loc v in
+            <:expr< __substitute $exs$ $ext$ $exv$ >>
     |_ -> failwith "expand_expression_expr not implemented 1"
 ;;
 

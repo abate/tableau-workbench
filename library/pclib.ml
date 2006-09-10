@@ -101,7 +101,8 @@ let listfy t =
     |_ -> failwith "listfy"
 ;;
 
-let rec simpl = function
+let rec simpl f = 
+    match f with
     |term (~ Falsum)    -> term (Verum)
     |term (~ Verum)     -> term (Falsum)
     |term (a & Falsum)  -> term (Falsum)
@@ -118,13 +119,11 @@ let rec simpl = function
             (match simpl a with
             |term (Falsum) -> term (Falsum)
             |_ as sx ->
-                    (match simpl a with
+                    (match simpl b with
                     |term (Falsum) -> term (Falsum)
                     |_ as sy ->
-                            if sx = sy then
-                                sx
-                            else
-                                term (sx & sy) )
+                            if sx = sy then sx
+                            else term (sx & sy) )
             )
     |term (a v b) ->
             (match simpl a with
@@ -133,10 +132,8 @@ let rec simpl = function
                     (match simpl b with
                     |term (Verum) -> term (Verum)
                     |_ as sy ->
-                            if sx = sy then
-                                sx
-                            else
-                                term (a v b) )
+                            if sx = sy then sx
+                            else term (a v b) )
             )
     |_ as f -> f
 ;;
