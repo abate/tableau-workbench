@@ -9,7 +9,9 @@ CONNECTIVES
   Verum, Const
 END
 
-let __simplification l = Basictype.map Pclib.simpl l ;;
+SIMPLIFICATION := Pcopt.simpl
+let nnf_term l = Pcopt.nnf (Basictype.unbox(List.hd l)) ;;
+
 
 TABLEAU
 
@@ -26,15 +28,15 @@ TABLEAU
   END
 
   RULE And
-  a & b 
+  {a & b} ; x
  ============================
-  a; b
+     a[b]; b[a] ; x[a][b]
   END
   
   RULE Or
   { a v b } ; x
  ===============================
- a ; x[a/Verum] | b ; x[b/Verum] 
+     a ; x[a] | b ; x[b][nnf_term ( ~ a)]
   END
 
 END
@@ -42,5 +44,6 @@ END
 PP := Pcopt.nnf
 NEG := Pclib.neg
 
-STRATEGY (Id|False|And|Or)*
+STRATEGY := ( (Id|False|And|Or)* )
+
 

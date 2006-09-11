@@ -419,30 +419,24 @@ let rec expand_expression_patt _loc = function
     |_ -> failwith "expand_expression_patt not implemented"
 ;;
 
-let rec expand_expression_expr ?(action=false) _loc = function
+let rec expand_expression_expr ?(action=false) ?(naked=false) _loc = function
     |Ast.Term(Ast.Expr(e)) -> (new_id "term", e)
     |Ast.Term(t) -> (new_id "term", build_term ~action:action _loc t)
     |Ast.Apply("__simpl",Ast.Term t::l) ->
             let aux_fun =
-                List.flatten (
                     List.map (function
-                    |Ast.Apply("__simpl",[Ast.Term t;Ast.Term s]) ->
-                            [(new_id "term", build_term ~naked:true _loc t);
-                             (new_id "term", build_term ~naked:true _loc s)]
+                    |Ast.Apply("__simplarg",[Ast.Term t1]) ->
+                            (new_id "term", build_term ~naked:true _loc t1)
+                    |Ast.Apply("__simplarg",[e]) ->
+                            expand_expression_expr ~action:true ~naked:true _loc e
                     |_ -> failwith "expand_expression_expr not implemented 3"
                     ) l
-                )
             in
             let (id,term) = (new_id "term", build_term _loc t) in
-            let rec mapt = function
-                |(s1,_)::(s2,_)::t ->
-                        let t1 = <:expr< $lid:s1$ sbl hist varl >> in
-                        let t2 = <:expr< $lid:s2$ sbl hist varl >> in
-                        <:expr< ( $list:[t2;t1]$ ) >> :: mapt t
-                |[] -> []
-                |_ -> failwith "expand_expression_expr"
+            let mapt = 
+                List.map (fun (h,_) -> <:expr< $lid:h$ sbl hist varl >>) aux_fun
             in
-            let sublist = list_to_exprlist _loc (mapt aux_fun) in
+            let sublist = list_to_exprlist _loc mapt in
             let pel = List.map (fun (s,e) ->
                 (<:patt< $lid:s$ >>,e)) ((id,term)::aux_fun)
             in
@@ -450,8 +444,12 @@ let rec expand_expression_expr ?(action=false) _loc = function
                 <:expr<
                 let $list:pel$ in
                 fun sbl hist varl ->
-                    __simplification (List.fold_left (fun l (s,t) ->
-                            Basictype.map (fun f -> __substitute s t f) l
+                    (List.fold_left (fun l t ->
+                        Basictype.map (fun phi ->
+                            match Logic.__simplification.val with
+                            [None -> failwith "SIMPLIFICATION not defined"
+                            |Some(sfun) -> sfun t phi]
+                            ) l
                         ) ($lid:id$ sbl hist varl) $sublist$ 
                     )
                 >>
@@ -461,6 +459,9 @@ let rec expand_expression_expr ?(action=false) _loc = function
             let aux_fun = List.map (function
                 |Ast.Term(Ast.Expr(e)) -> (new_id "term", <:expr< fun _ _ -> $e$ >>)
                 |Ast.Term(t) -> (new_id "term", build_term _loc t)
+                (* FIXME: this should be tested 
+                |e ->  expand_expression_expr ~action:true ~naked:true _loc e
+                *)
                 |_ -> failwith "expand_expression_expr not implemented 2"
                 ) l
             in
@@ -878,4 +879,6 @@ let expand_rewrite_patt _loc = function
     |_ -> failwith "expand_pattession_patt not implemented 1"
 ;;
 
-
+let expand_simplification _loc ex =
+    <:str_item< Logic.__simplification.val := Some($ex$) >>
+;;

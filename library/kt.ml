@@ -15,11 +15,8 @@ HISTORIES
   (BOXES : Set of Formula := new Set.set)
 END
 
-let simp (l,t,s) =
-    let t' = Basictype.unbox(List.hd t) in
-    let s' = Basictype.unbox s in
-    Basictype.map (fun f -> Kopt.simpl s' f t') l
-;;
+SIMPLIFICATION := Kopt.simpl
+let nnf_term l = Kopt.nnf (Basictype.unbox(List.hd l)) ;;
 
 open Twblib
 open Klib
@@ -57,15 +54,15 @@ TABLEAU
   END
 
   RULE And
-  { a & b }
+  { a & b } ; x
   ==========
-    a ; b
+      a[b] ; b[a] ; x[a][b]
   END
   
   RULE Or
   { a v b } ; x
  =================================
-     a; simp(x,a,Verum) | b ; simp(x,b,Verum)
+     a ; x[a] | b[nnf_term (~ a)] ; x[b][nnf_term (~ a)]
   END
 
 END
@@ -75,5 +72,5 @@ NEG := neg
 
 let saturate = tactic ( (False|Id|And|T|Or)* )
 
-STRATEGY ( saturate | K )* 
+STRATEGY := ( ( saturate | K )* )
 

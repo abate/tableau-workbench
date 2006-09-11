@@ -56,47 +56,15 @@ let rec cnf t =
 in conjnf t
 ;;
 
-let naive_simpl = Pcopt.simpl 
-
-let rec simpl s f t =
-    match f,t with
-    |_,_ when f = t -> s
-    |_, term (~ b) when s = term (Verum) ->
-            simpl term (Falsum) f b
-    |_, term (~ b) when s = term (Falsum) ->
-            simpl term (Verum) f b
-    |term (~ a),_     ->
-            (match naive_simpl (simpl s a t) with
-            |term (Verum)  -> term (Falsum)
-            |term (Falsum) -> term (Verum)
-            |_  -> f
-            )
-    |term (a & b),_ ->
-            let x = simpl s a t
-            and y = simpl s b t
-            in
-            naive_simpl (term (x & y))
-    |term (a v b),_ ->
-            let x = simpl s a t
-            and y = simpl s b t
-            in
-            naive_simpl (term (x v y))
-    |term (Dia a), term (Dia a') when s = term (Falsum) ->
-            let x = simpl s a a'
-            in
-            naive_simpl (term (Dia x))
-    |term (Dia a), term (Box a') when s = term (Verum) ->
-            let x = simpl s a a'
-            in
-            naive_simpl (term (Dia x))
-    |term (Box a), term (Box a') when s = term (Verum) ->
-            let x = simpl s a a'
-            in
-            naive_simpl (term (Box x))
-    |term (Box a), term (Dia a') when s = term (Falsum) ->
-            let x = simpl s a a'
-            in
-            naive_simpl (term (Box x))
-    |_,_ -> f
+let rec simpl phi a =
+    if phi = a then term(Verum)
+    else if phi = (nnf (term ( ~ a ))) then term(Falsum)
+    else match a with
+    |term (~ b)   -> term ( ~ [simpl phi b] )
+    |term (b & c) -> term ( [simpl phi b] & [simpl phi c] )
+    |term (b v c) -> term ( [simpl phi b] v [simpl phi c] )
+    |term (Box b) -> term ( Box [simpl phi b] )
+    |term (Dia b) -> term ( Dia [simpl phi b] )
+    |_ -> a
 ;;
 

@@ -23,8 +23,8 @@ endif
 all: bcl inputncl
 
 inputncl:
-	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=ncl SUBPROJS=input
+	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=ncl SUBPROJS=input OCAMLFLAGS=
 
 # Catch-all target will be applied to all subprojects automatically
 %:
-	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=$@
+	@$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=$@ OCAMLFLAGS=

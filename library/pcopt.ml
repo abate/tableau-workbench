@@ -9,6 +9,15 @@ CONNECTIVES
   Verum, Const
 END
 
+(* workd if f is in nnf *)
+let rec weigth = function
+    |term ( a & b ) -> (weigth a) * (weigth b) 
+    |term ( a v b ) -> 1 + (weigth a) + (weigth b) 
+    |_ -> 0
+;;
+
+let cmp a b = compare (weigth a) (weigth b) ;;
+
 let rec order aux = function
     |term ( a & b ) -> 
         let (d1,t1) = aux a in
@@ -25,7 +34,7 @@ let rec order aux = function
     |term ( a v b ) -> 
         let (d1,t1) = aux a in
         let (d2,t2) = aux b in
-        let d = d1 + d2 in
+        let d = 1 + d1 + d2 in
         begin match compare d1 d2 with
         |1 -> d, term ( t2 v t1 )
         |0 ->
@@ -59,40 +68,13 @@ let nnf f =
     in let (_,f') = aux f in f'
 ;;
 
-let rec simpl f =
-(*    Printf.printf "simpl:%s\n" (Twblib.sof(f)); *)
-    match f with
-    |term (~ Falsum)    -> term (Verum)
-    |term (~ Verum)     -> term (Falsum)
-    |term (a & Falsum)  -> term (Falsum)
-    |term (Falsum & a)  -> term (Falsum)
-    |term (a v Verum)   -> term (Verum)
-    |term (Verum v a)   -> term (Verum)
-
-    |term (a & Verum)   -> simpl a
-    |term (Verum & a)   -> simpl a
-    |term (a v Falsum)  -> simpl a
-    |term (Falsum v a)  -> simpl a
-
-    |term (a & b) ->
-            (match simpl a with
-            |term (Falsum) -> term (Falsum)
-            |_ as sx ->
-                    (match simpl b with
-                    |term (Falsum) -> term (Falsum)
-                    |_ as sy ->
-                            if sx = sy then sx
-                            else term (sx & sy) )
-            )
-    |term (a v b) ->
-            (match simpl a with
-            |term (Verum) -> term (Verum)
-            |_ as sx ->
-                    (match simpl b with
-                    |term (Verum) -> term (Verum)
-                    |_ as sy ->
-                            if sx = sy then sx
-                            else term (a v b) )
-            )
-    |_ as f -> f
+let rec simpl phi a =
+    if phi = a then term(Verum)
+    else if phi = (nnf (term ( ~ a ))) then term(Falsum)
+    else match a with
+    |term (~ b)   -> term ( ~ [simpl phi b] )
+    |term (b & c) -> term ( [simpl phi b] & [simpl phi c] )
+    |term (b v c) -> term ( [simpl phi b] v [simpl phi c] )
+    |_ -> a
 ;;
+

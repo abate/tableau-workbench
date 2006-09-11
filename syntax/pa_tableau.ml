@@ -80,6 +80,7 @@ rewrite_expr rewrite_patt;
       |"STRATEGY"; OPT ":="; t = tactic ->
               expand_strategy _loc (Ast.Strategy t)
       
+      |"SIMPLIFICATION"; OPT ":="; e = Pcaml.expr -> expand_simplification _loc e
       |"PP"; OPT ":="; e = Pcaml.expr -> expand_preproc _loc e
       |"NEG"; OPT ":="; e = Pcaml.expr -> expand_negation _loc e
       |"EXIT"; OPT ":="; f = userfunction -> expand_exit _loc f
@@ -245,8 +246,9 @@ rewrite_expr rewrite_patt;
   denformula: [
       [v = test_variable; "@"; i = INT ->
           Ast.Term ( Ast.Variable (v, Ast.Int (int_of_string i)))
-      |f = LIDENT; "("; l = LIST0 expr_term SEP ","; ")" ->
-          Ast.Apply(f,List.map (fun t -> Ast.Term t) l)
+      |f = LIDENT; "("; l = LIST0 denformula SEP ","; ")" ->
+              Ast.Apply(f,l) 
+(*          Ast.Apply(f,List.map (fun t -> Ast.Term t) l) *)
       |t = expr_term; sl = LIST0 simplification ->
               if sl = [] then Ast.Term t
               else Ast.Apply("__simpl",(Ast.Term t)::sl)
@@ -254,8 +256,7 @@ rewrite_expr rewrite_patt;
   ];
 
   simplification: [[
-       "["; t1 = expr_term; "/"; t2 = expr_term; "]" ->
-              Ast.Apply("__simpl",[Ast.Term t1;Ast.Term t2])
+       "["; t = denformula; "]" -> Ast.Apply("__simplarg",[t])
   ]];
  
   expr_term:

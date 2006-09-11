@@ -149,7 +149,7 @@ let rec deps deplist filename =
 
 let compile elem =
     let cmd =
-        "ocamlfind ocamlopt -package twb.thelot,twb.cli -c " ^
+        "ocamlfind ocamlopt -package twb.thelot,twb.cli -c -unsafe -noassert " ^
         "-I " ^ tmp_dir ^ " "^
         tmp_dir ^ elem ^ ".ml"
     in
@@ -159,7 +159,7 @@ let compile elem =
 
 let link l filename =
     let c =
-        "ocamlfind ocamlopt -package twb.thelot,twb.cli -linkpkg -o " ^ 
+        "ocamlfind ocamlopt -package twb.thelot,twb.cli -unsafe -noassert -linkpkg -o " ^ 
         noext(filename) ^ " "
     in
     let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ".cmx ") c l in

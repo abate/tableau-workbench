@@ -141,7 +141,7 @@ EXIT := exit (uev@1)
 
 let saturation = tactic ( (Id | False | And | Before | Ge | Or | Until)* )
 
-STRATEGY ( ((saturation | Next)* | Loop)* )
+STRATEGY := ( ((saturation | Next)* | Loop)* )
 
 OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")

@@ -1,5 +1,8 @@
 -include Makefile.conf
 
+# as fast as we can !
+export OCAMLFLAGS=-unsafe -noassert
+
 ifndef NOEXTLIB
 all: nc utils
 endif

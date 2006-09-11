@@ -109,9 +109,6 @@ let init ?(options=[]) () =
         try Arg.parse (options@custom_options) file usage
         with Arg.Bad s -> failwith s
     in 
-    (* XXX: this is a bit of a hack ... the pretty print should be in the
-     * basictype file and should be automatically generated ... *)
-    (* here we set the pretty printer for the formula type *)
     let _ = 
         if (Option.is_none !Logic.__printer) then ()
         else Basictype.string_of_formula := (Option.get !Logic.__printer)
@@ -146,7 +143,6 @@ let main () =
     in
     try
         while true do
-            let start = Timer.start_timing () in
             try
                 let line = get_line () in
                 let _ = Printf.printf "Proving: %s\n" line in
@@ -156,7 +152,8 @@ let main () =
                 let _ = OutputBroker.trace := !Options.trace in
                 let _ = OutputBroker.print node "initial node" 0 in
                 let cache = (new Cache.cache) in
-
+            
+                let start = Timer.start_timing () in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
                 let result = Visit.visit cache strategy node in
                 let time = Timer.stop_timing start in

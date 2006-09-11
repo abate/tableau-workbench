@@ -7,6 +7,8 @@ let __inputparser : (string -> Type.bt list) option ref = ref None
 let __printer : (Basictype.formula -> string) option ref = ref None
 let __substitute : (Basictype.formula -> Basictype.formula -> 
     Basictype.formula -> Basictype.formula) option ref = ref None
+let __simplification : (Basictype.formula -> Basictype.formula -> 
+    Basictype.formula ) option ref = ref None
 let __history_list : (string * Type.t * history_type) list option ref = ref None
 let __pp : (Type.bt list -> Type.bt list) option ref = ref None
 let __neg : (Type.bt list -> Type.bt list) option ref = ref None
