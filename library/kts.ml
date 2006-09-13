@@ -15,6 +15,9 @@ HISTORIES
   (BOXES : Set of Formula := new Set.set)
 END
 
+SIMPLIFICATION := Kopt.simpl
+let nnf_term l = ([],Kopt.nnf (Basictype.unbox(List.hd l))) ;;
+
 open Twblib
 open Klib
 
@@ -51,15 +54,15 @@ TABLEAU
   END
 
   RULE And
-  { a & b } 
+  { a & b } ; x
   ==========
-   a ; b
+      a[b] ; b[a] ; x[a][b]
   END
   
   RULE Or
-  { a v b }
+  { a v b } ; x
  =================================
-     a | b
+     a ; x[a] | b[nnf_term (~ a)] ; x[b][nnf_term (~ a)]
   END
 
 END

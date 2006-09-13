@@ -9,9 +9,13 @@ CONNECTIVES
   Verum, Const
 END
 
-SIMPLIFICATION := Pcopt.simpl
-let nnf_term l = ([], Pcopt.nnf (Basictype.unbox(List.hd l))) ;;
+HISTORIES
+(bj : ListInt := new Set.set default [])
+END
 
+let nnf_term l = Basictype.map Pcopt.nnf l ;;
+open Twblib
+open Pcopt
 
 TABLEAU
 
@@ -19,6 +23,8 @@ TABLEAU
   { a } ; { ~ a }
   ===============
     Close
+
+  BACKTRACK [ bj := addlabel(a) ]
   END
   
   RULE False
@@ -28,15 +34,18 @@ TABLEAU
   END
 
   RULE And
-  {a & b} ; x
- ============================
-     a[b]; b[a] ; x[a][b]
+  {a & b}
+ =========
+   a; b
   END
   
   RULE Or
-  { a v b } ; x
- ===============================
-     a ; x[a] | b ; x[b][nnf_term ( ~ a)]
+  { a v b } 
+ ========================================
+     fixlabel(a) | fixlabel(b) ; nnf_term(~ a)
+
+   BRANCH [ backjumping(a,bj@1) ]
+   BACKTRACK [ bj := mergelabel(a, bj@all) ]
   END
 
 END

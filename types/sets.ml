@@ -23,6 +23,7 @@ class type ['t] st =
 module type ValType =
     sig
         type t
+        val compare : t -> t -> int
         val copy : t -> t
         val to_string : t -> string
     end
@@ -36,7 +37,7 @@ module Make ( T : ValType ) :
     module Set = Set.Make (
             struct
                 type t = T.t
-                let compare = compare
+                let compare = T.compare
             end
     );;
 

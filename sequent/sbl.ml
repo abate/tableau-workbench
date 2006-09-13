@@ -34,13 +34,16 @@ module Make :
                         fun s (k,v) ->
                             try begin
                                 match Sbl.find k s with
-                                |`List(l) -> Sbl.add k (`List(l#addlist v)) s
+(*                                |`List(l) -> Sbl.add k (`List(l#addlist v)) s
+ *                                *)
                                 |`Set(l) -> Sbl.add k (`Set(l#addlist v)) s
                                 |#Comptypes.mixlist -> failwith "Sbl.add : type node allowed"
                                 end
                             with Not_found -> (
                                 Sbl.add k (
-                                    `List((new Comptypes.Mtlist.listobj)#addlist v)
+    (*                                `List((new
+     *                                Comptypes.Mtlist.listobj)#addlist v) *)
+                                    `Set((new Comptypes.Set.set)#addlist v)
                                     ) s 
                                 )
                     ) sbl l
@@ -52,7 +55,8 @@ module Make :
             method mem p f =
                 try
                     match Sbl.find p sbl with
-                    |`List(l) -> l#mem f
+(*                    |`List(l) -> l#mem f *)
+                    |`Set(l) -> l#mem f 
                     |#Comptypes.mixlist -> failwith "Sbl.mem : type node allowed"
                 with Not_found -> raise Not_found
 
@@ -60,9 +64,9 @@ module Make :
                 try
                     Sbl.fold (fun _ v b ->
                         match v,b with
-                        |`List(l),true -> l#is_empty 
+(*                        |`List(l),true -> l#is_empty *)
                         |`Set(l),true -> l#is_empty
-                        |`List(l),false -> raise Stop
+(*                        |`List(l),false -> raise Stop *)
                         |`Set(l),false -> raise Stop
                         |#Comptypes.mixlist,_ -> failwith "Sbl.is_empty : type node allowed"
                     ) sbl true
@@ -73,7 +77,7 @@ module Make :
             method empty = 
                 let sbl' = 
                     Sbl.map (function
-                        |`List(l) -> `List(l#empty)
+(*                        |`List(l) -> `List(l#empty) *)
                         |`Set(l) -> `Set(l#empty)
                         |#Comptypes.mixlist -> failwith "Sbl.is_empty : type node allowed"
                     ) sbl

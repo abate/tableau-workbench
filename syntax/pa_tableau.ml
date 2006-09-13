@@ -42,20 +42,6 @@ let add_uconn lev op co =
     END
 ;;
 
-let expand_connectives _loc clist =
-     List.iter (function
-          |Ast.Connective(v,s,l) when s =~ bi_re -> add_biconn l (get_match 1 s) v
-          |Ast.Connective(v,s,l) when s =~ u_re -> add_uconn l (get_match 1 s) v
-          |Ast.Connective(v,"Const",_) -> Hashtbl.replace const_table v ()
-          |Ast.Connective(_,s,_) -> failwith (s^" is not a valid pattern")
-      ) clist ;
-      let preamble = expand_preamble _loc in
-      let pa = expand_parser _loc clist in
-      let pr = expand_printer _loc clist in
-      let sb = expand_substitute _loc clist in
-      <:str_item< declare $list:preamble@[pa;pr;sb]$ end >>
-;;
-
 EXTEND
 GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr patt_term expr_term
 rewrite_expr rewrite_patt;
@@ -72,6 +58,12 @@ rewrite_expr rewrite_patt;
 
   Pcaml.str_item: [[
       "CONNECTIVES"; clist = LIST1 connective SEP ";"; "END" ->
+         List.iter (function
+              |Ast.Connective(v,s,l) when s =~ bi_re -> add_biconn l (get_match 1 s) v
+              |Ast.Connective(v,s,l) when s =~ u_re -> add_uconn l (get_match 1 s) v
+              |Ast.Connective(v,"Const",_) -> Hashtbl.replace const_table v ()
+              |Ast.Connective(_,s,_) -> failwith (s^" is not a valid pattern")
+          ) clist ;
           expand_connectives _loc clist
       |"HISTORIES"; hlist = LIST1 [ "("; h = history; ")" -> h ] SEP ";"; "END" ->
               expand_histories _loc (Ast.Histories hlist)

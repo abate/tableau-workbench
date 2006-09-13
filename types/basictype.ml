@@ -43,6 +43,7 @@ type mixtype = [
     |`Int of int
     |`Bool of bool
     |`String of string
+    |`ListInt of int list
     |`Formula of formula
     |`LabeledFormula of (label * formula)
     |`Tuple of (int * int)
@@ -58,11 +59,19 @@ let open_bt_list v = (v : mixtype list :> [> mixtype] list ) ;;
 let unbox f =
     match open_bt f with
     |`Formula t -> t
-    |_ -> failwith "only works for `Formula"
+    |`LabeledFormula (_,t) -> t
+    |_ -> failwith "only works for `Formula and LabeledFormula"
 ;;
 
-let map f l = open_bt_list
-    (List.map (fun t -> `Formula ( f (unbox t) ) ) l)
+let map f l =
+    open_bt_list (
+        List.map (fun t ->
+            match t with
+            |`Formula _ -> `Formula (f (unbox t))
+            |`LabeledFormula (l,_) -> `LabeledFormula (l, f (unbox t))
+            |_ -> failwith "only works for `Formula and LabeledFormula"
+        ) l
+    )
 ;;
 
 (* ???? *)
@@ -70,16 +79,24 @@ let copy f = f ;;
 
 let string_of_formula = ref (fun _ -> failwith "printer not defined") ;;
 
+let compare a b =
+    match a,b with
+    |`LabeledFormula (_,t1),`LabeledFormula (_,t2) -> Pervasives.compare t1 t2
+    |_,_ -> Pervasives.compare a b
+;;
+
 let string_of_mixtype : mixtype -> string = function
     |`Int(i) -> string_of_int i
     |`Bool(b) -> string_of_bool b
     |`String(s) -> s
+    |`ListInt(l) ->  List.fold_left (fun s i -> s^(string_of_int i) ) "" l
     |`Formula(f) -> !string_of_formula f
-    |`LabeledFormula(il, f) ->
-            let label = 
+    |`LabeledFormula(il, f) -> !string_of_formula f
+(*            let label = 
                 List.fold_left (fun s i -> s^(string_of_int i) ) "" il in
             let formula = !string_of_formula f in
             Printf.sprintf "%s : %s" label formula
+            *)
     |`Tuple(i1,i2) ->
             Printf.sprintf "(%d,%d)" i1 i2
             

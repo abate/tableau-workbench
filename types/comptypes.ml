@@ -2,6 +2,7 @@
 module Set = Sets.Make(
     struct
         type t = Basictype.mixtype
+        let compare = Basictype.compare
         let copy = Basictype.copy
         let to_string = Basictype.string_of_mixtype
     end
@@ -10,6 +11,7 @@ module Set = Sets.Make(
 module Mtlist = Listobj.Make(
      struct
         type t = Basictype.mixtype
+        let compare = Basictype.compare
         let copy = Basictype.copy
         let to_string = Basictype.string_of_mixtype
     end   
@@ -18,6 +20,7 @@ module Mtlist = Listobj.Make(
 module Setofsets = Sets.Make(
     struct
         type t = Set.set
+        let compare = Pervasives.compare
         let copy s = s#copy 
         let to_string v = v#to_string
     end
@@ -26,6 +29,7 @@ module Setofsets = Sets.Make(
 module Setoftupleset = Sets.Make(
     struct
         type t = (Set.set * Set.set)
+        let compare = Pervasives.compare
         let copy (s1,s2) = (s1#copy, s2#copy)
         let to_string (v1,v2) =
             Printf.sprintf "(%s,%s)" v1#to_string v2#to_string
@@ -35,6 +39,7 @@ module Setoftupleset = Sets.Make(
 module Setoftermint = Sets.Make(
     struct
         type t = (Basictype.mixtype * int)
+        let compare = Pervasives.compare
         let copy (t,i) = (t,i)
         let to_string (t,i) =
             Printf.sprintf "(%s,%d)" (Basictype.string_of_mixtype t) i

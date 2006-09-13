@@ -126,8 +126,8 @@ let expand_matchpatt _loc =
             let patt =
                 match p with
                     |Ast.Bicon(id,t1,t2) ->
-                        Some <:patt< `Formula $uid:id$ ($term_patt t1$,$term_patt t2$) >>
-                    |Ast.Ucon(id,t) -> Some <:patt< `Formula $uid:id$ ($term_patt t$) >>
+                        Some <:patt< `LabeledFormula ( _, $uid:id$ ($term_patt t1$,$term_patt t2$)) >>
+                    |Ast.Ucon(id,t) -> Some <:patt< `LabeledFormula (_, $uid:id$ ($term_patt t$)) >>
                     |_ -> None
             in
             if Option.is_none patt then None
@@ -139,8 +139,8 @@ let expand_matchpatt _loc =
         None,
         <:expr< failwith "this formula is not mached by any pattern" >>)
     in
-    let atom = ( <:patt< `Formula Atom(_) >>, None, <:expr< "__atom" >>) in
-    let const = ( <:patt< `Formula Constant(_) >>, None, <:expr< "__const" >>) in
+    let atom = ( <:patt< `LabeledFormula (_, Atom(_)) >>, None, <:expr< "__atom" >>) in
+    let const = ( <:patt< `LabeledFormula (_, Constant(_)) >>, None, <:expr< "__const" >>) in
     let id = <:patt< __matchpatt >> in
     let ex1 = <:expr< fun [ $list:pel@[atom;const;def]$ ] >> in
     let ex2 = <:expr< Logic.__matchpatt.val := Some(__matchpatt) >> in
@@ -185,12 +185,16 @@ let expand_histories _loc (Ast.Histories ( histlist )) =
     in
     let histlist =
         if not(Hashtbl.mem hist_table "status") then
-            let status = 
-                Ast.VDecl("status",
-                Ast.Type("String"),
+            let (id,t,ex,def) = 
+                ("status",
+                "String",
                 <:expr< new Set.set >>,
                 Some <:expr< "Open" >>)
-            in status::histlist 
+            in
+            let status = Ast.VDecl(id,Ast.Type(t),ex,def)
+            in
+            Hashtbl.replace hist_table id ("Singleton",t,ex,def) ;
+            status::histlist 
         else histlist
     in
     let expr_list = List.map (function
@@ -243,7 +247,7 @@ let rec expand_term_type _loc id =
         let (outer,inner,ex,def) = Hashtbl.find hist_table id in
         <:patt< `$outer$ $lid:String.lowercase id^"cont"$ >>
     with Not_found ->
-        <:patt< `List $lid:String.lowercase id^"cont"$ >>
+        <:patt< `Set $lid:String.lowercase id^"cont"$ >>
 ;;
 
 let rec expand_term_cont _loc term id =
@@ -277,7 +281,7 @@ let expand_set _loc term =
         List.map (fun x -> <:expr< $str:x$ >> ) ids
         )
     in
-    let frl = List.map (fun x -> <:expr< `Formula $lid:x$ >> ) ids in
+    let frl = List.map (fun x -> <:expr< `LabeledFormula (label, $lid:x$) >> ) ids in
     let frl_list = list_to_exprlist _loc frl in
     match term with
     |Ast.Var(id) -> <:expr< fun sbl fl -> sbl#add [($str:id$,fl)] >>
@@ -285,8 +289,8 @@ let expand_set _loc term =
             <:expr<
             fun sbl fl ->
                 let __rec = fun
-                    [`Formula $patt$ -> $frl_list$
-                    |`Formula _ -> raise FailedMatch
+                    [`LabeledFormula (label, $patt$) -> $frl_list$
+                    |`LabeledFormula _ -> raise FailedMatch
                     |_ -> failwith ("set : type mismatch")]
                 in sbl#add (ExtList.fold __rec fl $ids_list$)
             >>
@@ -300,11 +304,11 @@ let expand_single _loc term =
         )
     in
     let frl_list = list_to_exprlist _loc (
-        List.map (fun x -> <:expr< `Formula $lid:x$ >> ) ids
+        List.map (fun x -> <:expr< `LabeledFormula (label, $lid:x$) >> ) ids
         )
     in
     let act =
-        (<:patt< `Formula $patt$ >>, None,
+        (<:patt< `LabeledFormula (label, $patt$) >>, None,
         <:expr<
             List.map2
             (fun f s ->
@@ -320,7 +324,7 @@ let expand_single _loc term =
         |Ast.Var(id) -> 
             [(<:patt< _ >>, None, <:expr< failwith ("single : type mismatch") >>)]
         |_ ->
-            [(<:patt< `Formula _ >>, None, <:expr< raise FailedMatch >>);
+            [(<:patt< `LabeledFormula _ >>, None, <:expr< raise FailedMatch >>);
              (<:patt< _ >>, None, <:expr< failwith ("single : type mismatch") >>)]
     in
     <:expr<
@@ -337,8 +341,7 @@ let build_term _loc ?(naked=false) ?(action=false) term =
     let ids = unique (get_term_ids term) in
     let expr = expand_term_expr _loc term in
     let term_type = List.map (expand_term_type _loc) ids in
-    let term_cont = List.map (expand_term_cont _loc term) ids in
-    let patt_list = List.map (fun x -> <:patt< `Formula $lid:x$ >> ) ids in
+    let patt_list = List.map (fun x -> <:patt< `LabeledFormula (_, $lid:x$) >> ) ids in
     let dressedcont id = <:expr< $lid:id$#elements >> in
     let nakedcont id inner =
         <:expr<
@@ -348,6 +351,7 @@ let build_term _loc ?(naked=false) ?(action=false) term =
         >>
     in
     let build_term_aux1 term ex = 
+        let term_cont = List.map (expand_term_cont _loc term) ids in
         <:expr<
         fun sbl hist varl ->
             match ( $list:term_cont$ ) with
@@ -357,6 +361,7 @@ let build_term _loc ?(naked=false) ?(action=false) term =
         >>
     in
     let build_term_aux2 term = 
+        let term_cont = List.map (expand_term_cont _loc term) ids in
         let term_elem = 
             List.map (fun x -> dressedcont (String.lowercase x^"cont") ) ids
         in
@@ -365,7 +370,7 @@ let build_term _loc ?(naked=false) ?(action=false) term =
                 match ( $list:term_cont$ ) with
                 [( $list:term_type$ ) ->
                     ExtList.$lid:"map"^string_of_int(List.length ids)$ (fun
-                        [( $list:patt_list$ ) -> `Formula $expr$
+                        [( $list:patt_list$ ) -> `LabeledFormula ([], $expr$)
                         |_ -> failwith ("__build")
                         ]
                     ) ( $list:term_elem$ )
@@ -376,9 +381,23 @@ let build_term _loc ?(naked=false) ?(action=false) term =
     match term with
     |Ast.Var(_) ->
             let ex =
-                if naked then nakedcont (String.lowercase (List.hd ids)^"cont") "Formula"
+                if naked
+                then nakedcont (String.lowercase (List.hd ids)^"cont") "LabeledFormula"
                 else dressedcont (String.lowercase (List.hd ids)^"cont")
             in build_term_aux1 term ex
+    |Ast.Variable(id,Ast.All) ->
+            let hist = List.hd ids in
+            let (outer,inner,_,_) = Hashtbl.find hist_table hist in
+            let ex =  nakedcont (String.lowercase hist^"cont") inner in
+            (* FIXME: this bit to refactor *)
+            <:expr< fun sbl hist varl ->
+                List.map (fun varhist ->
+                    match varhist#find $str:id$ with 
+                    [$List.hd term_type$ -> $ex$
+                    |_ -> failwith ("__build")
+                    ]
+                ) varl
+            >>
     |Ast.History(_)
     |Ast.Variable(_,_) ->
             let hist = List.hd ids in
@@ -392,7 +411,7 @@ let build_term _loc ?(naked=false) ?(action=false) term =
     |Ast.Const(id) ->
             let ex = <:expr< Constant($str:id$) >> in
             if naked then <:expr< fun _ _ _ -> $ex$ >>
-            else <:expr< fun _ _ _ -> `Formula $ex$ >>
+            else <:expr< fun _ _ _ -> `LabeledFormula ([], $ex$) >>
     |_ -> build_term_aux2 term
 ;;
 
@@ -400,7 +419,7 @@ let expand_constant _loc s =
     let ex =
         <:expr<
         try List.find (fun
-            [`Formula (Constant ($str:s$)) -> True
+            [`LabeledFormula (_,(Constant ($str:s$))) -> True
             |_ -> False ]
             ) fl
         with [ Not_found -> raise FailedMatch ]
@@ -444,7 +463,7 @@ let rec expand_expression_expr ?(action=false) ?(naked=false) _loc = function
                 <:expr<
                 let $list:pel$ in
                 fun sbl hist varl ->
-                    (List.fold_left (fun l t ->
+                    (List.fold_left (fun l (_,t) ->
                         Basictype.map (fun phi ->
                             match Logic.__simplification.val with
                             [None -> failwith "SIMPLIFICATION not defined"
@@ -459,10 +478,8 @@ let rec expand_expression_expr ?(action=false) ?(naked=false) _loc = function
             let aux_fun = List.map (function
                 |Ast.Term(Ast.Expr(e)) -> (new_id "term", <:expr< fun _ _ -> $e$ >>)
                 |Ast.Term(t) -> (new_id "term", build_term _loc t)
-                (* FIXME: this should be tested 
                 |e ->  expand_expression_expr ~action:true ~naked:true _loc e
-                *)
-                |_ -> failwith "expand_expression_expr not implemented 2"
+                (* |_ -> failwith "expand_expression_expr not implemented 2" *)
                 ) l
             in
             let args = List.map (fun (s,_) -> <:expr< $lid:s$ sbl hist varl >>) aux_fun in
@@ -614,7 +631,7 @@ let expand_ruleup _loc ruletype condition denlist brlist btlist =
     let opencond = <:expr< UserRule.is_open >> in
     let closedcond = <:expr< UserRule.is_closed >> in
     if is_axiom denlist then
-        let br_arg = ll_to_exprll brlist in
+        let br_arg = list_to_exprlist _loc (List.flatten (brlist@[btlist])) in
         <:expr< UserRule.up_explore_linear context treelist $br_arg$ >>
     else
         match ruletype,condition with
@@ -882,3 +899,12 @@ let expand_rewrite_patt _loc = function
 let expand_simplification _loc ex =
     <:str_item< Logic.__simplification.val := Some($ex$) >>
 ;;
+
+let expand_connectives _loc clist =
+      let preamble = expand_preamble _loc in
+      let pa = expand_parser _loc clist in
+      let pr = expand_printer _loc clist in
+      let sb = expand_substitute _loc clist in
+      <:str_item< declare $list:preamble@[pa;pr;sb]$ end >>
+;;
+

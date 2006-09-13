@@ -70,6 +70,6 @@ let buildParser table s =
             |_ -> failwith "buildParser"
         ) table
 (*    in let _ = Grammar.Entry.print expr_term *)
-    in [`Formula(parse s)]
+    in [`LabeledFormula([],parse s)]
 ;;
 

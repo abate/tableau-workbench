@@ -9,6 +9,7 @@ CONNECTIVES
   Verum, Const
 END
 
+
 (* workd if f is in nnf *)
 let rec weigth = function
     |term ( a & b ) -> (weigth a) * (weigth b) 
@@ -16,17 +17,18 @@ let rec weigth = function
     |_ -> 0
 ;;
 
-let cmp a b = compare (weigth a) (weigth b) ;;
+let cmp a b = Pervasives.compare (weigth a) (weigth b) ;;
+
 
 let rec order aux = function
     |term ( a & b ) -> 
         let (d1,t1) = aux a in
         let (d2,t2) = aux b in
         let d = d1 * d2 in
-        begin match compare d1 d2 with
+        begin match Pervasives.compare d1 d2 with
         |1 -> d, term ( t2 & t1 )
         |0 ->
-                if compare a b < 0 
+                if Pervasives.compare a b < 0 
                 then d, term ( t1 & t2 ) 
                 else d, term ( t2 & t1 )
         |_ -> d, term ( t1 & t2 )
@@ -35,10 +37,10 @@ let rec order aux = function
         let (d1,t1) = aux a in
         let (d2,t2) = aux b in
         let d = 1 + d1 + d2 in
-        begin match compare d1 d2 with
+        begin match Pervasives.compare d1 d2 with
         |1 -> d, term ( t2 v t1 )
         |0 ->
-                if compare a b < 0
+                if Pervasives.compare a b < 0
                 then d, term ( t1 v t2 )
                 else d, term ( t2 v t1 )
         |_ -> d, term ( t1 v t2 )
@@ -76,5 +78,48 @@ let rec simpl phi a =
     |term (b & c) -> term ( [simpl phi b] & [simpl phi c] )
     |term (b v c) -> term ( [simpl phi b] v [simpl phi c] )
     |_ -> a
+;;
+
+let dsj_id =
+  let counter = ref 0 in
+  fun () -> incr counter; !counter
+;;
+
+let fixlabel tl =
+    let n = dsj_id () in
+    match List.hd tl with
+    |`LabeledFormula(l,t) -> [`LabeledFormula(n::l,t)]
+    |_ -> failwith "fixlabel"
+;;
+
+let getlabel tl =
+    match List.hd tl with
+    |`LabeledFormula(l,_) -> [`ListInt l]
+    |_ -> failwith "getlabel"
+;;
+
+let backjumping (tl,intlist) =
+    match List.hd tl, intlist with
+    |_,[] -> true
+    |`LabeledFormula(l,_),h::_ -> List.mem h l
+    |_ -> failwith "backjumping"
+;;
+
+let mergelabel (tl,varl) =
+    if List.length varl = 1 then []
+    else
+        begin
+            let intlist = List.nth varl 1 in
+            match List.hd tl, intlist with
+            |_,[] -> []
+            |`LabeledFormula(l,_),bjl -> l@bjl
+            |_ -> failwith "mergelabel"
+        end
+;;
+
+let addlabel tl =
+    match List.hd tl with
+    |`LabeledFormula(l,t) -> l
+    |_ -> failwith "backjumping"
 ;;
 

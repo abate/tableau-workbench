@@ -145,4 +145,3 @@ module Option = struct
     let optlist = function Some l -> l | None -> []
     let is_none = function Some _ -> false | None -> true
 end
-
