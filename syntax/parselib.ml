@@ -3,6 +3,7 @@
 let hist_table  : (string, string * string * MLast.expr * MLast.expr option) Hashtbl.t = Hashtbl.create 50 ;;
 let const_table : (string, unit) Hashtbl.t = Hashtbl.create 50 ;;
 let patt_table  : (Ast.term,string) Hashtbl.t = Hashtbl.create 50 ;;
+let rule_table  : (string,string list) Hashtbl.t = Hashtbl.create 50 ;;
 
 let (=~) s re = Str.string_match (Str.regexp re) s 0;;
 let get_match i s = Str.matched_group i s
@@ -55,29 +56,50 @@ let new_id =
       "__" ^s^ string_of_int !counter
 ;;
 
-let add_patt_table _loc expr =
-    let rec normalize_patt = function
-        |Ast.Bicon(s,t1,t2) ->
-                Printf.sprintf "%s_%s_%s"
-                s (normalize_patt t1) (normalize_patt t2)
-        |Ast.Ucon(s,t) -> Printf.sprintf "%s_%s" s (normalize_patt t)
-        |_ -> ""
+let is_var = function
+    |Ast.Var(_) -> true
+    |_ -> false
+;;
+
+let rec patt_to_string ?(generic=true) = function
+    |Ast.Bicon(s,t1,t2) ->
+            Printf.sprintf "%s_%s_%s" s
+            (patt_to_string ~generic:generic t1)
+            (patt_to_string ~generic:generic t2)
+    |Ast.Ucon(s,t) ->
+            Printf.sprintf "%s_%s" s
+            (patt_to_string ~generic:generic t)
+    |Ast.Var(id) when generic = false -> id
+    |_ -> ""
+;;
+
+let add_patt_table _loc name expr =
+    let add_rule_table name s =
+        try
+            let l = Hashtbl.find rule_table name in
+            if List.mem s l then ()
+            else Hashtbl.replace rule_table name (s::l)
+        with Not_found ->
+            Hashtbl.add rule_table name [s]
     in
-    let s = 
+    let s generic = 
         match expr with
         |Ast.Term (Ast.Atom(_)) -> "__atom"
         |Ast.Term (Ast.Const(_)) -> "__const"
         |Ast.Filter("__single",[Ast.Term(p)])
         |Ast.Filter("__empty",[Ast.Term(p)])
         |Ast.Term (Ast.Bicon(_,_,_) as p) 
-        |Ast.Term (Ast.Ucon(_,_) as p) -> normalize_patt p
+        |Ast.Term (Ast.Ucon(_,_) as p) ->
+                patt_to_string ~generic:generic p
         |_ -> ""
     in
     match expr with
     |Ast.Filter("__single",[Ast.Term(t)])
     |Ast.Filter("__empty",[Ast.Term(t)])
-    |Ast.Term (t) -> Hashtbl.replace patt_table t s; s
-    |_ -> s
+    |Ast.Term (t) ->
+            add_rule_table name (s false);
+            Hashtbl.replace patt_table t (s true); (s true)
+    |_ -> (s true)
 ;;
 
 let find_patt_table _loc = function

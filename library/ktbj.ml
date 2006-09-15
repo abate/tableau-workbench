@@ -16,7 +16,7 @@ HISTORIES
 (bj : ListInt := new Set.set default [])
 END
 
-let nnf_term l = Basictype.map Kopt.nnf l ;;
+let nnf_term l = Basictype.map Kopt.nnf l ;; 
 
 open Twblib
 open Klib
@@ -47,7 +47,7 @@ TABLEAU
   ===============
     Close
 
-  BACKTRACK [ bj := addlabel(a) ]
+  BACKTRACK [ bj := addlabel(a, ~ a) ]
   END
 
   RULE False

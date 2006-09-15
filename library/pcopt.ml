@@ -117,9 +117,9 @@ let mergelabel (tl,varl) =
         end
 ;;
 
-let addlabel tl =
-    match List.hd tl with
-    |`LabeledFormula(l,t) -> l
+let addlabel (tl1,tl2) =
+    match List.hd tl1,List.hd tl2 with
+    |`LabeledFormula(l2,_),`LabeledFormula(l1,_) -> l1@l2
     |_ -> failwith "backjumping"
 ;;
 

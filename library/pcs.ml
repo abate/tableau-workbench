@@ -36,7 +36,7 @@ TABLEAU
   RULE Or
   { a v b } ; x
  ===============================
-     a ; x[a] | b ; x[b][nnf_term ( ~ a)]
+     a ; x[a] | b ; x[b][nnf_term(~ a)]
   END
 
 END

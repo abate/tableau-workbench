@@ -24,7 +24,7 @@ TABLEAU
   ===============
     Close
 
-  BACKTRACK [ bj := addlabel(a) ]
+  BACKTRACK [ bj := addlabel(a, ~ a) ]
   END
   
   RULE False

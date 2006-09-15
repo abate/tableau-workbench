@@ -16,8 +16,7 @@ let rewrite_expr = Grammar.Entry.create Pcaml.gram "rewrite_expr";;
 let add_biconn lev op co =
     EXTEND
       patt_term: LEVEL $lev$
-        [[ x= patt_term; $op$; y = patt_term ->
-            Ast.Bicon(co,x,y) ]];
+        [[ x= patt_term; $op$; y = patt_term -> Ast.Bicon(co,x,y) ]];
       expr_term: LEVEL $lev$
         [[ x = expr_term; $op$; y = expr_term -> Ast.Bicon(co,x,y) ]];
       rewrite_expr: LEVEL $lev$

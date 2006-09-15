@@ -28,7 +28,7 @@ TABLEAU
   RULE And
   { a & b } 
  ==========
-     a ; b
+     a ; b 
   END
   
   RULE Or

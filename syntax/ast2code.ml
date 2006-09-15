@@ -320,12 +320,21 @@ let expand_single _loc term =
         >>)
     in
     let def =
-        match term with
-        |Ast.Var(id) -> 
+        if is_var term then
             [(<:patt< _ >>, None, <:expr< failwith ("single : type mismatch") >>)]
-        |_ ->
+        else
             [(<:patt< `LabeledFormula _ >>, None, <:expr< raise FailedMatch >>);
              (<:patt< _ >>, None, <:expr< failwith ("single : type mismatch") >>)]
+    in
+    (* NB: I'm re-using the same vars ... bad ?? *)
+    let (act,ids_list) = 
+        let termid = patt_to_string ~generic:false term in
+        if not(is_var term) then
+            let (p,_,e) = act in
+            ((<:patt< ( $p$ as bf ) >>, None, <:expr< [ [bf :: []] :: $e$ ] >>),
+            (<:expr< [ $str:termid$ :: $ids_list$ ] >>))
+        else
+            (act,ids_list)
     in
     <:expr<
     fun sbl -> fun fl ->
@@ -337,7 +346,7 @@ let expand_single _loc term =
     >>
 ;;
 
-let build_term _loc ?(naked=false) ?(action=false) term =
+let rec build_term _loc ?ruleid ?(naked=false) ?(action=false) term =
     let ids = unique (get_term_ids term) in
     let expr = expand_term_expr _loc term in
     let term_type = List.map (expand_term_type _loc) ids in
@@ -378,6 +387,16 @@ let build_term _loc ?(naked=false) ?(action=false) term =
                 ]
             >>
     in
+    let build_term_aux3 term =
+        let s = patt_to_string ~generic:false term in
+        <:expr<
+        fun sbl hist varl ->
+            match sbl#find $str:s$ with
+            [`Set cont -> cont#elements
+            |_ -> failwith ("__build")
+            ]
+        >>
+    in
     match term with
     |Ast.Var(_) ->
             let ex =
@@ -412,7 +431,13 @@ let build_term _loc ?(naked=false) ?(action=false) term =
             let ex = <:expr< Constant($str:id$) >> in
             if naked then <:expr< fun _ _ _ -> $ex$ >>
             else <:expr< fun _ _ _ -> `LabeledFormula ([], $ex$) >>
-    |_ -> build_term_aux2 term
+    |_ -> 
+            if Option.is_none ruleid then build_term_aux2 term
+            else
+                let l = Hashtbl.find rule_table (Option.get ruleid) in
+                if List.mem (patt_to_string ~generic:false term) l
+                then build_term_aux3 term
+                else build_term _loc ~naked:naked ~action:action term
 ;;
 
 let expand_constant _loc s =
@@ -438,20 +463,20 @@ let rec expand_expression_patt _loc = function
     |_ -> failwith "expand_expression_patt not implemented"
 ;;
 
-let rec expand_expression_expr ?(action=false) ?(naked=false) _loc = function
+let rec expand_expression_expr ?ruleid ?(action=false) ?(naked=false) _loc = function
     |Ast.Term(Ast.Expr(e)) -> (new_id "term", e)
-    |Ast.Term(t) -> (new_id "term", build_term ~action:action _loc t)
+    |Ast.Term(t) -> (new_id "term", build_term ?ruleid ~action:action _loc t)
     |Ast.Apply("__simpl",Ast.Term t::l) ->
             let aux_fun =
                     List.map (function
                     |Ast.Apply("__simplarg",[Ast.Term t1]) ->
-                            (new_id "term", build_term ~naked:true _loc t1)
+                            (new_id "term", build_term ?ruleid ~naked:true _loc t1)
                     |Ast.Apply("__simplarg",[e]) ->
-                            expand_expression_expr ~action:true ~naked:true _loc e
+                            expand_expression_expr ?ruleid ~action:true ~naked:true _loc e
                     |_ -> failwith "expand_expression_expr not implemented 3"
                     ) l
             in
-            let (id,term) = (new_id "term", build_term _loc t) in
+            let (id,term) = (new_id "term", build_term ?ruleid _loc t) in
             let mapt = 
                 List.map (fun (h,_) -> <:expr< $lid:h$ sbl hist varl >>) aux_fun
             in
@@ -477,8 +502,8 @@ let rec expand_expression_expr ?(action=false) ?(naked=false) _loc = function
     |Ast.Apply(f,l) ->
             let aux_fun = List.map (function
                 |Ast.Term(Ast.Expr(e)) -> (new_id "term", <:expr< fun _ _ -> $e$ >>)
-                |Ast.Term(t) -> (new_id "term", build_term _loc t)
-                |e ->  expand_expression_expr ~action:true ~naked:true _loc e
+                |Ast.Term(t) -> (new_id "term", build_term ?ruleid _loc t)
+                |e ->  expand_expression_expr ?ruleid ~action:true ~naked:true _loc e
                 (* |_ -> failwith "expand_expression_expr not implemented 2" *)
                 ) l
             in
@@ -507,11 +532,11 @@ let expand_status _loc s =
     in (new_id "status", ex)
 ;;
 
-let expand_rule_num _loc (Ast.Numerator numlist) =
+let expand_rule_num _loc name (Ast.Numerator numlist) =
     List.map (fun n ->
         let (nid,nfun) = expand_expression_patt _loc n in
         let pid = new_id "pattern" in
-        let sid = add_patt_table _loc n in
+        let sid = add_patt_table _loc name n in
         let ex = <:expr<
             let $lid:nid$ = $nfun$ in
             NodePattern.newpatt $str:sid$ $lid:nid$
@@ -520,16 +545,16 @@ let expand_rule_num _loc (Ast.Numerator numlist) =
     ) numlist
 ;;
 
-let expand_condition _loc (condlist) =
+let expand_condition _loc name (condlist) =
     List.map (fun Ast.CCondition e ->
-        expand_expression_expr _loc e
+        expand_expression_expr _loc ~ruleid:name e
     ) condlist
 ;;
 
-let expand_denominator _loc = function
+let expand_denominator _loc name = function
     |Ast.Denominator denlist ->
             List.map (fun n ->
-                let (nid,nfun) = expand_expression_expr ~action:true _loc n in
+                let (nid,nfun) = expand_expression_expr _loc ~ruleid:name ~action:true n in
                 let pid = new_id "action" in
                 let sid = find_patt_table _loc n in
                 let ex = <:expr<
@@ -541,14 +566,14 @@ let expand_denominator _loc = function
     |Ast.Status(s) -> [expand_status _loc s] 
 ;;
 
-let expand_rule_denlist _loc denlist =
-    List.map (expand_denominator _loc) denlist
+let expand_rule_denlist _loc name denlist =
+    List.map (expand_denominator _loc name) denlist
 ;;
 
-let expand_action _loc actionlist =
+let expand_action _loc name actionlist =
     List.map (function
         |Ast.AAssign(t,e) ->
-                let (idf, exf) = expand_expression_expr _loc e in
+                let (idf, exf) = expand_expression_expr _loc ~ruleid:name e in
                 let hist = List.hd (get_term_ids t) in
                 let (outer,inner,ex,_) = Hashtbl.find hist_table hist in
                 let id = new_id "assign" in
@@ -565,16 +590,16 @@ let expand_action _loc actionlist =
                     let $list:pel$ in fun sbl hist varl ->
                         ( $list:[tid;ass]$ ) >>
                 in (id,ex)
-        |Ast.AFunction(e) -> expand_expression_expr _loc e
+        |Ast.AFunction(e) -> expand_expression_expr _loc ~ruleid:name e
     ) actionlist
 ;;
 
-let expand_rule_actionlist _loc actionlist =
-    List.map (expand_action _loc) actionlist
+let expand_rule_actionlist _loc name actionlist =
+    List.map (expand_action _loc name) actionlist
 ;;
 
-let expand_rule_branchcondlist _loc branchcondlist =
-    List.map (expand_condition _loc) branchcondlist
+let expand_rule_branchcondlist _loc name branchcondlist =
+    List.map (expand_condition _loc name) branchcondlist
 ;;
 
 let is_axiom = function |[Ast.Status(s)] -> true |_ -> false ;;
@@ -686,7 +711,7 @@ let expand_rule _loc (Ast.Rule r) =
     in
 
     (* numerator *)
-    let numl = expand_rule_num _loc num in
+    let numl = expand_rule_num _loc name num in
     let nump = List.map (fun (s,e) ->
         <:str_item< value $lid:s$ = $e$ >>) numl
     in
@@ -700,7 +725,7 @@ let expand_rule _loc (Ast.Rule r) =
     let num_aux_fun = <:str_item< declare $list:nump$ end >> in
 
     (* side condition on the numerator *)
-    let condl = expand_condition _loc condlist in
+    let condl = expand_condition _loc name condlist in
     let condp = List.map (fun (s,e) ->
         <:str_item< value $lid:s$ = $e$ >>) condl
     in
@@ -710,7 +735,7 @@ let expand_rule _loc (Ast.Rule r) =
     let cond_aux_fun = <:str_item< declare $list:condp$ end >> in
 
     (* denominators *)
-    let denll = expand_rule_denlist _loc denlist in
+    let denll = expand_rule_denlist _loc name denlist in
     let den_args = 
             List.map (fun denl ->
                 list_to_exprlist _loc (
@@ -730,7 +755,7 @@ let expand_rule _loc (Ast.Rule r) =
     let den_aux_fun = <:str_item< declare $list:denp$ end >> in
 
     (* actions on the denominators *)
-    let actionll = expand_rule_actionlist _loc actionlist in
+    let actionll = expand_rule_actionlist _loc name actionlist in
     let action_args = 
             List.map (fun actionl ->
                 list_to_exprlist _loc (
@@ -750,7 +775,7 @@ let expand_rule _loc (Ast.Rule r) =
     let action_aux_fun = <:str_item< declare $list:actionp$ end >> in
 
     (* branch conditions *)
-    let branchcondll = expand_rule_branchcondlist _loc branchcondlist in
+    let branchcondll = expand_rule_branchcondlist _loc name branchcondlist in
     let branchcond_args = 
         List.map (fun branchcondl ->
                 List.map (fun (s,_) -> <:expr< $lid:s$ >> ) branchcondl
@@ -778,7 +803,7 @@ let expand_rule _loc (Ast.Rule r) =
     in
 
     (* backtrack *)
-    let backtrackl = expand_action _loc backtracklist in
+    let backtrackl = expand_action _loc name backtracklist in
     let backtrackp = List.map (fun (s,e) ->
         <:str_item< value $lid:s$ = $e$ >>) backtrackl
     in
