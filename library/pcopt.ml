@@ -80,9 +80,10 @@ let rec simpl phi a =
     |_ -> a
 ;;
 
-let dsj_id =
-  let counter = ref 0 in
-  fun () -> incr counter; !counter
+let counter = ref 0 ;;
+let dsj_id () =
+    incr counter;
+    !counter
 ;;
 
 let fixlabel tl =
@@ -101,7 +102,8 @@ let getlabel tl =
 let backjumping (tl,intlist) =
     match List.hd tl, intlist with
     |_,[] -> true
-    |`LabeledFormula(l,_),h::_ -> List.mem h l
+    |`LabeledFormula(h::_,_),l -> not(List.mem h l)
+    |`LabeledFormula([],f),_ -> true
     |_ -> failwith "backjumping"
 ;;
 
@@ -109,11 +111,9 @@ let mergelabel (tl,varl) =
     if List.length varl = 1 then []
     else
         begin
-            let intlist = List.nth varl 1 in
-            match List.hd tl, intlist with
-            |_,[] -> []
-            |`LabeledFormula(l,_),bjl -> l@bjl
-            |_ -> failwith "mergelabel"
+            let l1 = List.nth varl 0 in
+            let l2 = List.nth varl 1 in
+            l1@l2
         end
 ;;
 
@@ -122,4 +122,3 @@ let addlabel (tl1,tl2) =
     |`LabeledFormula(l2,_),`LabeledFormula(l1,_) -> l1@l2
     |_ -> failwith "backjumping"
 ;;
-

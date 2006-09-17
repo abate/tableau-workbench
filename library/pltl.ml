@@ -135,6 +135,10 @@ let exit (uev) =
     |_ -> "Closed"
 ;;
 
+OPTIONS
+    ("-D", (Arg.Set debug), "Enable debug")
+END
+ 
 PP := nnf_term
 NEG := neg_term
 EXIT := exit (uev@1)
@@ -142,8 +146,3 @@ EXIT := exit (uev@1)
 let saturation = tactic ( (Id | False | And | Before | Ge | Or | Until)* )
 
 STRATEGY := ( ((saturation | Next)* | Loop)* )
-
-OPTIONS
-    ("-D", (Arg.Set debug), "Enable debug")
-END
-    

@@ -50,6 +50,12 @@ TABLEAU
 
 END
 
+let exit status =
+    Pcopt.counter := 0;
+    status
+;;
+
+EXIT := exit (status@1)
 PP := Pcopt.nnf
 NEG := Pclib.neg
 

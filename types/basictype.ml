@@ -91,12 +91,13 @@ let string_of_mixtype : mixtype -> string = function
     |`String(s) -> s
     |`ListInt(l) ->  List.fold_left (fun s i -> s^(string_of_int i) ) "" l
     |`Formula(f) -> !string_of_formula f
-    |`LabeledFormula(il, f) -> !string_of_formula f
-(*            let label = 
-                List.fold_left (fun s i -> s^(string_of_int i) ) "" il in
+    |`LabeledFormula(il, f) ->
+            (* !string_of_formula f *)
+            let label = 
+                List.fold_left (fun s i -> s^","^(string_of_int i) ) "" il in
             let formula = !string_of_formula f in
-            Printf.sprintf "%s : %s" label formula
-            *)
+            Printf.sprintf "[%s] : %s" label formula
+            
     |`Tuple(i1,i2) ->
             Printf.sprintf "(%d,%d)" i1 i2
             

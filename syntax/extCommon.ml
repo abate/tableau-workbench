@@ -2,13 +2,15 @@
 
 open Genlex
 open Parselib
-open Ast2code
+open Tablib
 
 Grammar.error_verbose := true ;;
 let patt_term = Grammar.Entry.create Pcaml.gram "patt_term";;
 let expr_term = Grammar.Entry.create Pcaml.gram "expr_term";;
 let rewrite_patt = Grammar.Entry.create Pcaml.gram "rewrite_patt";;
 let rewrite_expr = Grammar.Entry.create Pcaml.gram "rewrite_expr";;
+let numformula = Grammar.Entry.create Pcaml.gram "numformula";;
+let denformula = Grammar.Entry.create Pcaml.gram "denformula";;
 
 
 (* extend the parser with tokens declared in the 
@@ -43,7 +45,7 @@ let add_uconn lev op co =
 
 EXTEND
 GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr patt_term expr_term
-rewrite_expr rewrite_patt;
+rewrite_expr rewrite_patt numformula denformula;
 
   Pcaml.expr: LEVEL "simple"
       [
@@ -86,11 +88,6 @@ rewrite_expr rewrite_patt;
         a = STRING; OPT ")" -> Ast.Options (s,e,a)
   ]];
 
-(*  
-  connective: [[
-      t = Mlast.cf_type; "//"; s = STRING; "//" -> (t,s) 
-  ]];
-*)
 
   tactic:
   [ "One" LEFTA
@@ -222,57 +219,19 @@ rewrite_expr rewrite_patt;
   ];
 
   num: [[ pl = LIST1 numformula SEP ";" -> Ast.Numerator pl ]]; 
-  
-  numformula: [[
-       nc = numcond -> nc
-(*      |c = LIDENT; "("; p = LIST0 numcond SEP ","; ")" -> Ast.Filter(c,p)  *)
-  ]];
 
-  numcond: [[
-       "{"; t = patt_term; "}" -> Ast.Filter("__single",[Ast.Term t])
-      |"("; t = patt_term; ")" -> Ast.Filter("__empty",[Ast.Term t])
-      |t = patt_term -> Ast.Term t
-  ]];
-  
-  denformula: [
-      [v = test_variable; "@"; i = INT ->
-          Ast.Term ( Ast.Variable (v, Ast.Int (int_of_string i)))
-      |f = LIDENT; "("; l = LIST0 denformula SEP ","; ")" ->
-              Ast.Apply(f,l) 
-(*          Ast.Apply(f,List.map (fun t -> Ast.Term t) l) *)
-      |t = expr_term; sl = LIST0 simplification ->
-              if sl = [] then Ast.Term t
-              else Ast.Apply("__simpl",(Ast.Term t)::sl)
-      ]
-  ];
-
-  simplification: [[
-       "["; t = denformula; "]" -> Ast.Apply("__simplarg",[t])
-  ]];
- 
+  numformula: [[]];
+  denformula: [[]];
   expr_term:
-    ["One" LEFTA [ ]
-    |"Two" RIGHTA [ ]
-    |"Zero" NONA
-      [x = test_variable; "@"; i = INT ->
-          Ast.Variable (x, Ast.Int (int_of_string i))
-      |x = test_constant -> Ast.Const x
-      |x = test_history -> Ast.History x
-      |x = test_uid -> Ast.Atom x
-      |x = LIDENT -> Ast.Var x
-      |"("; p = expr_term; ")" -> p
-      ] 
+    ["One" LEFTA []
+    |"Two" RIGHTA []
+    |"Zero" NONA []
     ];
 
   patt_term:
-    ["One" LEFTA [ ]
-    |"Two" RIGHTA [ ]
-    |"Zero" NONA
-      [x = test_constant -> Ast.Const x 
-      |x = test_uid -> Ast.Atom x
-      |x = LIDENT -> Ast.Var x
-      |"("; p = patt_term; ")" -> p
-      ] 
+    ["One" LEFTA []
+    |"Two" RIGHTA []
+    |"Zero" NONA []
     ];
 
   rewrite_expr_term: [

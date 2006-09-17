@@ -251,15 +251,29 @@ let rec expand_term_type _loc id =
 ;;
 
 let rec expand_term_cont _loc term id =
-    if Hashtbl.mem hist_table id then
+    try
+        let (outer,inner,ex,def) = Hashtbl.find hist_table id in
+        let default =
+            if Option.is_none def
+            then <:expr< `$outer$ $ex$ >>
+            else <:expr< `$outer$ (($ex$)#add (`$inner$ $Option.get def$)) >>
+        in
         match term with
         |Ast.Variable(id,Ast.Int(vi)) ->
                 <:expr<
-                let varhist = List.nth varl ($int:string_of_int vi$ - 1) 
-                in varhist#find $str:id$ >>
+                try
+                    let varhist = List.nth varl ($int:string_of_int vi$ - 1)
+                    in varhist#find $str:id$
+                with [Failure "nth" -> $default$
+                ]
+                >>
         |Ast.History(id) -> <:expr< hist#find $str:id$ >>
         |_ -> failwith "expand_term_cont"
-    else <:expr< sbl#find $str:id$ >>
+    with Not_found ->
+        <:expr<
+        try sbl#find $str:id$
+        with [Not_found -> failwith ("__find: " ^ $str:id$)]
+        >>
 ;;
 
 let rec get_term_ids = function
@@ -277,6 +291,7 @@ let rec get_term_ids = function
 let expand_set _loc term =
     let ids = get_term_ids term in
     let patt = expand_term_patt _loc term in
+    let termid = patt_to_string ~generic:false term in
     let ids_list = list_to_exprlist _loc (
         List.map (fun x -> <:expr< $str:x$ >> ) ids
         )
@@ -292,7 +307,8 @@ let expand_set _loc term =
                     [`LabeledFormula (label, $patt$) -> $frl_list$
                     |`LabeledFormula _ -> raise FailedMatch
                     |_ -> failwith ("set : type mismatch")]
-                in sbl#add (ExtList.fold __rec fl $ids_list$)
+                in (sbl#add (ExtList.fold __rec fl $ids_list$))#add
+                [($str:termid$,fl)]
             >>
 ;;
 
@@ -391,7 +407,9 @@ let rec build_term _loc ?ruleid ?(naked=false) ?(action=false) term =
         let s = patt_to_string ~generic:false term in
         <:expr<
         fun sbl hist varl ->
-            match sbl#find $str:s$ with
+            match
+            try sbl#find $str:s$ with [Not_found -> failwith ("__find: " ^ $str:s$)]
+            with
             [`Set cont -> cont#elements
             |_ -> failwith ("__build")
             ]

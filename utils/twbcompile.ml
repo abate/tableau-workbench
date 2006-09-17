@@ -6,6 +6,7 @@ open Findlib
 
 module Options = struct
     let verbose = ref false
+    let clean = ref false
     let tmp = ref ""
 end
 ;;
@@ -14,7 +15,8 @@ end
 
 let options = [
     ("-v",  Arg.Set Options.verbose, "verbose");
-    ("-t",  Arg.Set_string Options.tmp,  "temporary directory")
+    ("-t",  Arg.Set_string Options.tmp,  "temporary directory");
+    ("--clean", Arg.Set Options.clean, "clean the temporary directory")
 ]
 ;;
 
@@ -95,7 +97,6 @@ let pp filename =
    let cmd = 
        "camlp4o "^
        str_lib_loc ^ "/str.cma "^
-(*       ext_lib_loc ^ "/extLib.cma "^ *)
        twb_lib_loc ^ "/pa_tableau.cma "^
        "pr_o.cmo "^ 
        filename ^ 
@@ -167,12 +168,20 @@ let link l filename =
     ignore(system cmd)
 ;;
 
+let remove_files () =
+    let cmd = "rm -f "^tmp_dir^"*.cm*" in
+    ignore(system cmd);
+    print_verbose "Cleaning: %s\n" cmd
+;;
 
 let main () =
     let _ =
         try Arg.parse options file usage
         with Arg.Bad s -> failwith s
-     in 
+    in
+    if !Options.clean
+    then ( remove_files (); exit(1) )
+    else
     let filename = get(!input_file) in
     (* XXX: the deplist should not have duplicates *)
     let deplist = uniq(List.rev (deps [noext(filename)] filename)) in
