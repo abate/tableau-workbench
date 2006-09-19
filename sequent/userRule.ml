@@ -17,10 +17,10 @@ let printer n name ruleid =
 ;;
 
 
-let rec branchcond context tl tLl bll =
+let rec branchcond ?(implicit=false) context acctl tLl bll =
     let treelist = 
-        try (Llist.hd tLl)::tl
-        with Llist.LListEmpty -> tl
+        try (Llist.hd tLl)::acctl
+        with Llist.LListEmpty -> acctl
     in
     let checknext cxt tl = function
         |[] -> true
@@ -31,20 +31,37 @@ let rec branchcond context tl tLl bll =
                 List.map ( function
                     |Leaf(n) -> let (_,_,v) = n#get in v 
                     |_ -> failwith "check_branch_cond"
-                ) tl
+                ) (List.rev tl)
+                (* I've to revert the list as this is the result of
+                 * the accumulator acctl plus the last explored branch *)
             in
             List.for_all ( fun f -> f sbl hist varlist ) bl
     in
-    (* we have to check tLl to take into account implicit backtracking *)
+    (* we have to check tLl to take into account implicit backtracking. 
+     * Llist.tl forces the computation of the next node. if the branch 
+     * condition fails, the next node is not explored *)
     match bll,Lazy.force(tLl) with
-    |[],Empty -> List.rev treelist
-    |[],_ -> branchcond context treelist (Llist.tl tLl) []
-    |[]::btl,_ -> branchcond context treelist (Llist.tl tLl) btl
-    |hd::btl,_ when (checknext context treelist hd) ->
-            (* Llist.tl forces the computation of the next node. if
-            * the branch condition fails, the next node is not explored *)
-            branchcond context treelist (Llist.tl tLl) btl
-    |_ -> List.rev treelist
+    (* if it's empty there is nothing to do *)
+    |_,Empty -> List.rev treelist
+    (* if there are no conditions, the rule cannot be implicit.
+     * Since is cannot be empty, we explore the next branch. *)
+    |[],_ when implicit = false ->
+            branchcond ~implicit:false context treelist (Llist.tl tLl) []
+    (* if it is implicit, then it can have only one condition. If the
+     * condition holds, then we explore the next branch MAINTAINIG the same
+     * condition *)
+    |hd::[],_ when implicit = true && (checknext context treelist hd) ->
+             branchcond ~implicit:true context treelist (Llist.tl tLl) bll
+    (* there is no condition on this branch, but maybe on others. We explore
+     * the next branch without further checks and we pass the rest of the
+     * condition list *)
+    |[]::btl,_ when implicit = false ->
+            branchcond ~implicit:false context treelist (Llist.tl tLl) btl
+    (* if the condition is true then we explore the next branch passing the rest
+     * of the condition list *)
+    |hd::btl,_ when implicit = false && (checknext context treelist hd) ->
+            branchcond ~implicit:false context treelist (Llist.tl tLl) btl
+    |_ -> List.rev treelist 
 ;;
 
 let status s 
@@ -173,14 +190,12 @@ let down_implicit name context actionl historyl =
     let (enum, sbl, node) = context#get in
     let (map, hist, vars) = node#get in
     let (newsbl, newmap) =
-        (* enum is carefully constructed in check to
-         * take side conditions into account and since
-         * it is a lazy data structure, the conditions
-         * are computed only when needed. Enum.get force
-         * the computation *)
+      (* enum is carefully constructed to take side conditions into account.
+       * Since it is a lazy data structure, the conditions are computed only
+       * when needed. Enum.get force the computation *)
       match Enum.get enum with
-        Some (sbl, ns) -> (sbl, ns)
-      | None -> (build_sbl (), map)
+      |Some (sbl, ns) -> (sbl, ns)
+      |None -> (build_sbl (), map)
     in
     if newsbl#is_empty then
         Llist.return (node, sbl, actionl, historyl)
@@ -209,22 +224,21 @@ let unbox_tree = function
 
 (* up method - simple. explore the first branch, if the
  * branch condition is true, then explore the second branch. 
- * On backtrack apply a synth action, but the status is set
- * according the the branch condition *)
-let up_explore_simple context treelist synthlist branchll =
+ * On backtrack apply a synth action. *)
+let up_explore_aux ?(implicit=false) context treelist synthlist branchll =
     let (_, sbl, node) = context#get in
     let (_, hist, _) = node#get in
     (* tl holds the results of all branches that have been explored *)
     (* since the list is lazy, the computation is triggered here *)
-    let tl = (branchcond context [] treelist branchll) in
+    let tl = (branchcond ~implicit:implicit context [] treelist branchll) in
     let t = match List.rev tl with
-        |[] -> failwith "up_explore_simple : t"
+        |[] -> failwith "up_explore_aux : t"
         |h::_ -> h
     in
     let varlist = 
         List.map ( function
             |Leaf(n) -> let (_,_,v) = n#get in v 
-            |_ -> failwith "up_explore_simple : varlist"
+            |_ -> failwith "up_explore_aux : varlist"
         ) tl
     in
     let newnode =
@@ -240,6 +254,11 @@ let up_explore_simple context treelist synthlist branchll =
          * the correct status ? *)
     in Leaf (newnode)
 ;;
+
+let up_explore_implicit context treelist synthlist branchll =
+    up_explore_aux ~implicit:true context treelist synthlist branchll
+let up_explore_simple context treelist synthlist branchll =
+    up_explore_aux ~implicit:false context treelist synthlist branchll
 
 let up_explore_linear context treelist synthlist =
     let (_, sbl, node) = context#get in

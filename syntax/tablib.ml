@@ -74,6 +74,7 @@ let expand_printer _loc clist =
     <:str_item< declare $list:[st1;st2]$ end >>
 ;;
 
+(* substitute all occurrences of t by s *)
 let expand_substitute _loc clist =
     let l = filter_map(function
         |Ast.Connective(v,s,r) when s =~ u_re ->
@@ -682,7 +683,7 @@ let expand_ruleup _loc ruletype condition denlist brlist btlist =
                 <:expr< UserRule.up_explore_linear context treelist $bt_arg$ >>
         |Ast.NotInvertible,Ast.CCondition(Ast.Apply("linear",[])) ->
                 let br_arg = add_rule opencond brlist in
-                <:expr< UserRule.up_explore_simple context treelist $bt_arg$ $br_arg$ >>
+                <:expr< UserRule.up_explore_implicit context treelist $bt_arg$ $br_arg$ >>
 
         |Ast.Invertible,Ast.CCondition(Ast.Apply("forall",[])) ->
                 let br_arg = add_rule closedcond brlist in
@@ -926,7 +927,7 @@ let expand_options _loc olist =
 let expand_rewrite_expr _loc = function
     |Ast.Term(Ast.Expr(e)) -> <:expr< $e$ >>
     |Ast.Term(t) -> <:expr< $expand_term_expr _loc t$ >>
-    |Ast.Apply("__substitute",[Ast.Term v; Ast.Term t ; Ast.Term s]) ->
+    |Ast.Apply("__substitute",[Ast.Term v; Ast.Term s ; Ast.Term t]) ->
             let ext = expand_term_expr _loc t in
             let exs = expand_term_expr _loc s in
             let exv = expand_term_expr _loc v in

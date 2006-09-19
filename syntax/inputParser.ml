@@ -51,8 +51,9 @@ GLOBAL : expr_term input_line;
     [ "One" LEFTA [ ]
     | "Two" RIGHTA [ ]
     | "Zero" NONA
-    [ x = LIDENT -> Atom(x)
-      | "("; p = expr_term; ")" -> p ]
+        [ x = LIDENT -> Atom(x)
+        | x = UIDENT -> Atom(x)
+        | "("; p = expr_term; ")" -> p ]
     ];
 
 END

@@ -234,9 +234,10 @@ rewrite_expr rewrite_patt numformula denformula;
     |"Zero" NONA []
     ];
 
+    (* A{s/t} is the formula A with all occurrences of t substituted by s *) 
   rewrite_expr_term: [
-      [x = LIDENT; "{"; t = rewrite_expr_term; "/"; s = rewrite_expr_term; "}" ->
-              Ast.Apply("__substitute",[Ast.Term(Ast.Var x);t;s])
+      [x = LIDENT; "{"; s = rewrite_expr_term; "/"; t = rewrite_expr_term; "}" ->
+              Ast.Apply("__substitute",[Ast.Term(Ast.Var x);s;t])
       |t = rewrite_expr -> Ast.Term(t)
     ]];
 
