@@ -7,3 +7,7 @@ Box (a -> b) -> (Box a -> Box b)
 ( Dia(p0 v p1)  <->  Dia p0 v Dia p1 )
 ( ~  Box ~  p0  <-> Dia p0 )
 ( Box(p0 -> p1) -> (Box p0 -> Box p1) )
+#D & A4 & B{~ p0 / p0} -> T
+(Box p0 -> Dia p0) & (Box p0 -> Box Box p0) & (~ p0 -> Box Dia ~ p0) -> (Box p0 -> p0)
+#k_d4_p(1)
+Box (Dia ~ p0 v p0) v Dia Box Falsum v Dia (Box p0 & Dia Dia ~ p0) v Dia (Box Dia p0 & Dia Dia  Box ~ p0) v Dia (p0 & Dia Box ~ p0) v Dia (~ p0 & Dia Box p0)

@@ -1,4 +1,6 @@
 
+let sof f = (!Basictype.string_of_formula f)
+
 (* set history operations *)
 let add (l,h) = h#addlist l
 let notin (l,h) = not(h#mem (List.hd l))
@@ -9,7 +11,7 @@ let clear h = h#empty
 let emptyset = clear
 
 (* list operations *)
-let not_emptylist = function [] -> false | _ -> true
+let not_emptylist = function [] -> false | h::_ -> true
 
 (* debug flag *)
 let debug = ref false
@@ -17,7 +19,6 @@ let debug = ref false
 (* general functions *)
 let min (a,b) = min a b
 
-let sof f = (!Basictype.string_of_formula f)
 (*let print_verbose fmt_etc =
     let print s =
             Printf.printf "%s" s;

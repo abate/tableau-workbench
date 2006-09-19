@@ -1,9 +1,9 @@
 
 CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
+  DImp, "_<->_", Two;
+  And, "_&_",  One;
+  Or,  "_v_",  One;
   Imp, "_->_", One;
-  DImp, "_<->_", One;
   Not, "~_",   Zero;
   Falsum, Const;
   Verum, Const
@@ -44,8 +44,8 @@ TABLEAU
  ========================================
      fixlabel(a) | fixlabel(b) ; nnf_term(~ a)
 
-   BRANCH [ backjumping(a,bj@1) ]
-   BACKTRACK [ bj := mergelabel(a, bj@all) ]
+   BRANCH [ backjumping(a v b,bj@1) ]
+   BACKTRACK [ bj := mergelabel(a v b,bj@all) ]
   END
 
 END

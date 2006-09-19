@@ -26,24 +26,28 @@ let rec order aux = function
         let (d2,t2) = aux b in
         let d = d1 * d2 in
         begin match Pervasives.compare d1 d2 with
-        |1 -> d, term ( t2 & t1 )
-        |0 ->
-                if Pervasives.compare a b < 0 
-                then d, term ( t1 & t2 ) 
-                else d, term ( t2 & t1 )
-        |_ -> d, term ( t1 & t2 )
+        |i when i > 0 -> d, term ( t2 & t1 )
+        |i when i < 0 -> d, term ( t1 & t2 )
+        |_ ->
+                begin match Pervasives.compare a b with
+                |i when i < 0 -> d, term ( t1 & t2 ) 
+                |i when i > 0 -> d, term ( t2 & t1 )
+                |_ -> d, t1
+                end
         end
     |term ( a v b ) -> 
         let (d1,t1) = aux a in
         let (d2,t2) = aux b in
         let d = 1 + d1 + d2 in
         begin match Pervasives.compare d1 d2 with
-        |1 -> d, term ( t2 v t1 )
-        |0 ->
-                if Pervasives.compare a b < 0
-                then d, term ( t1 v t2 )
-                else d, term ( t2 v t1 )
-        |_ -> d, term ( t1 v t2 )
+        |i when i > 0 -> d, term ( t2 v t1 )
+        |i when i < 0 -> d, term ( t1 v t2 )
+        |_ ->
+                begin match Pervasives.compare a b with
+                |i when i < 0 -> d, term ( t1 v t2 ) 
+                |i when i > 0 -> d, term ( t2 v t1 )
+                |_ -> d, t1
+                end
         end
     |_ -> failwith "order"
 

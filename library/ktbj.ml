@@ -1,10 +1,10 @@
 
 CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
-  Not, "~_",   Zero;
+  DImp, "_<->_", Two;
+  And, "_&_",  One;
+  Or,  "_v_",  One;
   Imp, "_->_", One;
-  DImp, "_<->_", One;
+  Not, "~_",   Zero;
   Box, "Box_", Zero;
   Dia, "Dia_", Zero;
   Falsum, Const;

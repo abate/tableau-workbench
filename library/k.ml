@@ -1,9 +1,9 @@
 
 CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
+  DImp, "_<->_", Two;
+  And, "_&_",  One;
+  Or,  "_v_",  One;
   Imp, "_->_", One;
-  DImp, "_<->_", One;
   Not, "~_",   Zero;
   Box, "Box_", Zero;
   Dia, "Dia_", Zero;
@@ -36,6 +36,12 @@ TABLEAU
     Close
   END
   
+  RULE False
+     Falsum
+  ===============
+    Close
+  END
+
   RULE And
    a & b
   ==========
@@ -48,24 +54,12 @@ TABLEAU
     a | b
   END
 
-  RULE Imp 
-  { a -> b }
- ============
-    ~ a | b
-  END
-
-  RULE DImp 
-  { a <-> b }
- ==================
-  a -> b | b -> a
-  END
-
 END
 
 PP := nnf
 NEG := neg
 
-let t = tactic ( (Id|And|Or)* )
+let t = tactic ( (Id|False|And|Or)* )
 
 STRATEGY ( t | K )* 
 
