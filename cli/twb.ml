@@ -155,12 +155,12 @@ let main () =
             
                 let start = Timer.start_timing () in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
-                let result = Visit.visit cache strategy node in
+                let result = Llist.hd (Visit.visit cache strategy node) in
                 let time = Timer.stop_timing start in
 
                 Printf.printf "%s\nResult: %s\n%sTotal Rules applications:%d\n\n"
                 (Timer.to_string time)
-                (exit_function (Llist.hd result))
+                (exit_function result)
                 cache#stats
                 !UserRule.nodeid;
                 Gc.major ();
