@@ -6,7 +6,12 @@ open Findlib
 
 module Options = struct
     let verbose = ref false
+    let compileonly = ref false
+    let output = ref ""
+    let bytecode = ref false
+    
     let clean = ref false
+    
     let tmp = ref ""
 end
 ;;
@@ -15,19 +20,26 @@ end
 
 let options = [
     ("-v",  Arg.Set Options.verbose, "verbose");
+    ("-c",  Arg.Set Options.compileonly, "compile only (do not link)");
+    ("-b",  Arg.Set Options.bytecode, "bytecode");
+    ("-o",  Arg.Set_string Options.output,  "<file>  Set output file name to <file>");
+    
     ("-t",  Arg.Set_string Options.tmp,  "temporary directory");
+    
     ("--clean", Arg.Set Options.clean, "clean the temporary directory")
 ]
 ;;
 
-let usage = "usage: compile [-options] [file.ml]" ;;
+let usage = "usage: compile [-options] <files>" ;;
 
-let input_file = ref None;;
+let input_filelist = ref [];;
 let file f =
     try
         match f with
         |s when Str.string_match (Str.regexp "^[\n\t ]*$") s 0 -> ()
-        |_ -> input_file := Some(f)
+        |s ->
+                let l = Str.split (Str.regexp "[ \t]+") s in
+                input_filelist := !input_filelist @ l
     with _ -> () 
 ;;
 
@@ -108,13 +120,19 @@ let pp filename =
 ;; 
  
 let rec get_line ch () =
+    let aux s =
+        let ms = Str.replace_first (Str.regexp "\\") "" (Str.matched_group 1 s) in
+        let l = Str.split (Str.regexp "[ \t]+") ms in
+        List.map (fun s -> 
+            ignore(Str.string_match (Str.regexp "\\(.*\\).cmo") s 0);
+            (Str.matched_group 1 s)
+        ) l
+    in
     match Stream.next ch with
     |s when Str.string_match (Str.regexp "^.*.cmo: \\(.*\\)$") s 0 ->
-            let l = Str.split (Str.regexp "[ \t]+") (Str.matched_group 1 s) in
-            List.map (fun s -> 
-                ignore(Str.string_match (Str.regexp "\\(.*\\).cmo") s 0);
-                (Str.matched_group 1 s)
-            ) l
+            aux s
+    |s when Str.string_match (Str.regexp "^\\(.*.cmo[^:].*\\)$") s 0 ->
+            aux s
     |s -> get_line ch ()
 ;;
  
@@ -149,8 +167,9 @@ let rec deps deplist filename =
 ;;
 
 let compile elem =
+    let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
     let cmd =
-        "ocamlfind ocamlopt -package twb.thelot,twb.cli -c -unsafe -noassert " ^
+        "ocamlfind "^ ocaml ^" -package twb.thelot,twb.cli -c -unsafe -noassert " ^
         "-I " ^ tmp_dir ^ " "^
         tmp_dir ^ elem ^ ".ml"
     in
@@ -159,11 +178,13 @@ let compile elem =
 ;;
 
 let link l filename =
+    let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
+    let ext = if !Options.bytecode then ".cmo " else ".cmx " in
     let c =
-        "ocamlfind ocamlopt -package twb.thelot,twb.cli -unsafe -noassert -linkpkg -o " ^ 
-        noext(filename) ^ " "
+        "ocamlfind "^ ocaml ^" -package twb.thelot,twb.cli -unsafe -noassert -linkpkg -o " ^ 
+        filename ^ " "
     in
-    let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ".cmx ") c l in
+    let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ext) c l in
     print_verbose "Linking: %s\n" cmd;
     ignore(system cmd)
 ;;
@@ -179,15 +200,20 @@ let main () =
         try Arg.parse options file usage
         with Arg.Bad s -> failwith s
     in
-    if !Options.clean
-    then ( remove_files (); exit(1) )
+    if !Options.clean then ( remove_files (); exit(1) )
     else
-    let filename = get(!input_file) in
-    (* XXX: the deplist should not have duplicates *)
-    let deplist = uniq(List.rev (deps [noext(filename)] filename)) in
-    List.iter compile deplist;
-    link deplist filename;
-    print_endline "Done.";
+        List.iter( fun filename ->
+            (* XXX: the deplist should not have duplicates *)
+            let deplist = uniq(List.rev (deps [noext(filename)] filename)) in
+            List.iter compile deplist;
+            if not(!Options.compileonly) then begin
+                let output =
+                    if !Options.output = "" then noext(filename)
+                    else !Options.output
+                in link deplist output;
+            end;
+        ) !input_filelist ;
+        print_endline "Done."
 ;;
 
 let _ = main ()

@@ -235,6 +235,8 @@ rewrite_expr rewrite_patt numformula denformula;
     ];
 
     (* A{s/t} is the formula A with all occurrences of t substituted by s *) 
+    (* FIXME: the substitution should be possible inside a term... this require
+     * to change the ast and re-write the expand_expression_expr function *)
   rewrite_expr_term: [
       [x = LIDENT; "{"; s = rewrite_expr_term; "/"; t = rewrite_expr_term; "}" ->
               Ast.Apply("__substitute",[Ast.Term(Ast.Var x);s;t])

@@ -26,6 +26,15 @@ nc:
 	cd utils && make && cp twbcompile ../library
 	ranlib twb/*.a
 
+bc:
+	cd core && make bcl && cp twbcore.* *.cm* ../twb/
+	cd types && make bcl && cp twbtypes.* *.cm* ../twb/
+	cd sequent && make bcl && cp *.cm* *.a ../twb/
+	cd syntax && make bcl && cp *.cm* *.a ../twb/
+	cd cli && make bcl && cp *.cm* *.a ../twb/
+	cd utils && make && cp twbcompile ../library
+	ranlib twb/*.a
+
 clean:
 	cd core && make clean
 	cd types && make clean

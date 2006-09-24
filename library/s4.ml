@@ -28,6 +28,24 @@ TABLEAU
   ACTION [ DIAMONDS := add(Dia a,DIAMONDS) ]
   END
 
+  RULE S4H
+  { Dia A } ; Dia Y ; Z
+  ===============================
+     A ; BOXES || Dia Y
+
+  COND notin(Dia A, DIAMONDS)
+
+  ACTION [
+      [ DIAMONDS := add(Dia A,DIAMONDS);
+        DIAMONDS := add(Dia Y,DIAMONDS)];
+
+      [ DIAMONDS := add(Dia A,DIAMONDS); ]
+  ]
+
+  BRANCH [ empty(Dia Y) ]
+  END
+
+
   RULE T
   { Box a }
   =========

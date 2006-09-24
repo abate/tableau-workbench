@@ -44,12 +44,13 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
 
         let return a = fun s -> (a,s)
         let bind m f = fun s -> let (a,s') = m s in f a s'
-
+(*
         let run f = fun s -> f s
         let show m = let (a,_) = m Llist.empty in a
         let fetch = fun s -> return s s
         let store = fun s -> fun _ -> return () s
         let update f = fun s -> return () (f s)
+*)
     end
     type m = MState.res MState.m Llist.llist
 
