@@ -12,7 +12,6 @@ CONNECTIVES
 END
 
 HISTORIES
-(BOXES : Set of Formula := new Set.set);
 (Idx : Int := new Set.set default 0);
 (bj : ListInt := new Set.set default [])
 END
@@ -26,24 +25,13 @@ open Pcopt
 TABLEAU
 
   RULE K
-  { Dia a } ; z
+  { Dia a } ; Box x ; z
   ----------------------
-    a ; BOXES
+    a ; x
 
-  ACTION [ BOXES := clear(BOXES) ]
   BACKTRACK [ bj := mergelabel(bj@all, status@last) ]
   END
 
-  RULE T
-   { Box a }
-  =========
-     a
-
-  COND notin(a, BOXES)
-
-  ACTION [ BOXES := add(a,BOXES) ]
-  END
- 
   RULE Id
   { a } ; { ~ a }
   ===============
@@ -61,14 +49,14 @@ TABLEAU
   RULE And
   { a & b }
   ==========
-      a ; b
+    a ; b
   END
   
   RULE Or
   { a v b } 
  =================================
      fixlabel(Idx,a) | fixlabel(Idx,b) ; nnf_term(~ a)
-
+   
   ACTION    [[ Idx := inc(Idx) ]; [ Idx := inc(Idx) ]]
   BRANCH    [ backjumping(Idx, bj@1) ]
   BACKTRACK [ bj := mergelabel(bj@all, status@last) ]
@@ -80,7 +68,7 @@ END
 PP := Kopt.nnf
 NEG := neg
 
-let saturate = tactic ( (False|Id|And|T|Or)* )
+let saturate = tactic ( (False|Id|And|Or)* )
 
 STRATEGY := ( ( saturate | K )* )
 

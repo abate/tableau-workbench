@@ -260,6 +260,15 @@ let rec expand_term_cont _loc term id =
             else <:expr< `$outer$ (($ex$)#add (`$inner$ $Option.get def$)) >>
         in
         match term with
+        (* FIXME: refactor *)
+        |Ast.Variable(id,Ast.Last) ->
+                <:expr<
+                try
+                    let varhist = List.nth varl (List.length varl - 1)
+                    in varhist#find $str:id$
+                with [Failure "nth" -> $default$
+                ]
+                >>
         |Ast.Variable(id,Ast.Int(vi)) ->
                 <:expr<
                 try
@@ -449,7 +458,11 @@ let rec build_term _loc ?ruleid ?(naked=false) ?(action=false) term =
     |Ast.Const(id) ->
             let ex = <:expr< Constant($str:id$) >> in
             if naked then <:expr< fun _ _ _ -> $ex$ >>
-            else <:expr< fun _ _ _ -> `LabeledFormula ([], $ex$) >>
+            else <:expr< fun sbl _ _ ->
+                match sbl#find $str:id$ with
+                [`Set cont -> cont#head
+                |_ -> failwith ("__build")]
+                >>
     |_ -> 
             if Option.is_none ruleid then build_term_aux2 term
             else
@@ -522,8 +535,25 @@ let rec expand_expression_expr ?ruleid ?(action=false) ?(naked=false) _loc = fun
             let aux_fun = List.map (function
                 |Ast.Term(Ast.Expr(e)) -> (new_id "term", <:expr< fun _ _ -> $e$ >>)
                 |Ast.Term(t) -> (new_id "term", build_term ?ruleid _loc t)
+                |Ast.List(l) -> 
+                        let exl =
+                            List.map(fun e ->
+                                expand_expression_expr ?ruleid ~action:true ~naked:true _loc e
+                            ) l
+                        in
+                        let pel =
+                            List.map (fun (s,e) ->
+                                (<:patt< $lid:s$ >>,e)) exl
+                        in
+                        let args =
+                            list_to_exprlist _loc (
+                                List.map (fun (s,_) ->
+                                    <:expr< $lid:s$ sbl hist varl >>) exl
+                            )
+                        in
+                        let ex = <:expr< let $list:pel$ in fun sbl hist varl -> $args$ >>
+                        in (new_id "term", ex)
                 |e ->  expand_expression_expr ?ruleid ~action:true ~naked:true _loc e
-                (* |_ -> failwith "expand_expression_expr not implemented 2" *)
                 ) l
             in
             let args = List.map (fun (s,_) -> <:expr< $lid:s$ sbl hist varl >>) aux_fun in
@@ -711,9 +741,13 @@ let expand_num_triple _loc (Ast.Numerator numl) num_args =
     List.fold_left (fun (empty,single,set) (e,(id,_)) ->
         let exid = <:expr< $lid:id$ >> in
         match e with
-            |Ast.Filter("__single",_) -> (empty,exid::single,set)
-            |Ast.Filter("__empty",_) -> (exid::empty,single,set)
-            |_ -> (empty,single,exid::set)
+        |Ast.Filter("__single",[Ast.Term t]) ->
+                if is_var t then (empty,exid::single,set)
+                else (empty,single@[exid],set)
+        |Ast.Filter("__empty",[Ast.Term t]) ->
+                if is_var t then (exid::empty,single,set)
+                else (empty@[exid],single,set)
+        |_ -> (empty,single,exid::set)
     ) ([],[],[]) (List.combine numl num_args)
 ;;
 

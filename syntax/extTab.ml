@@ -21,11 +21,18 @@ GLOBAL : numformula denformula expr_term patt_term;
   denformula: [
       [v = test_variable; "@"; i = INT ->
           Ast.Term ( Ast.Variable (v, Ast.Int (int_of_string i)))
-      |f = LIDENT; "("; l = LIST0 denformula SEP ","; ")" ->
+      |f = LIDENT; "("; l = LIST0 args SEP ","; ")" ->
               Ast.Apply(f,l) 
       |t = expr_term; sl = LIST0 simplification ->
               if sl = [] then Ast.Term t
               else Ast.Apply("__simpl",(Ast.Term t)::sl)
+      ]
+  ];
+
+  args: [
+      [f = denformula -> f
+      |"["; l = LIST0 denformula SEP ";"; "]" -> Ast.List (l)
+      |e = Pcaml.expr -> Ast.Term(Ast.Expr e)
       ]
   ];
 

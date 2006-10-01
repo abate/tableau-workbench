@@ -26,7 +26,7 @@ TABLEAU
   END
 
   RULE And
-  { a & b } 
+  a & b 
  ==========
      a ; b 
   END

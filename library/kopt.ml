@@ -1,9 +1,9 @@
 
 CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
+  DImp, "_<->_", Two;
+  And, "_&_",  One;
+  Or,  "_v_",  One;
   Imp, "_->_", One;
-  DImp, "_<->_", One;
   Not, "~_",   Zero;
   Box, "Box_", Zero;
   Dia, "Dia_", Zero;
@@ -12,6 +12,28 @@ CONNECTIVES
 END
 
 let neg = function term ( a ) -> term ( ~ a ) ;;
+
+let rec boolean t = 
+    let aux = function
+        |term (a & b) when a = b -> a
+        |term (a v b) when a = b -> a
+        |term (Verum & b)  |term (b & Verum)  -> b
+        |term (Falsum & b) |term (b & Falsum) -> term (Falsum)
+        |term (Verum v b)  |term (b v Verum)  -> term (Verum)
+        |term (Falsum v b) |term (b v Falsum) -> b
+        |term (Dia Falsum) -> term (Falsum)
+        |term (Box Falsum) -> term (Falsum)
+        |term (~ Verum)  -> term (Falsum)
+        |term (~ Falsum) -> term (Verum)
+        |a -> a
+    in match t with
+    |term (a & b) -> aux term ( [boolean (aux a)] & [boolean (aux b)] )
+    |term (a v b) -> aux term ( [boolean (aux a)] v [boolean (aux b)] )
+    |term (Dia a) -> aux term ( Dia [boolean (aux a)] )
+    |term (Box a) -> aux term ( Box [boolean (aux a)] )
+    |term (~ a)   -> aux term ( ~ [boolean (aux a)] )
+    |a -> aux a
+;;
 
 let nnf f =
     let rec aux = function
@@ -37,7 +59,7 @@ let nnf f =
         |term ( ~ ( Box a ) ) -> aux term ( Dia ~ a )
 
         |f -> failwith (Printf.sprintf "aux:%s" (Twblib.sof(f)))
-    in let (_,f') = aux f in f'
+    in let (_,f') = aux f in boolean f'
 ;;
 
 let rec cnf t =
@@ -57,14 +79,28 @@ in conjnf t
 ;;
 
 let rec simpl phi a =
-    if phi = a then term(Verum)
-    else if phi = (nnf (term ( ~ a ))) then term(Falsum)
-    else match a with
-    |term (~ b)   -> term ( ~ [simpl phi b] )
-    |term (b & c) -> term ( [simpl phi b] & [simpl phi c] )
-    |term (b v c) -> term ( [simpl phi b] v [simpl phi c] )
-    |term (Box b) -> term ( Box [simpl phi b] )
-    |term (Dia b) -> term ( Dia [simpl phi b] )
-    |_ -> a
+(*    Printf.printf "Simplification ! %s[%s]\n" (Twblib.sof(a)) (Twblib.sof(phi)); *)
+    let rec aux phi a = match a with
+        |term (~ b) when b = a -> term(Falsum) 
+        |term (~ b)   -> term ( ~ [aux phi b] )
+        |term (b & c) -> term ( [aux phi b] & [aux phi c] )
+        |term (b v c) -> term ( [aux phi b] v [aux phi c] )
+        |term (Box b) ->
+                begin match phi with
+                |term (Box phi') -> term ( Box [aux phi' b] )
+                |_ -> a
+                end
+        |term (Dia b) ->
+                begin match phi with
+                |term (Box phi') -> term ( Dia [aux phi' b] )
+                |_ -> a
+                end
+        |_ when phi = a -> term(Verum)
+        |_ when phi = (nnf (term ( ~ a ))) -> term(Falsum)
+        |_ -> a
+    in
+    let r = boolean (aux phi a) in
+(*    Printf.printf "Result: %s\n\n" (Twblib.sof(r)) ;  *)
+    r
 ;;
 

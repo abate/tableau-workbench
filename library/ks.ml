@@ -3,55 +3,52 @@ CONNECTIVES
   DImp, "_<->_", Two;
   And, "_&_",  One;
   Or,  "_v_",  One;
-  Imp, "_->_", One;
   Not, "~_",   Zero;
+  Imp, "_->_", One;
   Box, "Box_", Zero;
   Dia, "Dia_", Zero;
   Falsum, Const;
   Verum, Const
 END
 
+SIMPLIFICATION := Kopt.simpl
+let nnf_term l = ([],Kopt.nnf (Basictype.unbox(List.hd l))) ;;
+let nnf = Kopt.nnf ;;
+
 open Twblib
 open Klib
 
 TABLEAU
 
-  RULE K1
-  { Dia a } ; Box x ; Dia y ; z
-  ===========================
-      a ; x || Dia y ; Box x
-
-  BRANCH [ not_emptylist(Dia y) ]
-  END
-
   RULE K
   { Dia a } ; Box x ; z
   ----------------------
-    a ; x
+    a ; x[a]
+
   END
- 
+
   RULE Id
   { a } ; { ~ a }
   ===============
     Close
   END
-  
+
   RULE False
-     Falsum
-  ===============
+    Falsum
+  =========
     Close
   END
 
   RULE And
-  { a & b }
-  ==========
-    a ; b
+  { a & b } ; x
+  =========
+    a[b] ; b[a] ; x[a][b]
   END
   
   RULE Or
-  { a v b }
- ==========
-    a | b
+  { a v b } ; x
+ =================================
+     a ; x[a] | b[nnf_term(~ a)] ; x[b][nnf_term(~ a)]
   END
 
 END
@@ -59,7 +56,7 @@ END
 PP := Kopt.nnf
 NEG := neg
 
-let t = tactic ( (Id|False|And|Or)* )
+let saturate = tactic ( (False|Id|And|Or)* )
 
-STRATEGY ( t | K )* 
+STRATEGY := ( ( saturate | K )* )
 

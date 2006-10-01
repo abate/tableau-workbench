@@ -9,6 +9,7 @@ struct
   let debug = ref 0
   let trace = ref false
   let timeout = ref 0
+  let quite = ref false
 
   let outdir = ref "trace"
   let outtype = ref ""
@@ -21,17 +22,18 @@ let usage = "usage: twb [-options] [file]"
 
 let arg_options =
     [
-     ("-nopp",  Arg.Set    Options.nopp,  "disable preproc function");
-     ("-noneg", Arg.Set    Options.noneg, "disable negation function");
+     ("--nopp",  Arg.Set    Options.nopp,  "disable preproc function");
+     ("--noneg", Arg.Set    Options.noneg, "disable negation function");
 
-     ("-debug", Arg.Int    (fun l -> Options.debug := l ), "debug level");
-     ("-trace", Arg.Set    Options.trace, "print proof trace");
-     ("-time",  Arg.Int    (fun l -> Options.timeout := l), "set exec timeout");
+     ("--debug", Arg.Int    (fun l -> Options.debug := l ), "debug level");
+     ("--trace", Arg.Set    Options.trace, "print proof trace");
+     ("--time",  Arg.Int    (fun l -> Options.timeout := l), "set exec timeout");
+     ("--quite", Arg.Set    Options.quite, "print the result only");
 
-     ("-outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
-     ("-out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
+     ("--outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
+     ("--out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
 
-     ("-nocache", Arg.Set  Options.nocache, "disable default cache");
+     ("--nocache", Arg.Set  Options.nocache, "disable default cache");
     ]
 ;;
 
@@ -145,7 +147,10 @@ let main () =
         while true do
             try
                 let line = get_line () in
-                let _ = Printf.printf "Proving: %s\n" line in
+                let _ = 
+                    if !Options.quite then ()
+                    else Printf.printf "Proving: %s\n" line
+                in
                 let node = newnode line in
                 (* still a bit hackish way of setting user prefs *)
                 let _ = UserRule.nodeid := 0 in
@@ -158,14 +163,20 @@ let main () =
                 let result = Llist.hd (Visit.visit cache strategy node) in
                 let time = Timer.stop_timing start in
 
-                Printf.printf "%s\nResult: %s\n%sTotal Rules applications:%d\n\n"
-                (Timer.to_string time)
-                (exit_function result)
-                cache#stats
-                !UserRule.nodeid;
+                if !Options.quite then
+                    Printf.printf "%s\nResult: %s\nTotal Rules applications:%d\n\n"
+                    (Timer.to_string time)
+                    (exit_function result)
+                    !UserRule.nodeid
+                else
+                    Printf.printf "%s\nResult: %s\n%sTotal Rules applications:%d\n\n"
+                    (Timer.to_string time)
+                    (exit_function result)
+                    cache#stats
+                    !UserRule.nodeid;
                 Gc.major ();
                 flush_all ()
-            with Timer.Timeout -> Printf.printf "Timeout elapsed\n"
+            with Timer.Timeout -> Printf.printf "Timeout elapsed\n\n"
         done
     with
     |End_of_file |Stream.Failure -> exit 0

@@ -10,6 +10,7 @@ CONNECTIVES
 END
 
 HISTORIES
+(Idx : Int := new Set.set default 0);
 (bj : ListInt := new Set.set default [])
 END
 
@@ -41,21 +42,16 @@ TABLEAU
   
   RULE Or
   { a v b } 
- ========================================
-     fixlabel(a) | fixlabel(b) ; nnf_term(~ a)
+ ===========================
+  fixlabel(Idx,a) | fixlabel(Idx,b) 
 
-   BRANCH [ backjumping(a v b,bj@1) ]
-   BACKTRACK [ bj := mergelabel(a v b,bj@all) ]
+  ACTION    [[ Idx := inc(Idx) ]; [ Idx := inc(Idx) ]]
+  BRANCH    [ backjumping(Idx,bj@1) ]
+  BACKTRACK [ bj := mergelabel(bj@all,status@last) ]
   END
 
 END
 
-let exit status =
-    Pcopt.counter := 0;
-    status
-;;
-
-EXIT := exit (status@1)
 PP := Pcopt.nnf
 NEG := Pclib.neg
 

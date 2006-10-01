@@ -29,20 +29,20 @@ TABLEAU
   END
 
   RULE S4H
-  { Dia A } ; Dia Y ; Z
+  { Dia a } ; Dia y ; z
   ===============================
-     A ; BOXES || Dia Y
+     a ; BOXES || Dia y
 
-  COND notin(Dia A, DIAMONDS)
+  COND notin(Dia a, DIAMONDS)
 
   ACTION [
-      [ DIAMONDS := add(Dia A,DIAMONDS);
-        DIAMONDS := add(Dia Y,DIAMONDS)];
+      [ DIAMONDS := add(Dia a,DIAMONDS);
+        DIAMONDS := add(Dia y,DIAMONDS)];
 
-      [ DIAMONDS := add(Dia A,DIAMONDS); ]
+      [ DIAMONDS := add(Dia a,DIAMONDS) ]
   ]
 
-  BRANCH [ empty(Dia Y) ]
+  BRANCH [ not_emptylist(Dia y) ]
   END
 
 

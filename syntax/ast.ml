@@ -38,6 +38,7 @@ and expression  =
     |Apply    of string * expression list
     |Filter   of string * expression list
     |Term     of term
+    |List     of expression list
 and term =
     |Bicon of string * term * term
     |Ucon  of string * term
