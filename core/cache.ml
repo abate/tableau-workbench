@@ -2,7 +2,7 @@
 module type S =
 sig
     type node
-    class cache :
+    class cache : bool ->
           object('cache)
               method add  : node -> node Tree.tree Llist.llist -> unit
               method mem  : node -> bool
@@ -27,26 +27,36 @@ module Make (N:Node.S) =
                 let hash = hash
             end)
         
-        class cache =
+        class cache enabled =
             object(self)
                 val data : node Tree.tree Llist.llist Hash.t = Hash.create 2879
+                val enabled = enabled
                 
                 val mutable hits = 0
                 val mutable miss = 0
                 
                 method mem k = 
-                    if Hash.mem data k
-                    then (hits <- hits +1; true)
-                    else (miss <- miss +1; false)
+                    if enabled then
+                        if Hash.mem data k
+                        then (hits <- hits +1; true)
+                        else (miss <- miss +1; false)
+                    else false
                 
                 method find k =
-                    try 
-                        let v = Hash.find data k in
-                        (hits <- hits +1; v)
-                    with Not_found ->
-                        (miss <- miss +1; raise Not_found)
-                    
-                method add k v = Hash.add data k v
+                    if enabled then
+                        try 
+                            let v = Hash.find data k in
+                            (hits <- hits +1; v)
+                        with Not_found -> 
+                            (miss <- miss +1; raise Not_found)
+                    else raise Not_found
+
+                (* I need to force the result of the computation to
+                 * avoid Lazy.Undefined *)
+                method add k v =
+                    if enabled then
+                        Hash.add data k (Llist.return (Llist.hd v))
+                    else ()
 
                 method to_string = ""
 (*                    Hash.fold (
@@ -57,8 +67,8 @@ module Make (N:Node.S) =
 *)
                 method stats = 
                     Printf.sprintf
-                    "Cache results:\nHits:%d\nMiss:%d\nElements in the cache:%d\n"
-                    hits miss (Hash.length data)
+                    "Cache results:\nTotal queries:%d\nHits:%d\nMiss:%d\nElements in the cache:%d\n"
+                    (hits+miss) hits miss (Hash.length data)
 
                 method clear = {< data = Hash.create 2879 >}
             end

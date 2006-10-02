@@ -28,7 +28,8 @@ and rule = Rule of
     condition list *
     action list list *
     condition list list *
-    backtrack list)
+    backtrack list *
+    bool option)
 and ruletype    = Invertible | NotInvertible
 and numerator   = Numerator of expression list
 and denominator =

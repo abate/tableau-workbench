@@ -26,7 +26,7 @@ TABLEAU
     a ; BOXES
 
   ACTION [ BOXES := clear(BOXES) ]
-  END
+  END (cache)
 
   RULE T
   { Box a }

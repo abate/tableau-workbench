@@ -14,7 +14,7 @@ struct
   let outdir = ref "trace"
   let outtype = ref ""
 
-  let nocache = ref false
+  let cache = ref true
 end
 ;;
 
@@ -33,7 +33,7 @@ let arg_options =
      ("--outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
      ("--out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
 
-     ("--nocache", Arg.Set  Options.nocache, "disable default cache");
+     ("--nocache", Arg.Clear  Options.cache, "disable caching");
     ]
 ;;
 
@@ -156,24 +156,23 @@ let main () =
                 let _ = UserRule.nodeid := 0 in
                 let _ = OutputBroker.trace := !Options.trace in
                 let _ = OutputBroker.print node "initial node" 0 in
-                let cache = (new Cache.cache) in
+                let cache = (new Cache.cache !Options.cache) in
             
                 let start = Timer.start_timing () in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
                 let result = Llist.hd (Visit.visit cache strategy node) in
                 let time = Timer.stop_timing start in
 
-                if !Options.quite then
-                    Printf.printf "%s\nResult: %s\nTotal Rules applications:%d\n\n"
+                Printf.printf "%s\nResult: %s\nTotal Rules applications:%d\n"
                     (Timer.to_string time)
                     (exit_function result)
-                    !UserRule.nodeid
-                else
-                    Printf.printf "%s\nResult: %s\n%sTotal Rules applications:%d\n\n"
-                    (Timer.to_string time)
-                    (exit_function result)
-                    cache#stats
                     !UserRule.nodeid;
+
+                if !Options.cache then
+                    Printf.printf "%s\n\n"
+                    cache#stats
+                else print_newline ();
+
                 Gc.major ();
                 flush_all ()
             with Timer.Timeout -> Printf.printf "Timeout elapsed\n\n"

@@ -26,7 +26,7 @@ TABLEAU
   
   COND notin(Dia a, DIAMONDS)
   ACTION [ DIAMONDS := add(Dia a,DIAMONDS) ]
-  END
+  END (cache)
 
   RULE S4H
   { Dia a } ; Dia y ; z
@@ -43,8 +43,7 @@ TABLEAU
   ]
 
   BRANCH [ not_emptylist(Dia y) ]
-  END
-
+  END (cache)
 
   RULE T
   { Box a }

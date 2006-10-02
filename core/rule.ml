@@ -26,5 +26,5 @@ module type S =
                 method virtual up    : context -> tree Llist.llist -> tree
                 method virtual use_cache : bool
             end
-        val skip : rule
+        val skip : rule 
       end

@@ -760,7 +760,8 @@ let expand_rule _loc (Ast.Rule r) =
         condlist,
         actionlist,
         branchcondlist,
-        backtracklist) = r
+        backtracklist,
+        cache) = r
     in
 
     (* numerator *)
@@ -867,6 +868,11 @@ let expand_rule _loc (Ast.Rule r) =
     let den_fun = expand_ruledown _loc ruletype cond denlist den_args (alist action_args) in
     let up_fun  = expand_ruleup _loc ruletype cond denlist branchcond_args backtrack_args in
 
+    let cache_ex =
+        if Option.is_none cache then <:expr< False >>
+        else <:expr< True >>
+    in
+
     let rule_class = 
         <:str_item<
             class $lid:(String.lowercase name)^"_rule"$ =
@@ -877,7 +883,7 @@ let expand_rule _loc (Ast.Rule r) =
                 method check node = $num_fun$ ;
                 method down context = $den_fun$ ;
                 method up context treelist = $up_fun$ ;
-                method use_cache = False ;
+                method use_cache = $cache_ex$ ;
                 end
      >>
     in <:str_item<

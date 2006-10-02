@@ -58,6 +58,7 @@ module Rule =
         method up _ tl = Llist.hd tl
         method use_cache = false
     end
+    
 end
 
 module Strategy = Strategy.Make(Node)(Rule) 

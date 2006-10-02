@@ -36,7 +36,7 @@ TABLEAU
   a ; simpl(x,[a])
 
   BACKTRACK [ bj := mergelabel(bj@all, status@last) ]
-  END
+  END (cache)
 
   RULE Id
   { a } ; { ~ a }

@@ -138,12 +138,13 @@ rewrite_expr rewrite_patt numformula denformula;
       hl = OPT actionlist;
       bl = OPT branchlist; 
       bt = OPT backtracklist;
-      "END" ->
+      "END"; cache = OPT [ "("; "cache"; ")" -> true ] ->
           Ast.Rule (id,t,n,dl,
                     Option.optlist cl,
                     Option.optlist hl,
                     Option.optlist bl,
-                    Option.optlist bt)
+                    Option.optlist bt,
+                    cache)
   ]];
 
   condition: [[

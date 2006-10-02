@@ -25,13 +25,13 @@ TABLEAU
   ----------------------
     a ; x[a]
 
-  END
+  END (cache)
 
   RULE Id
   { a } ; { ~ a }
   ===============
     Close
-  END
+  END (cache)
 
   RULE False
     Falsum

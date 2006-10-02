@@ -19,7 +19,7 @@ module Make(N:Node.S)
     module Cache = Cache.Make(N)
     open S
 
-    let table = ref (new Cache.cache)
+    let table = ref (new Cache.cache true)
 
     let tl s =
         try Llist.tl s
@@ -37,16 +37,27 @@ module Make(N:Node.S)
         (
             Llist.ifte
             (Llist.determ(state))
-            (fun (MState.Cont cont) -> aux_visit traversal cont (tl(state)) node)
+            (fun (MState.Cont cont) -> memo_visit traversal cont (tl(state)) node)
             (Llist.return (Leaf(node)))
         )
 
-    let rec dfs str state rule context = function
+    and dfs str state rule context = function
         |Leaf(_) as tree -> Llist.return (rule#up context (Llist.return tree))
-        |Tree(l) -> Llist.return (rule#up context (Llist.bind l (aux_visit dfs str state)))
+        |Tree(l) -> Llist.return (
+            rule#up context (Llist.bind l (memo_visit ~cache:rule#use_cache dfs str state)))
+
+    and memo_visit ?(cache=false) dfs strategy state node =
+        if cache then
+            try !table#find node 
+            with Not_found ->
+                let res = aux_visit dfs strategy state node in
+                !table#add node res;
+                res
+        else aux_visit dfs strategy state node
+    ;;
 
     let visit cache strategy node =
         table := cache;
-        aux_visit dfs strategy Llist.empty node
+        memo_visit dfs strategy Llist.empty node 
 
 end
