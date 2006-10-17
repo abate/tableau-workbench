@@ -6,13 +6,20 @@ type formula =
     |Imp  of  formula * formula
     |DImp of  formula * formula
     |Not  of  formula
+    |Star of  formula
     |Atom of  string 
     |Constant of  string
 
     (* basic modal logic *)
     |Dia of  formula
     |Box of  formula
-   
+
+    (* TO be removed *)
+    |Dia1 of  formula
+    |Box1 of  formula
+    |Dia2 of  formula
+    |Box2 of  formula
+
     (* multi-modal logic *) 
     |Diai of int *  formula
     |Boxi of int *  formula

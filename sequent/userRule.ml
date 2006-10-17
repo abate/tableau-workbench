@@ -328,5 +328,22 @@ module ExtList = struct
             ) (def [] n) l
         in List.combine s r
     ;;
+
+    let rec list_uniq = function 
+      | [] -> []
+      | h::[] -> [h]
+      | h1::h2::tl when h1 = h2 -> list_uniq (h2 :: tl) 
+      | h1::tl -> h1 :: list_uniq tl
+    ;;
+
+    let rec filter_map f =
+      function
+      | [] -> []
+      | hd :: tl ->
+          (match f hd with
+          | None -> filter_map f tl
+          | Some v -> v :: filter_map f tl)
+    ;;
+
 end
 

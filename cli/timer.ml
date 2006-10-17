@@ -22,5 +22,5 @@ let trigger_alarm timeout =
 ;;
 
 let to_string usertime =
-    Printf.sprintf "Time: %.4f" usertime 
+    Printf.sprintf "Time:%.4f" usertime 
 ;;

@@ -9,7 +9,7 @@ struct
   let debug = ref 0
   let trace = ref false
   let timeout = ref 0
-  let quite = ref false
+  let verbose = ref false
 
   let outdir = ref "trace"
   let outtype = ref ""
@@ -18,7 +18,7 @@ struct
 end
 ;;
 
-let usage = "usage: twb [-options] [file]"
+let usage name = Printf.sprintf "usage: %s [-options] [file]" name
 
 let arg_options =
     [
@@ -28,7 +28,7 @@ let arg_options =
      ("--debug", Arg.Int    (fun l -> Options.debug := l ), "debug level");
      ("--trace", Arg.Set    Options.trace, "print proof trace");
      ("--time",  Arg.Int    (fun l -> Options.timeout := l), "set exec timeout");
-     ("--quite", Arg.Set    Options.quite, "print the result only");
+     ("--verbose", Arg.Set    Options.verbose, "print additional information");
 
      ("--outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
      ("--out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
@@ -108,7 +108,7 @@ let init ?(options=[]) () =
         with Option.No_value -> []
     in
     let _ =
-        try Arg.parse (options@custom_options) file usage
+        try Arg.parse (options@custom_options) file (usage Sys.argv.(0))
         with Arg.Bad s -> failwith s
     in 
     let _ = 
@@ -148,8 +148,9 @@ let main () =
             try
                 let line = get_line () in
                 let _ = 
-                    if !Options.quite then ()
-                    else Printf.printf "Proving: %s\n" line
+                    if !Options.verbose
+                    then Printf.printf "Proving: %s \n" line
+                    else ()
                 in
                 let node = newnode line in
                 (* still a bit hackish way of setting user prefs *)
@@ -163,12 +164,12 @@ let main () =
                 let result = Llist.hd (Visit.visit cache strategy node) in
                 let time = Timer.stop_timing start in
 
-                Printf.printf "%s\nResult: %s\nTotal Rules applications:%d\n"
+                Printf.printf "%s\nResult:%s\nTotal Rules applications:%d\n"
                     (Timer.to_string time)
                     (exit_function result)
                     !UserRule.nodeid;
 
-                if !Options.cache then
+                if !Options.cache && !Options.verbose then
                     Printf.printf "%s\n\n"
                     cache#stats
                 else print_newline ();

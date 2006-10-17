@@ -151,27 +151,23 @@ let expand_matchpatt _loc =
 ;;
 
 let rec build_hist_type t =
-    let all_basic =
-        List.for_all (function |Ast.Type(id) -> true |_ -> false)
-    in
-    let rec aux = function
-        |Ast.Type("Set") 
-        |Ast.Type("List") -> failwith "basic type not specified : Ex: Set of Formula"
-        |Ast.Type(id) -> id 
-        |Ast.Container("Set",l) when all_basic l -> "Set"
-        |Ast.Container(id,l) -> id ^ (inner l)
-    and inner l =
+    let rec inner l =
         List.fold_left (fun s ->
             function
-                |Ast.Type(id) -> s
-                |e -> s ^ (aux e)
+                |Ast.Type("Set") 
+                |Ast.Type("List") -> failwith "basic type not specified : Ex: Set of Formula"
+                |Ast.Type(id) -> s ^ id 
+                |Ast.Container("Set",[Ast.Type(id)]) -> "Set"
+                |Ast.Container("List",[Ast.Type(id)]) -> "List"
+                |Ast.Container(id,l) -> id ^ (inner l)
             ) "" l
     in
     match t with
     |Ast.Type("Set") 
     |Ast.Type("List") -> failwith "basic type not specified : Ex: Set of Formula"
     |Ast.Type(id) -> ("Singleton",id)
-    |Ast.Container("Set",l) -> ("Set", inner l)
+    |Ast.Container("Set",[Ast.Type(id)]) -> ("Set", id)
+    |Ast.Container("List",[Ast.Type(id)]) -> ("List", id)
     |Ast.Container(id,l) -> (id ^ inner l, inner l)
 ;;
 
@@ -372,6 +368,8 @@ let expand_single _loc term =
     >>
 ;;
 
+(* if ruleid is None then the function is generating a term in a custom function
+    * outside the tablaue defintion *)
 let rec build_term _loc ?ruleid ?(naked=false) ?(action=false) term =
     let ids = unique (get_term_ids term) in
     let expr = expand_term_expr _loc term in
@@ -464,7 +462,9 @@ let rec build_term _loc ?ruleid ?(naked=false) ?(action=false) term =
                 |_ -> failwith ("__build")]
                 >>
     |_ -> 
-            if Option.is_none ruleid then build_term_aux2 term
+            if List.length ids = 0 then
+                <:expr< fun _ _ _ -> [`LabeledFormula ([], $expr$)] >>
+            else if Option.is_none ruleid then build_term_aux2 term
             else
                 let l = Hashtbl.find rule_table (Option.get ruleid) in
                 if List.mem (patt_to_string ~generic:false term) l

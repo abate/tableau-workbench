@@ -110,37 +110,34 @@ let find_patt_table _loc = function
     |_ -> ""
 ;;
 
-let rec compare_term_patt p1 p2 =
+let sort_pattlist l =
     let rec depth_term_patt = function
         |Ast.Bicon(s,a,b) -> 1 + max (depth_term_patt a) (depth_term_patt b)
         |Ast.Ucon(s,a) -> 1 + (depth_term_patt a)
         |_ -> 0
     in
-    let dp1 = depth_term_patt p1 in
-    let dp2 = depth_term_patt p2 in
-    match p1,p2 with
-    |Ast.Bicon(s1,_,_), Ast.Bicon(s2,_,_) ->
-            if dp1 = dp2 then compare s1 s2
-            else compare dp1 dp2
-    |Ast.Ucon(s1,_), Ast.Ucon(s2,_) ->
-            if dp1 = dp2 then compare s1 s2
-            else compare dp1 dp2
-    |_,_ -> 1
-;; 
-
-let sort_pattlist l =
     let cmp (s1,t1) (s2,t2) =
-        if s1 = s2 then 0
-        else compare_term_patt t1 t2
+        let dp1 = depth_term_patt t1 in
+        let dp2 = depth_term_patt t2 in
+        if s1 = s2 || dp1 = dp2 then 0
+        else if dp1 < dp2 then -1 else 1
     in
-    let rec unique_aux = function
-        |[] -> []
+    let rec unique_aux selected = function
+        |[] -> selected
         |(s1,t1)::tl ->
-                (s1,t1) :: unique_aux (
-                    List.filter (fun (s2,_) -> not(s1 = s2)) tl
-                    )
+                let (copies,different) = List.partition (fun (s2,t2) ->
+                        if s1 = s2 then true
+                        else
+                            match t1,t2 with
+                            |Ast.Bicon(ss1,_,_), Ast.Bicon(ss2,_,_) -> ss1 = ss2
+                            |Ast.Ucon(ss1,_), Ast.Ucon(ss2,_) -> ss1 = ss2
+                            |_,_ -> false
+                    ) (tl@selected)
+                in
+                let theone = List.hd (List.sort cmp ((s1,t1)::copies)) in
+                unique_aux (theone::different) tl
     in
-    unique_aux (List.sort cmp l)
+    unique_aux [] (List.rev(List.sort compare l))
 ;;
 
 let list_to_exprlist _loc l =

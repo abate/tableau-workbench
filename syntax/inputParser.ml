@@ -65,7 +65,8 @@ let buildParser table s =
     let _ =
         List.iter(function
             |"Const",[name],`Const -> add_const name
-            |"Zero",[op],`Uconn(co) -> add_uconn op co
+            (* FIXME: this code has to be reviewed to add more levels *)
+            |_,[op],`Uconn(co) -> add_uconn op co
             |"Zero",[op1;op2],`Muconn(co) -> add_muconn op1 op2 co
             |lev,[op],`Biconn(co) -> add_biconn lev op co
             |_ -> failwith "buildParser"
