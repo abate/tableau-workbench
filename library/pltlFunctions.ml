@@ -21,7 +21,7 @@ let push (xa,xb,z,ev,br) =
     in br#add (set, ev)
 ;;
 
-let termfalse = `Formula ( term ( Falsum )) ;; 
+let termfalse = `Formula( term ( Falsum )) ;; 
 let setclose () = (new Set.set)#add termfalse ;;
 let setclosen br = br#length ;;
 
@@ -73,7 +73,7 @@ let setuev (xa,xb,z,ev,br) =
     let loopset = ((ev#elements) @ (buildset (i+1) br2 [])) in 
     let uev = 
         set#filter (function
-            |`Formula term ( X ( c Un d ) ) -> 
+            |`LabeledFormula ([], term ( X ( c Un d ) )) -> 
                     not(List.mem (`Formula d) loopset)
             |_ -> false
         )

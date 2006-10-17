@@ -12,6 +12,7 @@ CONNECTIVES
 END
 
 HISTORIES
+(DIAMONDS : Set of Formula := new Set.set);
 (BOXES : Set of Formula := new Set.set);
 (Idx : Int := new Set.set default 0);
 (bj : ListInt := new Set.set default [])
@@ -25,23 +26,44 @@ open Pcopt
 
 TABLEAU
 
-  RULE K
+  RULE S4
   { Dia a } ; Box x ; z
   ----------------------
-    a ; x
+  a ; x ; Box x
 
-  ACTION [ BOXES := clear(BOXES) ]
+  COND notin(Dia a, DIAMONDS)
+  ACTION [ DIAMONDS := add(Dia a,DIAMONDS) ]
+  BACKTRACK [ bj := mergelabel(bj@all, status@last) ]
+  END (cache)
+
+  RULE S4H
+  { Dia a } ; Box x ; Dia y ; z
+  ===============================
+      a ; x ; Box x || Dia y ; Box x
+
+  COND notin(Dia a, DIAMONDS)
+
+  ACTION [
+      [ DIAMONDS := add(Dia a,DIAMONDS);
+        DIAMONDS := add(Dia y,DIAMONDS)];
+
+      [ DIAMONDS := add(Dia a,DIAMONDS) ]
+  ]
+
+  BRANCH [ not_emptylist(Dia y) ]
   BACKTRACK [ bj := mergelabel(bj@all, status@last) ]
   END (cache)
 
   RULE T
   { Box a }
   =========
-     a ; Box a
+   a ; Box a
 
   COND notin(a, BOXES)
 
-  ACTION [ BOXES := add(a,BOXES) ]
+  ACTION [
+      BOXES    := add(a,BOXES);
+      DIAMONDS := emptyset (DIAMONDS) ]
   END
 
   RULE Id
@@ -82,5 +104,5 @@ NEG := neg
 
 let saturate = tactic ( (False|Id|And|T|Or)* )
 
-STRATEGY := ( ( saturate | K )* )
+STRATEGY := ( ( saturate | S4H )* )
 

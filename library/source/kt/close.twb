@@ -1,5 +1,5 @@
-Box(p0 & p1)  <->  Box p0 & Box p1 
-Dia(p0 v p1)  <->  Dia p0 v Dia p1 
+Box(p0 & p1)  <->  (Box p0 & Box p1)
+Dia(p0 v p1)  <->  (Dia p0 v Dia p1)
 ~  Box ~  p0 <-> Dia p0 
 Box p0 -> p0 
 Box p1 -> p1

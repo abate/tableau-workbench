@@ -1,10 +1,10 @@
 
 CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
+  DImp, "_<->_", Two;
+  And, "_&_",  One;
+  Or,  "_v_",  One;
   Not, "~_",   Zero;
   Imp, "_->_", One;
-  DImp, "_<->_", One;
   Box, "Box_", Zero;
   Dia, "Dia_", Zero;
   Falsum, Const;
@@ -17,6 +17,7 @@ END
 
 SIMPLIFICATION := Kopt.simpl
 let nnf_term l = ([],Kopt.nnf (Basictype.unbox(List.hd l))) ;;
+let nnf = Kopt.nnf ;;
 
 open Twblib
 open Klib
@@ -24,28 +25,28 @@ open Klib
 TABLEAU
 
   RULE K
-  { Dia a } ; z
+  { Dia a } ; Box x ; z
   ----------------------
-    a ; BOXES
+    a ; x[a]
 
   ACTION [ BOXES := clear(BOXES) ]
-  END
+  END (cache)
 
   RULE T
   { Box a }
   =========
-     a
+     a ; Box a
 
   COND notin(a, BOXES)
 
   ACTION [ BOXES := add(a,BOXES) ]
   END
- 
+
   RULE Id
   { a } ; { ~ a }
   ===============
     Close
-  END
+  END (cache)
 
   RULE False
     Falsum
@@ -55,14 +56,14 @@ TABLEAU
 
   RULE And
   { a & b } ; x
-  ==========
-      a[b] ; b[a] ; x[a][b]
+  =========
+    a[b] ; b[a] ; x[a][b]
   END
   
   RULE Or
   { a v b } ; x
  =================================
-     a ; x[a] | b[nnf_term (~ a)] ; x[b][nnf_term (~ a)]
+     a ; x[a] | b[nnf_term(~ a)] ; x[b][nnf_term(~ a)]
   END
 
 END

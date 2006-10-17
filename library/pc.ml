@@ -26,15 +26,15 @@ TABLEAU
   END
 
   RULE And
-  a & b 
+  { a & b }
  ==========
-     a ; b 
+   a ; b 
   END
   
   RULE Or
   { a v b }
  ==========
-     a | b 
+   a | b 
   END
 
 END

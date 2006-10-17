@@ -74,27 +74,46 @@ let nnf f =
     in let (_,f') = aux f in f'
 ;;
 
-(* A[phi] *)
+let rec boolean t =
+    let aux = function
+        |term (a & b) when a = b -> a
+        |term (a v b) when a = b -> a
+        |term (Verum & b)  |term (b & Verum)  -> b
+        |term (Falsum & b) |term (b & Falsum) -> term (Falsum)
+        |term (Verum v b)  |term (b v Verum)  -> term (Verum)
+        |term (Falsum v b) |term (b v Falsum) -> b
+        |term (~ Verum)  -> term (Falsum)
+        |term (~ Falsum) -> term (Verum)
+        |a -> a
+    in match t with
+    |term (a & b) -> aux term ( [boolean (aux a)] & [boolean (aux b)] )
+    |term (a v b) -> aux term ( [boolean (aux a)] v [boolean (aux b)] )
+    |term (~ a)   -> aux term ( ~ [boolean (aux a)] )
+    |a -> aux a
+;;
+
+
 let rec simpl phi a =
-    if phi = a then term(Verum)
-    else if phi = (nnf (term ( ~ a ))) then term(Falsum)
-    else match a with
-    |term (~ b)   -> term ( ~ [simpl phi b] )
-    |term (b & c) -> term ( [simpl phi b] & [simpl phi c] )
-    |term (b v c) -> term ( [simpl phi b] v [simpl phi c] )
-    |_ -> a
+(*    Printf.printf "Simplification ! %s[%s]\n" (Twblib.sof(a)) (Twblib.sof(phi)); *)
+    let rec aux phi a = match a with
+        |term (~ b) when b = a -> term(Falsum)
+        |term (~ b)   -> term ( ~ [aux phi b] )
+        |term (b & c) -> term ( [aux phi b] & [aux phi c] )
+        |term (b v c) -> term ( [aux phi b] v [aux phi c] )
+        |_ when phi = a -> term(Verum)
+        |_ when phi = (nnf (term ( ~ a ))) -> term(Falsum)
+        |_ -> a
+    in
+    let r = boolean (aux phi a) in
+(*    Printf.printf "Result: %s\n\n" (Twblib.sof(r)) ;  *)
+    r
 ;;
 
 let inc (idx) = idx + 1 ;;
 
-let rec uniq = function
-    |[] -> []
-    |h::t -> h:: uniq (List.filter (fun x -> not(x = h)) t)
-;;
-
 let addlabel (tl1,tl2) =
     match List.hd tl1,List.hd tl2 with
-    |`LabeledFormula(l1,t1),`LabeledFormula(l2,t2) -> uniq(l1@l2)
+    |`LabeledFormula(l1,t1),`LabeledFormula(l2,t2) -> ExtList.list_uniq(l1@l2)
     |_ -> failwith "backjumping"
 ;;
 
@@ -111,7 +130,7 @@ let simpbj simpf (tl,sl) =
                                 else (il1@il2,a')
                             |_ -> failwith "simplbj"
                         ) (l,t) sl
-                    in `LabeledFormula(uniq rl,rt)
+                    in `LabeledFormula(ExtList.list_uniq rl,rt)
             |_ -> failwith "simpl"
         ) tl
     )
@@ -127,6 +146,6 @@ let fixlabel (idx,tl) =
 let backjumping (idx,intlist) = List.mem idx intlist ;;
 
 let mergelabel (intll, status) =
-    if status = "Open" then [] else uniq(List.flatten intll)
+    if status = "Open" then [] else ExtList.list_uniq(List.flatten intll)
 ;;
 

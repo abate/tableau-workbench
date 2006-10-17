@@ -61,10 +61,6 @@ in conjnf t
 
 let cnfl t =
     let i = ref 0 in
-    let rec uniq = function
-        |[] -> []
-        |h::t -> h:: uniq (List.filter (fun x -> not(x = h)) t)
-    in
     let rec lits = function
         |term ( A v B ) as t -> [t]
         |term ( A & B ) as t -> [t]
@@ -87,7 +83,7 @@ let cnfl t =
         |[] -> term (t & acc)
     in
     let t1 = cnf ( nnf t ) in
-    aux t1 term ( Verum ) (uniq ( lits t1 ))
+    aux t1 term ( Verum ) (ExtList.list_uniq ( lits t1 ))
 ;;
 
 (* formula list -> formula list *)

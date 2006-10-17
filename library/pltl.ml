@@ -1,15 +1,15 @@
 
 CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
+  DImp, "_<->_", Two;
+  And, "_&_",  One;
+  Or,  "_v_",  One;
   Imp, "_->_", One;
-  DImp, "_<->_", One;
   Until, "_Un_", One;
   Before, "_Bf_", One;
-  Not, "~_",   Zero;
   Next, "X_", Zero;
   Generally, "G_", Zero;
   Sometimes, "F_", Zero;
+  Not, "~_",   Zero;
   Falsum, Const;
   Verum, Const
 END
@@ -78,7 +78,7 @@ TABLEAU
       Br := push(X a, X b, z, Ev, Br)
   ]
 
-  END
+  END (cache)
 
   RULE Before
     {a Bf c}
@@ -92,8 +92,8 @@ TABLEAU
   =============================
       d ||| c ; X ( c Un d ) 
 
-  ACTION    [ [ Ev := add(d, Ev) ] ; [] ]
-  BRANCH    [ [ not_emptyset(uev@1) ] ] 
+  ACTION    [ Ev := add(d, Ev) ] 
+  BRANCH    [ not_emptyset(uev@1) ] 
   BACKTRACK [ 
       uev := beta(uev@1, uev@2, n@1, n@2, Br);
       n := min (n@1, n@2)
@@ -106,7 +106,7 @@ TABLEAU
   =========
    a ||| b
 
-  BRANCH [ [ not_emptyset(uev@1) ] ]  
+  BRANCH [ not_emptyset(uev@1) ]  
   BACKTRACK [ 
       uev := beta(uev@1, uev@2, n@1, n@2, Br);
       n := min (n@1 , n@2)

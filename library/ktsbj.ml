@@ -11,24 +11,30 @@ CONNECTIVES
   Verum, Const
 END
 
+open Twblib
+open Klib
+open Pcopt
+
 HISTORIES
 (BOXES : Set of Formula := new Set.set);
 (Idx : Int := new Set.set default 0);
 (bj : ListInt := new Set.set default [])
 END
 
-let nnf_term l = Basictype.map Kopt.nnf l ;; 
+let nnf_term l = [`LabeledFormula([],Kopt.nnf (Basictype.unbox(List.hd l)))] ;;
 
-open Twblib
-open Klib
-open Pcopt
+let simpl (tl,sl) = Pcopt.simpbj Kopt.simpl (tl,sl);;
+let addlabelf = function
+    `LabeledFormula(l,_) -> l
+    |_ -> failwith "addlabelf"
+;;
 
 TABLEAU
 
   RULE K
   { Dia a } ; Box x ; z
   ----------------------
-    a ; x
+  a ; simpl(x,[a])
 
   ACTION [ BOXES := clear(BOXES) ]
   BACKTRACK [ bj := mergelabel(bj@all, status@last) ]
@@ -56,19 +62,22 @@ TABLEAU
     Falsum
   =========
     Close
+
+  BACKTRACK [ bj := addlabelf(Falsum) ]
   END
 
   RULE And
-  { a & b }
+  { a & b } ; x
   ==========
-    a ; b
+      simpl(a,[b]) ; simpl(b,[a]) ; simpl(x,[a;b])
   END
   
   RULE Or
-  { a v b } 
+  { a v b } ; x
  =================================
-     fixlabel(Idx,a) | fixlabel(Idx,b) ; nnf_term(~ a)
-   
+     fixlabel(Idx,a) ; simpl(x,[fixlabel(Idx,a)]) | 
+     simpl(fixlabel(Idx,b),[nnf_term(~ a)]) ; simpl(x,[fixlabel(Idx,b);nnf_term(~ a)])
+
   ACTION    [[ Idx := inc(Idx) ]; [ Idx := inc(Idx) ]]
   BRANCH    [ backjumping(Idx, bj@1) ]
   BACKTRACK [ bj := mergelabel(bj@all, status@last) ]

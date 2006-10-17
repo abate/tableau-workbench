@@ -104,3 +104,29 @@ let rec simpl phi a =
     r
 ;;
 
+let rec simpl4 phi a =
+(*    Printf.printf "Simplification ! %s[%s]\n" (Twblib.sof(a)) (Twblib.sof(phi)); *)
+    let rec aux phi a = match a with
+        |term (~ b) when b = a -> term(Falsum) 
+        |term (~ b)   -> term ( ~ [aux phi b] )
+        |term (b & c) -> term ( [aux phi b] & [aux phi c] )
+        |term (b v c) -> term ( [aux phi b] v [aux phi c] )
+        |term (Box b) ->
+                begin match phi with
+                |term (Box phi') -> term ( Box [aux phi' (aux phi b)] )
+                |_ -> a
+                end
+        |term (Dia b) ->
+                begin match phi with
+                |term (Box phi') -> term ( Dia [aux phi' (aux phi b)] )
+                |_ -> a
+                end
+        |_ when phi = a -> term(Verum)
+        |_ when phi = (nnf (term ( ~ a ))) -> term(Falsum)
+        |_ -> a
+    in
+    let r = boolean (aux phi a) in
+(*    Printf.printf "Result: %s\n\n" (Twblib.sof(r)) ;  *)
+    r
+;;
+

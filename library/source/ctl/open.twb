@@ -1,3 +1,4 @@
+# counter  
 ~ ( AxG (AxF (p & q) & AxF (p & ~ q) & AxF (~ p & q)) )
 # from Ben-Ari T19 ExG/AxG
 AxG ((p v AxG q) & ( AxG p v q )) <-> (AxG p v AxG q)
