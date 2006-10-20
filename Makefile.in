@@ -1,0 +1,70 @@
+
+OCAMLC   = @OCAMLC@
+OCAMLOPT = @OCAMLOPT@
+OCAMLLIB = @OCAMLLIB@
+OCAMLVERSION = @OCAMLVERSION@
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+BINDIR=@bindir@
+MANDIR=@mandir@
+
+# library install directory
+LIBDIR=$(prefix)/$(OCAMLLIB)/twb
+
+OCAMLMAKEFILE=../utils/OCamlMakefile
+# as fast as we can !
+OCAMLFLAGS=-unsafe -noassert
+export OCAMLMAKEFILE OCAMLFLAGS
+
+#######################################################
+all: nc
+
+nc:
+	cd core && make && cp *.cm* *.a ../twb/
+	cd types && make && cp *.cm* *.a ../twb/
+	export OCAMLPATH=@OCAMLPATH@ && cd sequent && make && cp *.cm* *.a ../twb/
+	export OCAMLPATH=@OCAMLPATH@ && cd syntax && make && cp *.cm* *.a ../twb/
+	export OCAMLPATH=@OCAMLPATH@ && cd cli && make && cp *.cm* *.a ../twb/
+	cd utils && make && cp twbcompile ../library
+
+provers: library/pc.ml library/k.ml library/kt.ml library/s4.ml library/pltl.ml
+	export OCAMLPATH=@OCAMLPATH@ && cd library && \
+	    ./twbcompile -o pc.twb pc.ml && \
+	    ./twbcompile -o k.twb k.ml && \
+	    ./twbcompile -o kt.twb kt.ml && \
+	    ./twbcompile -o s4.twb s4.ml && \
+	    ./twbcompile -o pltl.twb pltl.ml
+
+clean:
+	cd core && make clean
+	cd types && make clean
+	cd sequent && make clean
+	cd syntax && make clean
+	cd cli && make clean
+	cd utils && make clean
+	cd twb && rm -f *.cm* *.a *.o twb*
+
+install:
+	mkdir -p $(LIBDIR)
+	mkdir -p $(BINDIR)
+	cp twb/* $(LIBDIR)
+	ranlib $(LIBDIR)/*.a
+	cp utils/twbcompile $(BINDIR)/twbcompile
+
+install-provers:
+	cp library/*.twb $(BINDIR)
+
+clean-provers:
+	rm library/*.twb
+
+##########################################################
+Makefile: Makefile.in config.status
+	./config.status
+
+config.status:
+	./config.status --recheck
+
+configure: configure.in
+	autoconf
+

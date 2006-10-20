@@ -1,4 +1,3 @@
-include ../Makefile.conf
 
 SOURCES := \
 	llist.ml \
@@ -11,12 +10,5 @@ SOURCES := \
 	visit.ml \
 	
 RESULT := twbcore
-
-PACKS := extlib
-
-OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
-DOC_FILES := $(SOURCES)
-
 all: ncl 
-
 include $(OCAMLMAKEFILE)

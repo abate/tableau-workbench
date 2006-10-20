@@ -1,4 +1,3 @@
--include ../Makefile.conf
 
 define PROJ_tableau
   USE_CAMLP4 = yes

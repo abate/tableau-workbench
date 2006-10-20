@@ -1,4 +1,3 @@
-include ../Makefile.conf
 
 USE_CAMLP4 = yes
 SOURCES := \

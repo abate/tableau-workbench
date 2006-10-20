@@ -1,0 +1,74 @@
+#
+# autoconf input for Objective Caml programs
+# Copyright (C) 2001 Jean-Christophe Filliâtre
+#   from a first script by Georges Mariano 
+# 
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Library General Public
+# License version 2, as published by the Free Software Foundation.
+# 
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# 
+# See the GNU Library General Public License version 2 for more details
+# (enclosed in the file LGPL).
+
+AC_INIT(Makefile.in)
+
+# Check for Ocaml compilers
+AC_CHECK_PROG(OCAMLC,ocamlc,ocamlc,no)
+if test "$OCAMLC" = no ; then
+	AC_MSG_ERROR(Cannot find ocamlc.)
+fi
+
+OCAMLVERSION=`$OCAMLC -v | sed -n -e 's|.*version *\(.*\)$|\1|p' `
+echo "ocaml version is $OCAMLVERSION"
+
+OCAMLLIB=`$OCAMLC -v | tail -1 | cut -f 4 -d " "`
+echo "ocaml library path is $OCAMLLIB"
+
+
+#if test $OCAMLVERSION in
+#    3.0[9].2 )
+#	AC_MSG_RESULT(ok)
+#    *)
+#	AC_MSG_ERROR(Version of ocaml is too old.)
+#esac
+
+AC_CHECK_PROG(OCAMLOPT,ocamlopt,ocamlopt,no)
+if test "$OCAMLOPT" = no ; then
+    	AC_MSG_ERROR(Cannot find ocamlopt.)
+	AC_MSG_WARN(Cannot find ocamlopt; You can try to compile bytecode manually)
+fi
+
+AC_CHECK_PROG(OCAMLDEP,ocamldep,ocamldep,no)
+if test "$OCAMLDEP" = no ; then
+	AC_MSG_ERROR(Cannot find ocamldep.)
+fi
+
+AC_CHECK_PROG(OCAMLFIND,ocamlfind,ocamlfind,no)
+if test "$OCAMLFIND" = no ; then
+	AC_MSG_ERROR(ocamlfind not found.)
+fi
+
+echo -n "Checking for extlib ... "
+EXTLIB=`ocamlfind query extlib`
+if test "$EXTLIB" = ""; then
+	AC_MSG_ERROR(extlib not found.)
+else
+    	AC_MSG_RESULT(ok)
+fi
+
+OCAMLPATH=`pwd`
+# substitutions to perform
+AC_SUBST(OCAMLC)
+AC_SUBST(OCAMLOPT)
+AC_SUBST(OCAMLDEP)
+AC_SUBST(OCAMLVERSION)
+AC_SUBST(OCAMLLIB)
+AC_SUBST(OCAMLPATH)
+
+# Finally create the Makefile from Makefile.in
+AC_OUTPUT(Makefile)
+chmod a-w Makefile

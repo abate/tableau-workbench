@@ -9,14 +9,14 @@ package "core" (
 	description = "twb core"
 	requires = "extlib"
 	browse_interfaces = "Llist Data"
-	archive(byte) = "twbcore.cma"
+#	archive(byte) = "twbcore.cma"
 	archive(native) = "twbcore.cmxa"
 )
 
 package "types" (
 	version = "[distributed with TWB]"
 	description = "twb data structures"
-	archive(byte) = "twbtypes.cma"
+#	archive(byte) = "twbtypes.cma"
 	archive(native) = "twbtypes.cmxa"
 )
 
@@ -24,21 +24,21 @@ package "parser" (
 	version = "[distributed with TWB]"
 	description = "input parser"
 	requires = "camlp4.gramlib"
-	archive(byte) = "inputParser.cma"
+#	archive(byte) = "inputParser.cma"
 	archive(native) = "inputParser.cmxa"
 )
 
 package "sequent" (
 	version = "[distributed with TWB]"
 	description = "twb sequent/tableau library"
-	archive(byte) = "twbseq.cma"
+#	archive(byte) = "twbseq.cma"
 	archive(native) = "twbseq.cmxa"
 )
 
 package "cli" (
 	version = "[distributed with TWB]"
 	description = "twb command line interface"
-	archive(byte) = "twbcli.cma"
+#	archive(byte) = "twbcli.cma"
 	archive(native) = "twbcli.cmxa"
 )
 

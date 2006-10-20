@@ -1,4 +1,3 @@
-include ../Makefile.conf
 
 SOURCES := \
 	sbl.ml \
@@ -15,9 +14,6 @@ SOURCES := \
 
 RESULT := twbseq
 PACKS := twb.core twb.types
-
-OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
-DOC_FILES := $(SOURCES)
 
 all: ncl
 

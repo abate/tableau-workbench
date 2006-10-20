@@ -1,0 +1,60 @@
+
+Pre-Requesites
+==============
+
+To install and run the TWB is essential to have the following 
+software installed on the system
+
+1- ocaml compiler version 3.09.2
+2- findlib
+3- extlib
+
+1- the ocaml compiler can be downloaded from:
+   http://caml.inria.fr/ocaml/index.en.html
+
+   Ocaml is avalaible for a range of gnu/linux distribution
+   http://caml.inria.fr/ocaml/release.en.html
+
+   MacOsX users can install ocaml via fink/apt (unstable)
+   or using the pre-compiled image from the inria page above.
+   See this page for help:
+   http://wiki.cocan.org/getting_started_with_ocaml_on_mac_os_x
+
+   Ocaml is also avalaible via GODI: http://godi.ocaml-programming.de/
+   
+2- findlib can be downloaded from:
+   http://www.ocaml-programming.de/programming/findlib.html
+
+   findlib is avalaible in pre-compiled format for a range
+   of gnu/linux distribution. the findlib package in debian Gnu/linux
+   is called ocaml-findlib
+
+   findlib is also avalaible via GODI: http://godi.ocaml-programming.de/
+   MacOsX users can install findlib either manually or via godi as
+   findlib is not avalaible via fink/apt
+
+3- extlib library can be downloaded from
+   http://ocaml-lib.sourceforge.net/
+
+   extlib is avalaible in pre-compiled format for a range 
+   of gnu/linux distribution. the extlib package in debian Gnu/linux
+   is called libextlib-ocaml-dev.
+
+   MacOsX users can install findlib via fink/apt (unstable)
+   the name of the package is ocaml-lib.
+
+Basic Installation
+==================
+
+To install the TWB, the shell commands 
+`./configure; make; make install' should
+configure, build, and install this package.
+
+The install script will install the TWB libraries in your ocaml
+directory, and few example scripts in the directory /usr/bin.
+
+You can specify a different installation path via the option
+--prefix . However notice that in this case you must set the 
+environment variable OCAMLPATH (used by the findlib library) to
+locate the directory where the TWB libraries are installed.
+

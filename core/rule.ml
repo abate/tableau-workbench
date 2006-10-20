@@ -2,7 +2,6 @@
 open Llist
 open Node
 open Tree
-open ExtLib
 
 class type ['a] ct = 
     object('c)
