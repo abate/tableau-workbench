@@ -26,15 +26,15 @@ nc:
 	export OCAMLPATH=@OCAMLPATH@ && cd sequent && make && cp *.cm* *.a ../twb/
 	export OCAMLPATH=@OCAMLPATH@ && cd syntax && make && cp *.cm* *.a ../twb/
 	export OCAMLPATH=@OCAMLPATH@ && cd cli && make && cp *.cm* *.a ../twb/
-	cd utils && make && cp twbcompile ../library
+	cd utils && make 
 
 provers: library/pc.ml library/k.ml library/kt.ml library/s4.ml library/pltl.ml
 	export OCAMLPATH=@OCAMLPATH@ && cd library && \
-	    ./twbcompile -o pc.twb pc.ml && \
-	    ./twbcompile -o k.twb k.ml && \
-	    ./twbcompile -o kt.twb kt.ml && \
-	    ./twbcompile -o s4.twb s4.ml && \
-	    ./twbcompile -o pltl.twb pltl.ml
+	    ../utils/twbcompile -o pc.twb pc.ml && \
+	    ../utils/twbcompile -o k.twb k.ml && \
+	    ../utils/twbcompile -o kt.twb kt.ml && \
+	    ../utils/twbcompile -o s4.twb s4.ml && \
+	    ../utils/twbcompile -o pltl.twb pltl.ml
 
 clean:
 	cd core && make clean
@@ -45,6 +45,9 @@ clean:
 	cd utils && make clean
 	cd twb && rm -f *.cm* *.a *.o twb*
 
+dist-clean: clean clean-provers
+	rm -f config.status config.log config.cache Makefile
+
 install:
 	mkdir -p $(LIBDIR)
 	mkdir -p $(BINDIR)
@@ -53,10 +56,11 @@ install:
 	cp utils/twbcompile $(BINDIR)/twbcompile
 
 install-provers:
+	mkdir -p $(BINDIR)
 	cp library/*.twb $(BINDIR)
 
 clean-provers:
-	rm library/*.twb
+	rm -f library/*.twb
 
 ##########################################################
 Makefile: Makefile.in config.status
