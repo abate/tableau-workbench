@@ -8,9 +8,7 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 BINDIR=@bindir@
 MANDIR=@mandir@
-
-# library install directory
-LIBDIR=$(prefix)/$(OCAMLLIB)/twb
+LIBDIR=$(OCAMLLIB)/site-lib/twb
 
 OCAMLMAKEFILE=../utils/OCamlMakefile
 # as fast as we can !
@@ -29,6 +27,7 @@ nc:
 	cd utils && make 
 
 provers: library/pc.ml library/k.ml library/kt.ml library/s4.ml library/pltl.ml
+	ranlib @OCAMLPATH@/twb/*.a
 	export OCAMLPATH=@OCAMLPATH@ && cd library && \
 	    ../utils/twbcompile -o pc.twb pc.ml && \
 	    ../utils/twbcompile -o k.twb k.ml && \
@@ -53,7 +52,7 @@ install:
 	mkdir -p $(BINDIR)
 	cp twb/* $(LIBDIR)
 	ranlib $(LIBDIR)/*.a
-	cp utils/twbcompile $(BINDIR)/twbcompile
+	cp utils/twbcompile $(BINDIR)
 
 install-provers:
 	mkdir -p $(BINDIR)
@@ -61,6 +60,24 @@ install-provers:
 
 clean-provers:
 	rm -f library/*.twb
+
+# Make MacOS X package
+
+.PHONY: package-macosx
+
+package-macosx: clean-macosx
+	sh configure --prefix=/usr/local
+	mkdir -p package-macosx/root$(BINDIR)
+	mkdir -p package-macosx/root$(LIBDIR)
+	cp twb/* package-macosx/root$(LIBDIR)
+	cp library/*.twb package-macosx/root$(BINDIR)
+	cp utils/twbcompile package-macosx/root$(BINDIR)
+	export VERSION=3.3 && sh utils/make-package-macosx
+	#rm -rf package-macosx/root
+
+clean-macosx:
+	sudo rm -rf package-macosx
+	#rm -rf package-macosx/*.pkg package-macosx/*.dmg
 
 ##########################################################
 Makefile: Makefile.in config.status
