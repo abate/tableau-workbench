@@ -22,13 +22,13 @@ TABLEAU
       a ; x || Dia y ; Box x
 
   BRANCH [ not_emptylist(Dia y) ]
-  END (cache)
+  END (CACHE)
 
   RULE K
   { Dia a } ; Box x ; z
   ----------------------
     a ; x
-  END (cache)
+  END (CACHE)
  
   RULE Id
   { a } ; { ~ a }

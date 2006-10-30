@@ -28,7 +28,7 @@ TABLEAU
   
   COND notin(Dia a, DIAMONDS)
   ACTION [ DIAMONDS := add(Dia a,DIAMONDS) ]
-  END (cache)
+  END (CACHE)
 
   RULE S4H
   { Dia a } ; Dia y ; z
@@ -42,7 +42,7 @@ TABLEAU
 
       [ DIAMONDS := add(Dia a,DIAMONDS) ]
   ]
-  END (cache)
+  END (CACHE)
 
   RULE T
   { Box a }

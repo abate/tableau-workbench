@@ -78,7 +78,7 @@ TABLEAU
       Br := push(X a, X b, z, Ev, Br)
   ]
 
-  END (cache)
+  END (CACHE)
 
   RULE Before
     {a Bf c}

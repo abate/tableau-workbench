@@ -71,7 +71,7 @@ TABLEAU
   ] ; [] ] 
   BRANCH [ [ not_false(uev@1) ; not_empty_list(ExX s) ] ]
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
-  END (cache)
+  END (CACHE)
 
   RULE Ref
   ExX x ; {AxX p} == ExX Verum ; AxX p

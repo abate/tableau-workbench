@@ -927,11 +927,7 @@ let rec expand_tactic _loc = function
 
 let expand_strategy _loc (Ast.Strategy t) =
     let ext = expand_tactic _loc t in
-    let str =
-        <:str_item< Logic.__strategy.val := Some(Strategy.strategy $ext$) >>
-    in
-    let main = <:str_item< Twb.main () >> in
-    <:str_item< declare $list:[str;main]$ end >>
+    <:str_item< Logic.__strategy.val := Some(Strategy.strategy $ext$) >>
 ;;
 
 let expand_preproc _loc e =

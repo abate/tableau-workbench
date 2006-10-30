@@ -181,3 +181,5 @@ let main () =
     with
     |End_of_file |Stream.Failure -> exit 0
 ;;
+
+let _ = main () ;;

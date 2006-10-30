@@ -21,9 +21,17 @@ all: nc
 nc:
 	cd core && make && cp *.cm* *.a ../twb/
 	cd types && make && cp *.cm* *.a ../twb/
-	export OCAMLPATH=@OCAMLPATH@ && cd sequent && make && cp *.cm* *.a ../twb/
-	export OCAMLPATH=@OCAMLPATH@ && cd syntax && make && cp *.cm* *.a ../twb/
-	export OCAMLPATH=@OCAMLPATH@ && cd cli && make && cp *.cm* *.a ../twb/
+	export OCAMLPATH=/home/abate/Projects/twb-dev \
+            && cd sequent \
+            && make \
+            && cp *.cm* *.a ../twb/
+	export OCAMLPATH=/home/abate/Projects/twb-dev \
+            && cd syntax \
+            && make \
+            && cp *.cm* *.a ../twb/
+	export OCAMLPATH=/home/abate/Projects/twb-dev \
+            && cd cli && make \
+            && cp *.cm* *.a *.o ../twb/
 	cd utils && make 
 
 provers: library/pc.ml library/k.ml library/kt.ml library/s4.ml library/pltl.ml

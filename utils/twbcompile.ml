@@ -9,6 +9,7 @@ module Options = struct
     let compileonly = ref false
     let output = ref ""
     let bytecode = ref false
+    let custom = ref ""
     
     let clean = ref false
     
@@ -22,7 +23,8 @@ let options = [
     ("-v",  Arg.Set Options.verbose, "verbose");
     ("-c",  Arg.Set Options.compileonly, "compile only (do not link)");
     ("-b",  Arg.Set Options.bytecode, "bytecode");
-    ("-o",  Arg.Set_string Options.output,  "<file>  Set output file name to <file>");
+    ("-o",  Arg.Set_string Options.output,  "<file> Set output file name to <file>");
+    ("--custom", Arg.Set_string Options.custom, "<obj> custom init");
     
     ("-t",  Arg.Set_string Options.tmp,  "temporary directory");
     
@@ -181,12 +183,21 @@ let link l filename =
     let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
     let ext = if !Options.bytecode then ".cmo " else ".cmx " in
     let c =
-        "ocamlfind "^ ocaml ^" -package twb.thelot,twb.cli -unsafe -noassert -linkpkg -o " ^ 
-        filename ^ " "
+        "ocamlfind "^
+        ocaml ^
+        " -package twb.thelot,twb.cli -unsafe -noassert -linkpkg -o "^ 
+        filename ^" "
     in
     let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ext) c l in
-    print_verbose "Linking: %s\n" cmd;
-    ignore(system cmd)
+    if !Options.custom = "" then begin
+        print_verbose "Linking: %s\n" (cmd ^ " twb.cmx");
+        ignore(system (cmd ^ " twb.cmx"))
+        end
+    else
+        begin
+            print_verbose "Linking: %s\n" (cmd ^ !Options.custom);
+            ignore(system (cmd ^ " " ^ !Options.custom))
+        end
 ;;
 
 let remove_files () =
@@ -208,7 +219,7 @@ let main () =
             List.iter compile deplist;
             if not(!Options.compileonly) then begin
                 let output =
-                    if !Options.output = "" then noext(filename)
+                    if !Options.output = "" then (noext(filename)^".twb")
                     else !Options.output
                 in link deplist output;
             end;
