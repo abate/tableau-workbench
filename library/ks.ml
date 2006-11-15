@@ -58,5 +58,5 @@ NEG := neg
 
 let saturate = tactic ( (False|Id|And|Or)* )
 
-STRATEGY := ( ( saturate | K )* )
+STRATEGY := ( ( saturate ; K )* )
 

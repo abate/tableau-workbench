@@ -93,4 +93,4 @@ NEG := neg
 
 let saturation = tactic ( (False|Id|And|T|Or)* )
 
-STRATEGY ( saturation | S4H )*
+STRATEGY ( saturation ; S4H )*

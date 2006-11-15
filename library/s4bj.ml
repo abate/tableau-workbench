@@ -104,5 +104,5 @@ NEG := neg
 
 let saturate = tactic ( (False|Id|And|T|Or)* )
 
-STRATEGY := ( ( saturate | S4H )* )
+STRATEGY := ( ( saturate ; S4H )* )
 

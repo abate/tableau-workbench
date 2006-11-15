@@ -161,7 +161,14 @@ let main () =
             
                 let start = Timer.start_timing () in
                 let _ = Timer.trigger_alarm (!Options.timeout) in
-                let result = Llist.hd (Visit.visit cache strategy node) in
+                let result = 
+                    let lr = Visit.visit cache strategy node in
+                    if Llist.is_empty lr then begin
+                        Printf.printf "Tactic Error\n";
+                        Tree.Leaf(node)
+                    end else
+                        Llist.hd lr
+                in
                 let time = Timer.stop_timing start in
 
                 Printf.printf "%s\nResult:%s\nTotal Rules applications:%d\n"

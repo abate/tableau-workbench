@@ -143,6 +143,6 @@ PP := nnf_term
 NEG := neg_term
 EXIT := exit (uev@1)
 
-let saturation = tactic ( (Id | False | And | Before | Ge | Or | Until)* )
+let sat = tactic ( (Id | False | And | Before | Ge | Or | Until) )
 
-STRATEGY := ( ((saturation | Next)* | Loop)* )
+STRATEGY := (((sat)* ; (Next | Loop))* )

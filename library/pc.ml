@@ -42,6 +42,6 @@ END
 PP := nnf
 NEG := neg
 
-(* STRATEGY (Id;And;Or)*  *)
-STRATEGY (Id|And|Or)*
+let sat = tactic (Id|And|Or)
+STRATEGY ((sat)*)
 

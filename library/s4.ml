@@ -85,6 +85,6 @@ END
 PP := nnf
 NEG := neg
 
-let saturation = tactic ( (False|Id|And|T|Or)* )
+let sat = tactic ( (False|Id|And|T|Or) )
 
-STRATEGY ( saturation | S4H )*
+STRATEGY ( (sat)* ; S4H )*

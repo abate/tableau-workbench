@@ -59,7 +59,6 @@ END
 PP := Kopt.nnf
 NEG := neg
 
-let t = tactic ( (Id|False|And|Or)* )
-
-STRATEGY ( t | K )* 
+let sat = tactic ( (Id|False|And|Or) )
+STRATEGY ((sat)* ; K )*
 

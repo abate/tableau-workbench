@@ -5,14 +5,9 @@ sig
     type rule
     type context 
 
-    module MState :
-      sig
-        type res = (rule * context)
-        type continuation = Cont of (node -> res m Llist.llist)
-        and csstack = continuation Llist.llist
-        and state = csstack
-        and 'a m = state -> 'a * state
-      end
+    type res = ((rule * context) * continuation list)
+    and continuation = Cont of (node -> res Llist.llist)
+    type m = res Llist.llist
 
     type tactic =
         |Skip
@@ -23,7 +18,6 @@ sig
         |Alt of tactic * tactic
         |Repeat of tactic
 
-    type m = MState.res MState.m Llist.llist
     val strategy : tactic -> node -> m
 
 end
@@ -35,24 +29,9 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
     type rule = R.rule
     type context = R.context
     
-    module MState = struct
-        type res = (rule * context)
-        type continuation = Cont of (node -> res m Llist.llist)
-        and csstack = continuation Llist.llist
-        and state = csstack
-        and 'a m = state -> ('a * state)
-
-        let return a = fun s -> (a,s)
-        let bind m f = fun s -> let (a,s') = m s in f a s'
-(*
-        let run f = fun s -> f s
-        let show m = let (a,_) = m Llist.empty in a
-        let fetch = fun s -> return s s
-        let store = fun s -> fun _ -> return () s
-        let update f = fun s -> return () (f s)
-*)
-    end
-    type m = MState.res MState.m Llist.llist
+    type res = ((rule * context) * continuation list)
+    and continuation = Cont of (node -> res Llist.llist)
+    type m = res Llist.llist
 
     type tactic =
         |Skip
@@ -64,38 +43,25 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         |Repeat of tactic
 
     let rec strategy = function
-        |Skip -> fun n -> Llist.return (MState.return (R.skip,R.skip#check n))
+        |Skip -> fun n ->
+                Llist.bind (Llist.return (lazy(R.skip#check n))) (fun cxt ->
+                    Llist.return ((R.skip,Lazy.force(cxt)), [])
+                )
         |Fail -> fun _ -> Llist.mzero
         |Rule(rule) -> fun n ->
                 (* the check should be delayed as much as possible *)
                 Llist.bind (Llist.return (lazy(rule#check n))) (fun cxt ->
                     Llist.bind (Llist.guard ((Lazy.force(cxt))#is_valid)) (fun _ ->
-                        Llist.return (MState.return (rule,Lazy.force(cxt)))
+                        Llist.return ((rule,Lazy.force(cxt)), [])
                     )
                 )
-        |Cut(t1) -> fun n -> Llist.determ (strategy t1 n)
-        |Alt(t1,t2) -> fun n ->
-                Llist.determ(Llist.mplus (strategy t1 n) (strategy t2 n))
+        |Cut(t)     -> fun n -> Llist.determ (strategy t n)
+        |Alt(t1,t2) -> fun n -> Llist.mplus (strategy t1 n) (strategy t2 n)
 (*        |CAlt(b,t1,t2) -> Llist.mplus (strategy t1 n) (strategy t2 n) *)
         |Seq(t1,t2) -> fun n ->
-                Llist.bind (strategy t1 n) (fun ms ->
-                    Llist.return (
-                        MState.bind ms (fun a ->
-                            let c = Llist.return (MState.Cont (strategy t2)) in
-                            fun s -> (a,Llist.append s c)
-                            )
-                        )
+                Llist.bind (strategy t1 n) (fun (r,stack) ->
+                    Llist.return (r, stack @ [(Cont(strategy t2))])
                     )
-        |Repeat(t1) -> fun n ->
-            let rec loop t1 n =
-                Llist.bind (strategy t1 n) (fun ms ->
-                    Llist.return (
-                        MState.bind ms (fun a ->
-                            let c = Llist.return (MState.Cont(loop t1)) in
-                            fun s -> (a,Llist.append s c)
-                            )
-                        )
-                    )
-            in loop t1 n
+        |Repeat(t) -> strategy (Cut(Alt(Seq(t,Repeat(t)),Skip)))
 
 end

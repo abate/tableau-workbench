@@ -48,6 +48,7 @@ module Rule =
         end
     let skip : rule = object
         method check node =
+            (* Printf.printf "check Skip\n" ; *)
             RuleContext.newcontext (
                 Enum.empty (),
                 new Substitution.substitution,

@@ -21,43 +21,51 @@ module Make(N:Node.S)
 
     let table = ref (new Cache.cache true)
 
-    let tl s =
-        try Llist.tl s
-        with Llist.LListEmpty -> Llist.empty
-
     let rec aux_visit traversal str state node =
-        Llist.ifte
-        (str node)
-        (fun ms ->
-            let ((rule,context),newstate) = ms state in
-            Llist.bind (Llist.determ(newstate)) (fun (MState.Cont cont) ->
-                traversal cont (tl(newstate)) rule context (rule#down context)
-            )
-        )
-        (
-            Llist.ifte
-            (Llist.determ(state))
-            (fun (MState.Cont cont) -> memo_visit traversal cont (tl(state)) node)
-            (Llist.return (Leaf(node)))
+        Llist.bind (str node) (fun ((rule,context),newstate) ->
+            match newstate,state with
+            |[],[] -> 
+                    Llist.return (rule#up context (
+                        match rule#down context with
+                        |Leaf(_) as tree -> Llist.return (tree)
+                        |Tree(l) -> Llist.map (fun n -> Leaf(n)) l
+                    ))
+
+            |[], Cont(hd) :: tl ->
+                    traversal hd rule context tl (rule#down context)
+            
+            |Cont(hd) :: tl, _ ->
+                    (traversal hd rule context (tl@state) (rule#down context))
         )
 
-    and dfs str state rule context = function
-        |Leaf(_) as tree -> Llist.return (rule#up context (Llist.return tree))
-        |Tree(l) -> Llist.return (
-            rule#up context (Llist.bind l (memo_visit ~cache:rule#use_cache dfs str state)))
+    and dfs str rule context state = function
+        |Leaf(_) as tree ->
+                Llist.return (rule#up context (Llist.return tree))
+        |Tree(l) -> 
+                let res =
+                    Llist.bind l
+                    (memo_visit ~cache:rule#use_cache dfs str state)
+                in
+                if Llist.is_empty res then 
+                    Llist.return (rule#up context (
+                        Llist.map (fun n -> Leaf(n)) l
+                        )
+                    )
+                else Llist.return (rule#up context res)
 
-    and memo_visit ?(cache=false) dfs strategy state node =
+    and memo_visit ?(cache=false) dfs str state node =
         if cache then
             try !table#find node 
             with Not_found ->
-                let res = aux_visit dfs strategy state node in
+                let res = aux_visit dfs str state node in
                 !table#add node res;
                 res
-        else aux_visit dfs strategy state node
+        else
+            aux_visit dfs str state node
     ;;
 
-    let visit cache strategy node =
+    let visit cache str node =
         table := cache;
-        memo_visit dfs strategy Llist.empty node 
+        memo_visit dfs str [] node 
 
 end
