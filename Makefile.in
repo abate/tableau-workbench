@@ -13,7 +13,8 @@ LIBDIR=$(OCAMLLIB)/twb
 OCAMLMAKEFILE=../utils/OCamlMakefile
 # as fast as we can !
 OCAMLFLAGS=-unsafe -noassert
-export OCAMLMAKEFILE OCAMLFLAGS
+OCAMLPATH=@OCAMLPATH@
+export OCAMLMAKEFILE OCAMLFLAGS OCAMLPATH
 
 #######################################################
 all: nc
@@ -21,22 +22,14 @@ all: nc
 nc:
 	cd core && make && cp *.cm* *.a ../twb/
 	cd types && make && cp *.cm* *.a ../twb/
-	export OCAMLPATH=/home/abate/Projects/twb-dev \
-            && cd sequent \
-            && make \
-            && cp *.cm* *.a ../twb/
-	export OCAMLPATH=/home/abate/Projects/twb-dev \
-            && cd syntax \
-            && make \
-            && cp *.cm* *.a ../twb/
-	export OCAMLPATH=/home/abate/Projects/twb-dev \
-            && cd cli && make \
-            && cp *.cm* *.a *.o ../twb/
+	cd sequent && make && cp *.cm* *.a ../twb/
+	cd syntax && make && cp *.cm* *.a ../twb/
+	cd cli && make && cp *.cm* *.a *.o ../twb/
 	cd utils && make 
 
 provers: library/pc.ml library/k.ml library/kt.ml library/s4.ml library/pltl.ml
 	ranlib @OCAMLPATH@/twb/*.a
-	export OCAMLPATH=@OCAMLPATH@ && cd library && \
+	cd library && \
 	    ../utils/twbcompile -o pc.twb pc.ml && \
 	    ../utils/twbcompile -o k.twb k.ml && \
 	    ../utils/twbcompile -o kt.twb kt.ml && \
