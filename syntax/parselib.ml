@@ -4,6 +4,7 @@ let hist_table  : (string, string * string * MLast.expr * MLast.expr option) Has
 let const_table : (string, unit) Hashtbl.t = Hashtbl.create 50 ;;
 let patt_table  : (Ast.term,string) Hashtbl.t = Hashtbl.create 50 ;;
 let rule_table  : (string,string list) Hashtbl.t = Hashtbl.create 50 ;;
+let tactic_table : (string, unit) Hashtbl.t = Hashtbl.create 50 ;;
 
 let (=~) s re = Str.string_match (Str.regexp re) s 0;;
 let get_match i s = Str.matched_group i s
@@ -11,6 +12,23 @@ let get_match i s = Str.matched_group i s
 let bi_re = "_\\([^_]+\\)_";;
 (* unary connective. ie: <> B *)
 let u_re =  "\\([^_]+\\)_";;
+
+let test_muvar strm =
+    match Stream.peek strm with
+    | Some("UIDENT",s) when Hashtbl.mem tactic_table s -> Stream.junk strm; Ast.MVar(s)
+    | Some("UIDENT",s) -> Stream.junk strm; Ast.Basic(s)
+    | _ -> raise Stream.Failure
+;;
+let test_muvar = Grammar.Entry.of_parser Pcaml.gram "test_muvar" test_muvar ;;
+
+let muvar strm =
+    match Stream.peek strm with
+    | Some("UIDENT",s) ->
+            Stream.junk strm;
+            Hashtbl.replace tactic_table s (); s
+    | _ -> raise Stream.Failure
+;;
+let muvar = Grammar.Entry.of_parser Pcaml.gram "muvar" muvar ;;
 
 let test_sep strm =
     match Stream.peek strm with

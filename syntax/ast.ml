@@ -14,8 +14,11 @@ and tactic =
     |Basic of string
     |Seq of tactic * tactic
     |Alt of tactic * tactic
-    |Repeat of tactic
+    |Cut of tactic
+    |Skip | Fail
+    |Mu  of string * tactic
     |TVar of string
+    |MVar of string
 
 type options = Options of (string * MLast.expr * string )
 

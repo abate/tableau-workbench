@@ -909,6 +909,8 @@ let expand_tableau _loc (Ast.Tableau rulelist ) =
 
 let rec expand_tactic _loc = function
     |Ast.TVar(id) -> <:expr< $lid:id$ >>
+    |Ast.Skip -> <:expr< Skip >>
+    |Ast.Fail -> <:expr< Fail >>
     |Ast.Basic(uid) ->
             let id = String.lowercase uid in
             <:expr< Rule( new $lid:id^"_rule"$ ) >>
@@ -920,14 +922,22 @@ let rec expand_tactic _loc = function
             let ext1 = expand_tactic _loc t1 in
             let ext2 = expand_tactic _loc t2 in
             <:expr< Alt( $list:[ext1;ext2]$ ) >>
-    |Ast.Repeat(t) ->
+    |Ast.Cut(t) ->
             let ext = expand_tactic _loc t in
-            <:expr< Repeat( $ext$ ) >>
+            <:expr< Cut( $ext$ ) >>
+    |Ast.Mu(x,t) ->
+            let ext = expand_tactic _loc t in
+            <:expr< Mu( $str:x$ , $ext$ ) >>
+    |Ast.MVar(x) -> <:expr< Var( $str:x$ ) >>
 ;;
 
 let expand_strategy _loc (Ast.Strategy t) =
     let ext = expand_tactic _loc t in
-    <:str_item< Logic.__strategy.val := Some(Strategy.strategy $ext$) >>
+    let str =
+        <:str_item< Logic.__strategy.val := Some(Strategy.strategy $ext$) >>
+    in
+    let main = <:str_item< Twb.main () >> in
+    <:str_item< declare $list:[str;main]$ end >>
 ;;
 
 let expand_preproc _loc e =

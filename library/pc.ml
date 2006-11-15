@@ -43,5 +43,6 @@ PP := nnf
 NEG := neg
 
 let sat = tactic (Id|And|Or)
-STRATEGY ((sat)*)
+let rsat = tactic ( mu(X) . !( (sat ; X) | Skip) )
+STRATEGY (rsat)
 

@@ -97,8 +97,14 @@ rewrite_expr rewrite_patt numformula denformula;
       ]
   |
       [ "("; t = tactic; ")" -> t
-      | "("; t = tactic; ")"; "*" -> Ast.Repeat(t)
-      | id = UIDENT -> Ast.Basic(id)
+      | "!"; t = tactic -> Ast.Cut(t)
+      | "Skip" -> Ast.Skip
+      | "Fail" -> Ast.Fail
+      | "mu"; OPT "("; var = muvar; OPT ")"; "."; t = tactic -> Ast.Mu(var,t)
+      | "("; t = tactic; ")"; "*" ->
+              let id = new_id "muvar" in
+              Ast.Mu(id,Ast.Cut(Ast.Alt(Ast.Seq(t,Ast.MVar(id)),Ast.Skip)))
+      | id = test_muvar -> id
       ]
   ];
 
