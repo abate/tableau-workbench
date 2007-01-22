@@ -4,385 +4,108 @@ CONNECTIVES
   Or,  "_v_",  Two;
   Imp, "_->_", One;
   DImp, "_<->_", One;
-  Not, "~_",   Simple;
-  Diai, "<_>_", Simple;
-  Boxi, "[_]_", Simple;
-  CDia, "dC_", Simple;
-  CBox, "C_", Simple;
-  EDia, "dE_", Simple;
-  EBox, "E_", Simple;
+  Not, "~_",   Zero;
+  Dia1, "Dia1_", Zero;
+  Box1, "Box1_", Zero;
+  Dia2, "Dia2_", Zero;
+  Box2, "Box2_", Zero;
+  CDia, "dC_", Zero;
+  CBox, "C_", Zero;
+  EDia, "dE_", Zero;
+  EBox, "E_", Zero;
   Falsum, Const;
   Verum, Const
 END
 
 HISTORIES
-  Ev : Set.set ;
-  Br : Listofsets.listobj ;
-  uev : Setoftermint.set ; 
-  status : String
+  (Fev : Set of Formula := new Set.set) ;
+  (Br  : List of ( Set of Formula * Set of Formula ) := new Listoftupleset.listobj) ;
+  (uev : Set of ( Formula * Int ) := new Setoftermint.set) ;
+  (fev : Set of ( Formula * Int ) := new Setoftermint.set) ;
+  (status : String := new Set.set)
 END
 
-(* debug flag *)
-let debug = ref false ;;
+open Twblib
+open LckRewrite
+open LckFunctions
 
-let add (l,h) = h#addlist l
-let notin (l,h) = not(h#mem (List.hd l))
-let isin (l,h) = h#mem (List.hd l)
-let not_empty l = not(l#is_empty)
-let is_empty l = l#is_empty
-let is_empty_list l = ( List.length l = 0 )
-let not_empty_list l = not ( List.length l = 0 )
-
-let not_false l =
-    not(List.exists (function
-        |(`Formula ( term ( Falsum ) ),_) -> true
-        |_ -> false
-    ) l#elements)
-;;
-
-let emptyset h = h#empty
-let push (dia,box,br) = 
-    let set = (new Set.set)#addlist (dia@box)
-    in br#add set
-;;
-
-let termfalse = `Formula ( term ( Falsum ) ) ;; 
-let setclose br = (new Setoftermint.set)#add (termfalse, br#length) ;;
-
-let beta (uev1, uev2, br) =
-    let m = (br#length - 1) in
-    let _ =
-        if !debug then
-        Printf.printf "BETA\nm:%d\nuev1: %s\nuev2: %s\nBr: %s\n\n"
-        m uev1#to_string uev2#to_string br#to_string
-        else ()
-    in 
-    if uev1#is_empty || uev2#is_empty then (new Setoftermint.set)
-    
-    else if List.exists (function 
-        |(`Formula ( term ( Falsum ) ),_) -> true
-        |_ -> false) uev1#elements
-    then uev2
-    
-    else if List.exists (function
-        |(`Formula ( term ( Falsum ) ),_) -> true
-        | _ -> false) uev2#elements
-    then uev1
-    
-    else if List.for_all ( fun (_,n) -> n > m ) (uev1#union uev2)#elements
-    then (new Setoftermint.set)#add (termfalse,m+1)
-    
-    else if List.for_all ( fun (_,n) -> n <= m ) uev1#elements &&
-    List.for_all ( fun (_,n) -> n > m ) uev2#elements 
-    then uev1
-    
-    else if List.for_all ( fun (_,n) -> n <= m ) uev2#elements &&
-    List.for_all ( fun (_,n) -> n > m ) uev1#elements
-    then uev2
-    
-    else
-        let a = 
-        (new Setoftermint.set)#addlist(
-            ExtLib.List.filter_map (fun (x,nx) ->
-                try
-                    let (z,nz) = 
-                        List.find (fun (y,_) -> y = x)
-                        uev1#elements
-                    in Some(x,min nx nz)
-                with Not_found -> None
-            ) uev2#elements
-        )
-        in if !debug then (Printf.printf "INTER: %s\n\n" a#to_string ; a) else a
-;;
-
-exception Stop of int ;;
-let index br s =
-    let i = ref 0 in
-    try begin
-        List.iter (fun e ->
-            if s#is_equal e then raise ( Stop !i) else incr i
-        ) br#elements;
-        failwith "index: list empty"
-        end
-    with Stop(n) ->
-            if !debug then
-                begin
-                    Printf.printf "index: %d\nBr: %s\n" n br#to_string;
-                    n
-                end
-            else n
-;;
-
-(* true if there is not an element in the list equal to (dia@box) *)
-let loop_check (dia,box,br) =
-    let set = (new Set.set)#addlist (dia@box) in
-    not(List.exists (fun s -> set#is_equal s) br#elements)
-;;
-
-let setuev (dia1,box1,dia2,box2,ev,br) =
-    let checkuev node ev br =
-        let set = (new Set.set)#addlist node in
-        if List.exists ( fun s -> set#is_equal s ) br#elements then
-            let i = index br set in
-            let loopset = ev#elements in
-            Some(
-                (new Setoftermint.set)#addlist (
-                    List.filter_map (function
-                        |`Formula term (<j> (dC d)) 
-                        when not(List.mem (`Formula d) loopset) ->
-                            Some(`Formula term (dC d),i)
-                        |_ -> None
-                    ) (node) (* here I don't need to check all boxes as well. *)
-            )
-            )
-        else begin
-            print_endline "SetUEV but not in Br !!!";
-            print_endline set#to_string;
-            failwith "This should never happen"
-        end
-    in
-    let uevlist1 =
-        List.filter_map(fun dia ->
-            checkuev (dia::box1) ev br
-        ) dia1
-    in
-    let uevlist2 =
-        List.filter_map(fun dia ->
-            checkuev (dia::box2) ev br
-        ) dia2
-    in
-    let uev =
-        List.fold_left (fun e s -> s#union e)
-        (new Setoftermint.set) (uevlist1@uevlist2)
-    in
-    if !debug then 
-        if uev#is_empty then Printf.printf "SetUev: OPEN\n\n" 
-        else Printf.printf "SetUev: %s\n\n" (uev#to_string)
-    else () ;
-    uev
-;;
-
-let pi (uev1, uev2, br, ev) =
-    let m = br#length in
-    let loopset = ev#elements in
-    let uevlist = [uev1;uev2] in
-    let uev = List.fold_left (fun s e -> s#union e) 
-        (new Setoftermint.set) uevlist
-    in
-    let _ =
-        if !debug then
-        Printf.printf "PI\nm:%d\nloopset: %s\nuev : %s\n"
-        m ev#to_string uev#to_string
-        else ()
-    in 
-    let a =
-        uev#filter (function
-            |(`Formula term (dC d), n) when (n > m+1) ->
-                  not(List.mem (`Formula d) loopset)
-            |_ -> true
-        )
-    in if !debug then (Printf.printf "filter: %s\n\n" a#to_string ; a) else a
-;;
-
-let rec nnf_term f = 
-    match f with
-    |term ( a & b ) ->
-        let x = nnf_term a
-        and y = nnf_term b
-        in term ( x & y )
-
-    |term ( ~ ( a & b ) ) ->
-        let x = nnf_term term ( ~ a )
-        and y = nnf_term term ( ~ b )
-        in term ( x v y )
-
-    |term ( a v b ) ->
-            let x = nnf_term a
-            and y = nnf_term b
-            in term ( x v y )
-
-    |term ( ~ ( a v b ) ) ->
-            let x = nnf_term term ( ~ a )
-            and y = nnf_term term ( ~ b )
-            in term ( x & y )
-
-    |term ( a <-> b ) ->
-            let x = nnf_term term ( a -> b )
-            and y = nnf_term term ( b -> a )
-            in term ( x & y )
-
-    |term ( ~ ( a <-> b ) ) ->
-            let x = nnf_term term ( ~ (a -> b) )
-            and y = nnf_term term ( ~ (b -> a) )
-            in term ( x v y )
-
-    |term ( a -> b ) ->
-            nnf_term term ( (~ a) v b )
-
-    |term ( ~ (a -> b) ) ->
-            nnf_term term ( a & (~ b) )
-
-    |term ( ~ ~ a ) -> nnf_term a
-
-    |term ( ~ .a ) as f -> f
-    |term ( .a ) as f -> f
-
-    |term ( [i] a ) -> 
-            let x = nnf_term a
-            in term ( [i] x )
-            
-    |term ( ~ ( [i] a ) ) -> 
-            let x = nnf_term ( term ( ~ a ) )
-            in term ( <i> x )
-
-    |term ( <i> a ) -> 
-            let x = nnf_term a
-            in term ( <i> x )
-            
-    |term ( ~ ( <i> a ) ) -> 
-            let x = nnf_term ( term ( ~ a ) )
-            in term ( [i] x )
-
-    |term ( ~ C a ) ->
-            nnf_term term ( dC ~ a )
-            
-    |term ( C a ) -> 
-            let x = nnf_term term ( a )
-            in term ( C x )
-
-    |term ( ~ dC a ) ->
-            nnf_term term ( C ~ a )
- 
-    |term ( dC a ) -> 
-            let x = nnf_term term ( a )
-            in term ( dC x )
-
-    |term ( ~ dE a ) -> 
-            let x = nnf_term term ( ~ a )
-            in term ( E x )
-
-    |term ( dE a ) -> 
-            let x = nnf_term term ( a )
-            in term ( dE x )
-
-    |term ( ~ E a ) -> 
-            let x = nnf_term term ( ~ a )
-            in term ( dE x )
-
-    |term ( E a ) -> 
-            let x = nnf_term term ( a )
-            in term ( E x )
-
-    |term ( ~ Falsum ) -> term ( Verum )
-    |term ( ~ Verum ) -> term ( Falsum )
-
-    |term ( Constant ) -> f
-    |term ( ~ Constant ) -> f
-    
-    | _ -> failwith ("nnf_term"^(!Basictype.string_of_formula f))
-;;
-
-let neg_term = function term ( a ) -> term ( ~ a ) ;;
-let neg = Basictype.map neg_term ;;
-let nnf = Basictype.map nnf_term
+let notemptylist (d1,d2) = not(List.length (d1@d2) = 0)
 
 TABLEAU
 
   RULE Id
-  { A } ; { ~ A } ; Z
-  ===============
-     Stop
+  { a } ; { ~ a } == Stop
   BACKTRACK [ uev := setclose (Br) ]
   END
   
   RULE False
-  Falsum ; Z
-  ===============
-     Stop
+  Falsum ; z == Stop
   BACKTRACK [ uev := setclose (Br) ]
   END
 
   RULE CDia
-      { dC P }
+      { dC p }
   ===================
-   dE P ||| dE dC P
+   dE p ||| dE dC p
 
-  ACTION [ [ Ev := add(P,Ev) ] ; [] ]
-  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ]
-  BRANCH [ [ not_empty(uev(1)) ] ] 
+  ACTION [ [ Fev := add(dC P,Fev) ] ; [] ]
+  BRANCH [ [ not_empty(uev@1) ] ] 
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
   END
 
   RULE EDia
-      {  dE P }
+      {  dE p }
   ===================
-   <1> P ||| <2> P
+   Dia1 p ||| Dia2 p
 
-  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ] 
-  BRANCH [ [ not_empty(uev(1)) ] ] 
+  BRANCH [ [ not_empty(uev@1) ] ] 
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
   END
 
-  RULE CBox
-     not_empty_list(C P)
-  ===================
-    E P ; E C P
-  END
-
-  RULE EBox
-     not_empty_list(E P)
-  ===================
-    [1] P ; [2] P
-  END
-
-  RULE Dia1
-  { <1> P } ; [1] X ; Z
+  RULE Diaone
+  { Dia1 p } ; Box1 x ; Dia1 q1 ; Dia2 q2 ; z
   =============================
-      P ; X ||| [1] X ; Z
+      p ; x ||| Box1 x ; Dia1 q1 ; Dia2 q2 ; z
       
-  COND [ loop_check(<1> P, [1] X, Br) ]
+  COND [ loop_check(p, x, Br) ]
   ACTION [ [
-      Ev := emptyset(Ev);
-      Br := push(<1> P, [1] X, Br)
+      Fev := emptyset(Fev);
+      Br  := push(p, x, Fev, Br)
   ] ; [] ]
-  BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
-  BRANCH [ [ not_false(uev(1)) ] ]
-  END (cache)
+  BRANCH [ [ not_false(uev@1) ; notemptylist(Dia1 q1, Dia2 q2) ] ]
+  BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
+  END (CACHE)
 
-  RULE Dia2 
-  { <2> P } ; [2] X ; Z
+  RULE Diatwo
+  { Dia2 p } ; Box2 x ; Dia1 q1 ; Dia2 q2 ; z
   ==================================
-      P ; X ||| [2] X ; Z
+      p ; x ||| Box2 x ; Dia1 q1 ; Dia2 q2 ; z
       
-  COND [ loop_check(<2> P, [2] X, Br) ]
+  COND [ loop_check(p, x, Br) ]
   ACTION [ [
-      Ev := emptyset(Ev);
-      Br := push(<2> P,[2] X, Br)
+      Fev := emptyset(Fev);
+      Br  := push(p,x, Fev, Br)
   ] ; [] ]
-  BACKTRACK [ uev := pi(uev(1), uev(2), Br, Ev) ]
-  BRANCH [ [ not_false(uev(1)) ] ]
-  END (cache)
+  BRANCH [ [ not_false(uev@1) ; notemptylist(Dia1 q1, Dia2 q2) ] ]
+  BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
+  END (CACHE)
   
-  RULE Loop
-  <1> X1 ; <2> X2 ; [1] Y1 ; [2] Y2 ; Z
-  ==========================================
-                   Stop
-
-  BACKTRACK [ uev := setuev(<1> X1,[1] Y1,<2> X2,[2] Y2, Ev, Br) ]
+  RULE Loop Dia1 x1 ; Dia2 x2 ; Box1 y1 ; Box2 y2 == Stop
+  BACKTRACK [ uev := setuev_loop(x1, y1, x2, y2, Fev, Br) ]
   END
 
   RULE Or
-  { A v B }
+  { a v b }
   =========
-   A ||| B
+   a ||| b
 
-  BACKTRACK [ uev := beta(uev(1), uev(2), Br) ] 
-  BRANCH [ [ not_empty(uev(1)) ] ] 
+  BRANCH [ [ not_empty(uev@1) ] ] 
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
   END
 
-  RULE And
-  not_empty_list(A & B)
-  =========
-    A ; B
-  END
+  RULE And a & b == a ; b END
+  RULE EBox E p == Box1 p ; Box2 p END
+  RULE CBox C p == E p ; E C p END
   
 END
 
@@ -393,16 +116,16 @@ let exit (uev) =
     |_ -> "Closed"
 ;;
 
-PP := nnf
-NEG := neg
-EXIT := exit (uev(1))
+PP := nnf_term
+NEG := neg_term
+EXIT := exit (uev@1)
 
 OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
 
-let saturation = tactic ( (Id; And; Or; Edia; Cbox; Ebox; Cdia; False)* )
+let saturation = tactic ( (Id| And| Or| Edia| Cbox| Ebox| Cdia| False) )
 
-let modal = tactic ( ( saturation ; Dia1 ; Dia2 )* )
+let modal = tactic ( (saturation)* ; (Diaone | Diatwo | Loop) )
 
-STRATEGY ( (modal ; Loop)* )
+STRATEGY ( (modal)* )
