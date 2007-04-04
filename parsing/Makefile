@@ -1,22 +1,30 @@
 
 define PROJ_tableau
   USE_CAMLP4 = yes
-  SOURCES := ast.ml parselib.ml tablib.ml extCommon.ml extTab.ml
+  SOURCES := ast.ml entrylib.ml parselib.ml extGramm.ml tablib.ml extCommon.ml extTab.ml
   RESULT := pa_tableau
   export PACKS := str twb.types
 endef
 export PROJ_tableau
 
+define PROJ_sequent
+  USE_CAMLP4 = yes
+  SOURCES := ast.ml entrylib.ml parselib.ml extGramm.ml tablib.ml extCommon.ml extSeq.ml
+  RESULT := pa_sequent
+  export PACKS := str unix twb.types
+endef
+export PROJ_sequent
+
 define PROJ_input
   USE_CAMLP4 = yes
-  SOURCES := inputParser.ml
+  SOURCES := ast.ml entrylib.ml inputParser.ml
   RESULT := inputParser
-  export PACKS := camlp4.gramlib str extlib twb.types
+  export PACKS := str unix camlp4.gramlib
 endef
 export PROJ_input
 
 ifndef SUBPROJS
-  export SUBPROJS = tableau input
+  export SUBPROJS = sequent
 endif
 
 all: bcl inputncl
