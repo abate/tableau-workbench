@@ -111,7 +111,8 @@ let pp filename =
    let cmd = 
        "camlp4o "^
        str_lib_loc ^ "/str.cma "^
-       twb_lib_loc ^ "/pa_tableau.cma "^
+       str_lib_loc ^ "/unix.cma "^
+       twb_lib_loc ^ "/pa_sequent.cma "^
        "pr_o.cmo "^ 
        filename ^ 
        " > "^
@@ -171,8 +172,11 @@ let rec deps deplist filename =
 let compile elem =
     let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
     let cmd =
-        "ocamlfind "^ ocaml ^" -package twb.thelot,twb.cli -c -unsafe -noassert " ^
-        "-I " ^ tmp_dir ^ " "^
+        "ocamlfind "^
+        ocaml ^
+        " -package twb.core " ^
+        " -c" ^
+        " -I " ^ tmp_dir ^ " "^
         tmp_dir ^ elem ^ ".ml"
     in
     print_verbose "Compiling: %s\n" cmd;
@@ -185,13 +189,14 @@ let link l filename =
     let c =
         "ocamlfind "^
         ocaml ^
-        " -package twb.thelot,twb.cli -unsafe -noassert -linkpkg -o "^ 
+        " -package camlp4.gramlib,twb.thelot,twb.cli "^
+        " -linkpkg -o "^ 
         filename ^" "
     in
     let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ext) c l in
     if !Options.custom = "" then begin
-        print_verbose "Linking: %s\n" (cmd ^ " twb.cmx");
-        ignore(system (cmd ^ " twb.cmx"))
+        print_verbose "Linking: %s\n" cmd;
+        ignore(system cmd)
         end
     else
         begin
