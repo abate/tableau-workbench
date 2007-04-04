@@ -154,45 +154,51 @@ let expand_history_type histlist =
     in 
     (tlist,copylist,to_stringlist) 
 
+let expand_histories_aux table =
+    let aux2 vt vl tlist copylist to_stringlist =
+        <:str_item<
+        module $uid:vt$ =
+          struct
+              type t = $tlist$ ;
+              value copy = fun [ $list:copylist$ ] ;
+              value to_string = fun [ $list:to_stringlist$ ] ;
+          end    
+        >>
+    in
+    let aux1 vt vl table =
+        let l = Hashtbl.fold (fun i (v,c,d) init -> 
+            (i,v,c,d)::init) table []
+        in
+        let (tlist,copylist,to_stringlist) = expand_history_type l in
+        let exl = List.map (fun (id,var,_,def) ->
+                <:expr< ($str:id$ , `$uid:var$ $def$) >>
+            ) l
+        in
+        Hashtbl.add expr_table vl (list_to_exprlist exl);
+        aux2 vt vl tlist copylist to_stringlist
+    in 
+    function
+    |Ast.Variable(_) ->
+            if Hashtbl.length table > 0 && Hashtbl.mem table "status" then
+                aux1 "VarType" "varlist" table
+            else begin
+                let var = new_co "Hist" in
+                Hashtbl.add table "status" 
+                (var,<:ctyp< $lid:"string"$ >>,<:expr< "Open" >>);
+                aux1 "VarType" "varlist" table
+                end
+    |Ast.History(_)  ->
+            if Hashtbl.length table > 0 then aux1 "HistType" "histlist" table
+            else aux2 "HistType" "histlist" <:ctyp< [= `Null ] >> [] []
+
 let expand_histories =
-    let aux (id,ctyp,def) =
+    let aux table (id,ctyp,def) =
         let var = new_co "Hist" in
-        Hashtbl.replace hist_table id (var,ctyp,def);
-        (id,var,ctyp,def)
-    in function
-    |Ast.Variable(l) ->
-            let l' = (List.map aux l) in
-            let (tlist,copylist,to_stringlist) = expand_history_type l' in
-            let exl = List.map (fun (id,var,_,def) ->
-                    <:expr< ($str:id$ , `$uid:var$ $def$) >>
-                ) l'
-            in
-            Hashtbl.add expr_table "varlist" (list_to_exprlist exl);
-            <:str_item<
-            module VarType =
-              struct
-                  type t = $tlist$ ;
-                  value copy = fun [ $list:copylist$ ] ;
-                  value to_string = fun [ $list:to_stringlist$ ] ;
-              end    
-            >>
-    |Ast.History(l)  ->
-            let l' = (List.map aux l) in
-            let (tlist,copylist,to_stringlist) = expand_history_type l' in
-            let exl =
-                List.map (fun (id,var,_,def) ->
-                    <:expr< ( $str:id$ , `$uid:var$ $def$ ) >>
-                ) l'
-            in
-            Hashtbl.add expr_table "histlist" (list_to_exprlist exl);
-            <:str_item<
-            module HistType =
-              struct
-                  type t = $tlist$ ;
-                  value copy = fun [ $list:copylist$ ] ;
-                  value to_string = fun [ $list:to_stringlist$ ] ;
-              end
-            >>
+        Hashtbl.replace table id (var,ctyp,def)
+    in 
+    function
+        |Ast.Variable(l) -> List.iter (aux vars_table) l ; <:str_item< "" >>
+        |Ast.History(l)  -> List.iter (aux hist_table) l ; <:str_item< "" >>
 
 let expand_principal expr =
     let (idlist,termlist) = List.split (extract_pa_expr_vars expr) in
@@ -324,8 +330,8 @@ let rec expand_ex_term use = function
             end
     |Ast.ExVari(id,Ast.Int i) ->
             let (var,ctyp,def) =
-                try Hashtbl.find hist_table id
-                with Not_found -> failwith ("History "^id^ "not declared")
+                try Hashtbl.find vars_table id
+                with Not_found -> failwith ("Variable "^id^ "not declared")
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -352,8 +358,8 @@ let rec expand_ex_term use = function
             end
     |Ast.ExVari(id,Ast.Last) ->
             let (var,ctyp,def) =
-                try Hashtbl.find hist_table id
-                with Not_found -> failwith ("History "^id^ "not declared")
+                try Hashtbl.find vars_table id
+                with Not_found -> failwith ("Variable "^id^ "not declared")
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -391,7 +397,7 @@ let rec expand_ex_term use = function
     |Ast.ExHist(id) ->
             let (var,ctyp,def) =
                 try Hashtbl.find hist_table id
-                with Not_found -> failwith ("History "^id^ "not declared")
+                with Not_found -> failwith ("History "^id^ " not declared")
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -480,7 +486,7 @@ let expand_dencont index dencontlist =
 let expand_status s =
     let ex =
         let (var,ctyp,def) =
-            try Hashtbl.find hist_table "status"
+            try Hashtbl.find vars_table "status"
             with Not_found -> failwith ("History status not declared")
         in
         <:expr<
@@ -524,12 +530,14 @@ let expand_ruledown ruletype bcond den_args action_args =
 
 let expand_action name actionlist =
     List.map (function
-        |Ast.Assign(Ast.ExHist(id),ex_expr)
-        |Ast.Assign(Ast.ExVari(id,Ast.Null),ex_expr) ->
+        |Ast.Assign(arg,ex_expr) ->
                 let (pa,ex) = expand_ex_expr `Obj ex_expr in
-                let (var,ctyp,def) =
-                    try Hashtbl.find hist_table id
-                    with Not_found -> failwith ("History "^id^ "not declared")
+                let ((var,ctyp,def),id) =
+                    try match arg with
+                    |Ast.ExVari(id,Ast.Null) -> (Hashtbl.find vars_table id,id)
+                    |Ast.ExHist(id) -> (Hashtbl.find hist_table id,id)
+                    |_ -> failwith "expand_action"
+                    with Not_found -> failwith ("History or Variable not declared")
                 in
                 (new_id "action",
                 <:expr< let $lid:pa$ = $ex$ in
@@ -541,18 +549,12 @@ let expand_action name actionlist =
                 (new_id "action",
                 <:expr< let $lid:pa$ = $ex$ in fun sbl hist varl -> $lid:pa$>>
                 )
-        |_ -> failwith "expand_action"
     ) actionlist
 
 let expand_status_defaults () =
     let (var,_,_) =
-        try Hashtbl.find hist_table "status"
-        with Not_found ->
-            let v = new_co "Hist" in
-            let t = <:ctyp< $lid:"string"$ >> in
-            let d = <:expr< $str:"Open"$ >> in
-            Hashtbl.add hist_table "status" (v,t,d) ; 
-            (v,t,d)
+        try Hashtbl.find vars_table "status"
+        with Not_found -> failwith "expand_status_defaults"
     in
     <:str_item<
     value status s sbl hist varlist =
@@ -763,9 +765,12 @@ let expand_rule (Ast.Rule rule) =
         rule_class
     ]$ end >>
 
-let expand_preamble =
-    <:str_item<
-    declare
+let expand_preamble () =
+    let hist = expand_histories_aux hist_table (Ast.History([])) in
+    let vars = expand_histories_aux vars_table (Ast.Variable([])) in
+    <:str_item< declare
+    $hist$;
+    $vars$;
     module BaseType =
         struct
             type t = expr ;
@@ -847,14 +852,12 @@ let expand_matchpatt rulelist =
     <:str_item< value match_schema = fun [ $list:pel@[def]$ ] >>
 
 let expand_tableau (Ast.Tableau rulelist) =
+    let pa = expand_preamble () in
     let sd = expand_status_defaults () in
     let l = List.map expand_rule rulelist in
     <:str_item< declare 
-    $list:
-        expand_matchpatt rulelist::
-        expand_preamble::sd::
-        l@[expand_init]$ end
-    >>
+    $list: expand_matchpatt rulelist:: pa::sd:: l@[expand_init]$
+    end >>
 
 let rec expand_tactic = function
     |Ast.TaVar(id) -> <:expr< $lid:id$ >>
@@ -890,11 +893,11 @@ let expand_main () =
     in
     let histlist = 
         try Some(<:expr< ~histlist:$Hashtbl.find expr_table "histlist"$ >>)
-        with Not_found -> None
+        with Not_found -> Some(<:expr< ~histlist:[] >>)
     in
     let varlist = 
         try Some(<:expr< ~varlist:$Hashtbl.find expr_table "varlist"$ >>)
-        with Not_found -> None
+        with Not_found -> Some(<:expr< ~varlist:[] >>)
     in
     let mapcont =
         Some(<:expr< ~mapcont:[| new TwbCont.map match_schema |] >>)
@@ -908,7 +911,7 @@ let expand_main () =
         try Some(<:expr< ~exitfun$Hashtbl.find expr_table "exitfun"$ >>)
         with Not_found ->
             let (var,_,_) =
-                try Hashtbl.find hist_table "status"
+                try Hashtbl.find vars_table "status"
                 with Not_found -> failwith ("status not declared")
             in
             let ex = <:expr< fun [node -> 

@@ -3,6 +3,7 @@
 let _loc = Token.dummy_loc
 
 let hist_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
+let vars_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
 let const_table : (string, unit) Hashtbl.t = Hashtbl.create 50
 let tactic_table : (string, unit) Hashtbl.t = Hashtbl.create 50
 let expr_table : (string, MLast.expr) Hashtbl.t = Hashtbl.create 50
@@ -92,7 +93,7 @@ let test_constant = Grammar.Entry.of_parser Pcaml.gram "test_constant" test_cons
 
 let test_variable strm =
     match Stream.peek strm with
-    | Some (("LIDENT", s)) when Hashtbl.mem hist_table s -> Stream.junk strm; s
+    | Some (("LIDENT", s)) when Hashtbl.mem vars_table s -> Stream.junk strm; s
     | _ -> raise Stream.Failure
 ;;
 let test_variable = Grammar.Entry.of_parser Pcaml.gram "test_variable" test_variable ;;

@@ -60,7 +60,7 @@ module Make(P: NodePattern.S) =
     (* we get all formulae associated with a patter minus the
      * formulae that have been selected to be principal formulae.
      *  
-     * XXX: This could faster. I know that a formula can be 
+     * XXX : This could faster. I know that a formula can be 
      * in the htbl only is the patt is similar to the pattern of 
      * the principal formulae
      *)
