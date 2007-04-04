@@ -1,28 +1,17 @@
 
-
-class type ['t] mt =
+class type ['t] ct =
   object ('a)
     method add : string -> 't -> 'a
-    method copy : 'a
+    method replace : string -> 't -> 'a
     method find : string -> 't
+    method fold : 'd . (string -> 't -> 'd -> 'd) -> 'd -> 'd
     method mem : string -> bool
+    method copy : 'a
     method empty : 'a
     method to_string : string
   end
 
-module type ValType =
-    sig
-        type t
-        val copy : t -> t
-        val to_string : t -> string
-    end
-
-
-module Make(T: ValType) :
-    sig
-        class map : [T.t] mt
-    end
-= struct
+module Make(T: TwbSet.ValType) : sig class map : [T.t] ct end = struct
     
     let copy h =
         Hashtbl.fold (fun k v tbl ->
@@ -30,30 +19,25 @@ module Make(T: ValType) :
         ) h (Hashtbl.create (Hashtbl.length h))
      
     class map =
-        object(self)
+        object(self : T.t #ct)
 
             val data = Hashtbl.create 7
             
-            method add p e =
+            method add key e =
                 let h = copy data in
-                let _ = Hashtbl.replace h p e in
+                let _ = Hashtbl.replace h key e in
                 {< data = h >}
                 
-            method find p = Hashtbl.find data p
-            method mem p = Hashtbl.mem data p
+            method replace key e = self#add key e
+            method find key = Hashtbl.find data key
+            method fold f s = Hashtbl.fold f data s
+            method mem key = Hashtbl.mem data key
             method copy = {< data = copy data >}
             method empty = {< data = Hashtbl.create 7 >}
             method to_string =
                 Hashtbl.fold (
                     fun k v s -> Printf.sprintf "%s\n%s:%s" s k (T.to_string v)
-                    (*
-                    fun k v s ->
-                        if (T.to_string v) = "" then ""
-                        else if s = "" then Printf.sprintf "%s:%s" k (T.to_string v) 
-                            else Printf.sprintf "%s\n%s:%s" s k (T.to_string v)
-                            *)
                 ) data ""
  
         end
-        
 end

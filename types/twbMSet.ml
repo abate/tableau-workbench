@@ -1,14 +1,7 @@
 
-module type ValType =
+module Make (T : TwbSet.ValType) :
     sig
-        type t
-        val copy : t -> t
-        val to_string : t -> string
-    end
-
-module Make (T : ValType) :
-    sig
-       class listobj : [T.t] Sets.st
+       class listobj : [T.t] TwbSet.ct
     end
 = struct
 
@@ -69,7 +62,7 @@ module Make (T : ValType) :
             (* we return elements as a stack *)
             method elements = List.rev data
 
-            method head = List.hd data
+            method hd = List.hd data
 
             method is_empty = match data with [] -> true | _ -> false
 

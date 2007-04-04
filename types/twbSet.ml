@@ -1,5 +1,5 @@
 
-class type ['t] st =
+class type ['t] ct =
     object('a)
         method add : 't -> 'a
         method add_filter : ('t -> 't -> bool ) -> 't -> 'a
@@ -7,7 +7,7 @@ class type ['t] st =
         method del : 't -> 'a
         method mem : 't -> bool
         method elements : 't list
-        method head : 't
+        method hd : 't
         method is_empty : bool
         method filter : ('t -> bool) -> 'a
         method length : int
@@ -23,28 +23,16 @@ class type ['t] st =
 module type ValType =
     sig
         type t
-        val compare : t -> t -> int
         val copy : t -> t
         val to_string : t -> string
     end
 
-module Make ( T : ValType ) : 
-    sig
-       class set : [T.t] st
-    end
-= struct
+module Make (T : ValType) : sig class set : [T.t] ct end = struct
 
-    module Set = Set.Make (
-            struct
-                type t = T.t
-                let compare = T.compare
-            end
-    );;
+    module Set = Set.Make (struct type t = T.t let compare = compare end)
 
-    let copy s = Set.fold (
-        fun v s' -> Set.add (T.copy v) s'
-    ) s Set.empty
-                
+    let copy s = Set.fold (fun v s' -> Set.add (T.copy v) s') s Set.empty
+
     class set =
         object(self : 'a)
             val data = Set.empty
@@ -99,7 +87,7 @@ module Make ( T : ValType ) :
 
             method elements = Set.elements data
 
-            method head = Set.min_elt data
+            method hd = Set.min_elt data
 
             method is_empty = Set.is_empty data
 

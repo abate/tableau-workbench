@@ -1,14 +1,15 @@
 
 SOURCES := \
-	basictype.ml \
-	sets.ml \
-      	listobj.ml \
-	comptypes.ml \
-	gmap.ml \
-	hmap.ml \
+	twbSet.ml \
+      	twbMSet.ml \
+	twbHash.ml \
+	twbContainer.ml \
+	twbMap.ml \
+	twbSingleton.ml \
+	twbSbl.ml \
 
 RESULT := twbtypes
-#LIBDIRS := ../twb
+#LIB_PACK_NAME := types
 
 all: ncl
 
