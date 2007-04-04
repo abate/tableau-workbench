@@ -1,13 +1,12 @@
 
 requires = ""
-version = "3.0"
+version = "3.2"
 description = "Base for Camlp4 syntax extensions"
 browse_interfaces = "Llist Data"
 
 package "core" (
 	version = "[distributed with TWB]"
 	description = "twb core"
-	requires = "extlib"
 	browse_interfaces = "Llist Data"
 #	archive(byte) = "twbcore.cma"
 	archive(native) = "twbcore.cmxa"
@@ -23,7 +22,7 @@ package "types" (
 package "parser" (
 	version = "[distributed with TWB]"
 	description = "input parser"
-	requires = "camlp4.gramlib"
+#	requires = "camlp4.gramlib"
 #	archive(byte) = "inputParser.cma"
 	archive(native) = "inputParser.cmxa"
 )
@@ -31,6 +30,7 @@ package "parser" (
 package "sequent" (
 	version = "[distributed with TWB]"
 	description = "twb sequent/tableau library"
+	requires = "extlib"
 #	archive(byte) = "twbseq.cma"
 	archive(native) = "twbseq.cmxa"
 )
