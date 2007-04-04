@@ -2,11 +2,13 @@
 module type S =
     sig
     type t
-    type map (* map type *)
+    type container (* map type *)
     type pt (* node pattern type *)
     type sbl
-    type enum = (sbl * map) Enum.t
-    val match_node : map -> (pt * pt) -> enum
+    type enum = (sbl * container) Enum.t
+    val match_node_one  : (sbl * container) -> (pt * pt) -> enum
+    val match_node_zero : (sbl * container) -> (pt * pt) -> enum
+    val match_node_set  : (sbl * container) -> pt -> enum
     exception FailedMatch
     end 
 ;;
@@ -15,22 +17,20 @@ module Make(P: NodePattern.S) =
     struct
 
     type t = P.t
-    type map = P.map
+    type container = P.container
     type pt = P.pattern list
     type sbl = P.sbl
-    type context = (sbl * map)
-    type enum = context Enum.t
+    type enum = (sbl * container) Enum.t
     exception FailedMatch
 
     open ExtLib    
     
     (* run the pmatch function and remove the formula from
      * the store if it matches *)
-    let check ((sbl,store) : context) pmatch f =
+    let check (sbl,store) pcid pmatch f =
             try
                 let s = pmatch sbl [f] in
-                let newstore = store#del f in
-                Some(s,newstore)
+                Some(s,store#set pcid ((store#get pcid)#del f))
             with FailedMatch -> None
     ;;
         
@@ -40,17 +40,17 @@ module Make(P: NodePattern.S) =
         let rec enum_aux (newsbl,newstore) = function
             |[] -> Enum.empty ()
             |patt::[] ->
-                    let el = (newstore#get patt.P.pid)#elements in
+                    let el = ((newstore#get patt.P.pcid)#find patt.P.pid)#elements in
                     Enum.filter_map (fun x ->
-                        check (init (newsbl,newstore)) patt.P.pmatch x
+                        check (init (newsbl,newstore)) patt.P.pcid patt.P.pmatch x
                     ) (List.enum el)
             |patt::pl ->
-                    let el = (newstore#get patt.P.pid)#elements in
+                    let el = ((newstore#get patt.P.pcid)#find patt.P.pid)#elements in
                     Enum.concat (
                         Enum.map (fun x ->
                             Enum.filter_map (
                                 fun tbl ->
-                                    check tbl patt.P.pmatch x
+                                    check tbl patt.P.pcid patt.P.pmatch x
                             ) (Enum.clone (enum_aux (newsbl,newstore#copy) pl))
                         ) (List.enum el)
                     )
@@ -67,22 +67,24 @@ module Make(P: NodePattern.S) =
     let getset store pattlist =
         List.fold_left (
             fun (subl,ns) patt ->
-                let s = ns#get patt.P.pid in
+                let s = (ns#get patt.P.pcid)#find patt.P.pid in
                 let l = s#elements in
                 let sbl' = patt.P.pmatch subl l in
-                (sbl',List.fold_left (fun st e -> st#del e ) ns l)
+                let m =
+                    List.fold_left (fun st e -> st#del e) (ns#get patt.P.pcid) l
+                in (sbl',ns#set patt.P.pcid m)
         ) store pattlist
     ;;
     
     let removepl store pattlist =
         List.fold_left (
             fun (subl,ns) patt ->
-                let s = ns#get patt.P.pid in
+                let s = (ns#get patt.P.pcid)#find patt.P.pid in
                 match s#elements with
                 |[] -> (patt.P.pmatch subl [],ns)
                 |l ->
                     List.fold_left (fun (in_s,in_m) e ->
-                        match check (in_s,in_m) patt.P.pmatch e with
+                        match check (in_s,in_m) patt.P.pcid patt.P.pmatch e with
                         |Some(res_s,res_m) -> (res_s,res_m)
                         |None -> (in_s,in_m)
                     ) (subl,ns) l

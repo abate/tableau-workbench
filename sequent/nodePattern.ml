@@ -2,23 +2,35 @@
 module type S =
     sig
         type t 
-        type bt 
+        type sbl = private < copy : 'a ; empty : 'a ; is_empty : bool ; .. > as 'a
         type hist
-        type sbl = (t,bt) Sbl.st
-        type map = (bt, bt Sets.st) Gmap.mt
-        type pattern = { pid : string ; pmatch : sbl -> bt list -> sbl }
-        type action  = { aid : string ; paction : sbl -> hist -> hist list -> bt list }
+        type var
+        type container = private < 
+            copy : 'a ; 
+            get : int -> (t,t TwbSet.ct) TwbContainer.ct ;
+            set : int -> (t,t TwbSet.ct) TwbContainer.ct -> 'a ; ..> as 'a 
+        type pattern = { pcid : int ; pid : string ; pmatch : sbl -> t list -> sbl }
+        type action  = { acid : int ; aid : string ; paction : sbl -> hist -> var list -> t list }
     end
 
-module Make (T : sig type t type bt type hist end) =
+module type ValType =
+    sig
+        type t
+        type sbl
+        type hist
+        type var
+        type container
+    end
+    
+module Make (T : ValType) =
     struct
         type t = T.t
-        type bt = T.bt
+        type sbl = T.sbl
         type hist = T.hist
-        type sbl = (t,bt) Sbl.st
-        type map = (bt, bt Sets.st) Gmap.mt
-        type pattern = { pid : string ; pmatch : sbl -> bt list -> sbl }
-        type action  = { aid : string ; paction : sbl -> hist -> hist list -> bt list }
-        let newpatt id pmatch = { pid = id ; pmatch = pmatch }
-        let newact id paction = { aid = id ; paction = paction }
+        type var = T.var
+        type container = T.container
+        type pattern = { pcid : int ; pid : string ; pmatch : sbl -> t list -> sbl }
+        type action  = { acid : int ; aid : string ; paction : sbl -> hist -> var list -> t list }
+        let newpatt n id pmatch = { pcid = n ; pid = id ; pmatch = pmatch }
+        let newact n id paction = { acid = n ; aid = id ; paction = paction }
     end

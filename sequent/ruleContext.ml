@@ -3,9 +3,9 @@ module type S =
     sig
     type t
     type node
-    type map 
+    type container
     type sbl 
-    type enum = ( sbl * map ) Enum.t
+    type enum = ( sbl * container ) Enum.t
     type ct = enum * sbl * node
     type context = ct Rule.ct
     val newcontext : ct -> context
@@ -16,8 +16,8 @@ module Make (N: Node.S) (P: NodePattern.S) =
     type t = P.t
     type node = N.node
     type sbl = P.sbl
-    type map = P.map
-    type enum = ( sbl * map ) Enum.t
+    type container = P.container
+    type enum = ( sbl * container ) Enum.t
     type ct = enum * sbl * node
 
     class context ((e,s,n) : ct) =

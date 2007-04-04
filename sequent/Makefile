@@ -1,19 +1,16 @@
 
 SOURCES := \
-	sbl.ml \
 	nodePattern.ml \
 	build.ml \
 	partition.ml \
 	ruleContext.ml \
-	userData.ml \
-	datatype.ml \
-	outputBroker.ml \
+	dataType.ml \
+        outputBroker.ml \
 	userRule.ml \
 	
-#	userStrategy.ml
 
 RESULT := twbseq
-PACKS := twb.core twb.types
+PACKS := twb.core twb.types extlib
 
 all: ncl
 
