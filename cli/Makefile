@@ -1,11 +1,12 @@
 
 USE_CAMLP4 = yes
 SOURCES := \
-	logic.ml \
 	timer.ml \
-	twb.ml
+	twbMain.ml
 RESULT := twbcli
-export PACKS := unix extlib str twb.parser twb.core twb.types twb.sequent
+export PACKS := unix str twb.parser twb.core twb.types twb.sequent
+
+#	logic.ml
 
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)
