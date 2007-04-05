@@ -1,18 +1,33 @@
 
-CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
-  Not, "~_",   Zero;
-  Imp, "_->_", One;
-  DImp, "_<->_", One;
-  Box, "Box_", Zero;
-  Dia, "Dia_", Zero;
-  Falsum, Const;
-  Verum, Const
+(*
+CONNECTIVES [ "~";"&";"v";"->";"<->";"[";"]";"<>" ]
+GRAMMAR
+formula :=
+     Atom | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | [] formula
+    | <> formula
+    | ~ formula
+    ;
+
+expr := formula ;
 END
+*)
+source K
+
+module FormulaSet = TwbSet.Make(
+    struct
+        type t = formula
+        let to_string = formula_printer
+        let copy s = s
+    end
+)
 
 HISTORIES
-  (BOXES : Set of Formula := new Set.set)
+(BOXES    : FormulaSet.set := new FormulaSet.set)
 END
 
 open Twblib
@@ -20,54 +35,37 @@ open Klib
 
 TABLEAU
 
-  RULE K
-  { Dia a } ; z
-  ----------------------
-    a ; BOXES
-
-  ACTION [ BOXES := clear(BOXES) ]
-  END (CACHE)
-
   RULE T
-  { Box a }
+  { [] A }
   =========
-     a
+      A ; [] A
 
-  COND notin(a, BOXES)
+  COND notin(A, BOXES)
 
-  ACTION [ BOXES := add(a,BOXES) ]
+  ACTION [ BOXES := add(A,BOXES) ]
   END
  
-  RULE Id
-  { a } ; { ~ a }
-  ===============
-    Close
+  RULE K
+  { <> A } ; [] X ;  Z
+  ----------------------
+          A ; X
+  ACTION [ BOXES := clear(BOXES) ]
   END
 
-  RULE False
-    Falsum
-  =========
-    Close
-  END
-
-  RULE And
-  { a & b } 
-  ==========
-   a ; b
-  END
-  
-  RULE Or
-  { a v b }
- =================================
-     a | b
-  END
+  RULE Id { a } ; { ~ a } === Close END
+  RULE False Falsum === Close END
+  RULE And { A & B } === A ; B END
+  RULE Or { A v B } === A | B END
 
 END
 
-PP := Kopt.nnf
-NEG := neg
 
-let saturate = tactic ( (False|Id|And|T|Or)* )
+STRATEGY :=
+    let sat = tactic ( (Id|False|And|Or|T) ) in
+    tactic ( ((sat)* ; K )* )
 
-STRATEGY := ( ( saturate ; K )* )
+PP := List.map nnf
+NEG := List.map neg
+
+MAIN
 

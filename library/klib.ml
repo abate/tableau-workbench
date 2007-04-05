@@ -1,72 +1,50 @@
 
-CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
-  Imp, "_->_", One;
-  DImp, "_<->_", One;
-  Not, "~_",   Zero;
-  Box, "Box_", Zero;
-  Dia, "Dia_", Zero;
-  Falsum, Const;
-  Verum, Const
-END
+source K
 
-let neg = function term ( a ) -> term ( ~ a ) ;;
+let neg = function formula ( a ) -> formula ( ~ a )
 
-let rec nnf f = 
-    match f with
-    |term ( a & b ) -> term ( [nnf a] & [nnf b] )
-    |term ( ~ ( a & b ) ) ->
-            term ( [nnf term ( ~ a )] v [nnf term ( ~ b )] )
+let rec nnf_aux f : [> 'a formula_open] formula_open -> 'a = function
+    |formula ( a & b ) -> formula ( {f a} & {f b} )
+    |formula ( ~ ( a & b ) ) ->
+            formula ( {f formula ( ~ a )} v {f formula ( ~ b )} )
 
-    |term ( a v b ) ->
-            term ( [nnf a] v [nnf b] )
-    |term ( ~ ( a v b ) ) ->
-            term ( [nnf term ( ~ a )] & [nnf term ( ~ b )] )
+    |formula ( a v b ) -> formula ({f a} v {f b})
+    |formula ( ~ ( a v b ) ) ->
+            formula ( {f formula ( ~ a )} & {f formula ( ~ b )} )
 
-    |term ( a <-> b ) ->
-            term ( [nnf term ( a -> b )] & [nnf term ( b -> a )] )
-    |term ( ~ ( a <-> b ) ) ->
-            term ( [nnf term ( ~ (a -> b) )] v [nnf term ( ~ (b -> a) )] )
+    |formula ( a <-> b ) ->
+            formula ( {f formula ( a -> b )} & {f formula ( b -> a )} )
+    |formula ( ~ ( a <-> b ) ) ->
+            formula ( {f formula ( ~ (a -> b) )} v {f formula ( ~ (b -> a) )} )
 
-    |term ( a -> b ) -> nnf term ( (~ a) v b )
-    |term ( ~ (a -> b) ) -> nnf term ( a & (~ b) )
+    |formula ( a -> b ) -> f formula ( (~ a) v b )
+    |formula ( ~ (a -> b) ) -> f formula ( a & (~ b) )
+    |formula ( ~ ~ a ) -> f a
 
-    |term ( ~ ~ a ) -> nnf a
+    |formula ( <> a ) -> formula ( <> {f a} )
+    |formula ( ~ ( <> a ) ) -> formula ( [] {f ( formula ( ~ a ) )} )
+    |formula ( [] a ) -> formula ( [] {f a} )
+    |formula ( ~ ( [] a ) ) -> formula ( <> {f ( formula ( ~ a ) )} )
 
-    |term ( ~ Atom ) as f -> f
-    |term ( Atom ) as f -> f
 
-    |term ( Dia a ) -> term ( Dia [nnf a] )
-            
-    |term ( ~ ( Dia a ) ) -> term ( Box [nnf ( term ( ~ a ) )] )
-            
-    |term ( Box a ) -> term ( Box [nnf a] )
-            
-    |term ( ~ ( Box a ) ) -> term ( Dia [nnf ( term ( ~ a ) )] )
+    |formula (Verum) -> formula (Verum)
+    |formula (Falsum) -> formula (Falsum)
+    |formula (~ Verum) -> formula (Falsum)
+    |formula (~ Falsum) -> formula (Verum)
 
-    |term ( ~ Falsum ) -> term ( Verum )
-    |term ( ~ Verum ) -> term ( Falsum )
+    |formula ( ~ A ) as f -> f
+    |formula ( A ) as f -> f
 
-    |term ( Constant ) -> f
-    |term ( ~ Constant ) -> f
+let rec nnf f = nnf_aux nnf f
 
-    |f -> failwith (Printf.sprintf "%s\n" (Twblib.sof(f)))
-;;
 
-let rec cnf t =
-    let rec distrib = function
-        |t1, term ( t2 & t3 ) -> term ([distrib(t1,t2)] & [distrib(t1,t3)])
-        |term (t1 & t2), t3 -> term ([distrib(t1,t3)] & [distrib(t2,t3)])
-        |t1,t2 -> term (t1 v t2)
-    in
-    let rec conjnf t =
-        match t with
-        |term (t1 & t2) -> term ([conjnf(t1)] & [conjnf(t2)])
-        |term (t1 v t2) -> distrib (conjnf(t1),conjnf(t2))
-        |term (Box t1) -> term ( Box [cnf t1] )
-        |term (Dia t1) -> term ( Dia [cnf t1] )
-        |_ -> t
-in conjnf t
-;;
+(*
+let nnf_aux f : [> 'a formula_open] formula_open -> 'a = function
+    |formula ( <> a ) -> formula ( <> {f a} )
+    |formula ( ~ ( <> a ) ) -> formula ( [] {f ( formula ( ~ a ) )} )
+    |formula ( [] a ) -> formula ( [] {f a} )
+    |formula ( ~ ( [] a ) ) -> formula ( <> {f ( formula ( ~ a ) )} )
+    |#formula as x -> Pclib.nnf_aux f x
 
+let rec nnf f = nnf_aux nnf f
+*)

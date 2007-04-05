@@ -3,23 +3,23 @@ source Pc
 
 let neg = function formula ( a ) -> formula ( ~ a )
 
-let rec nnf = function
-    |formula ( a & b ) -> formula ( {nnf a} & {nnf b} )
+let rec nnf_aux f : [> 'a formula_open] formula_open -> 'a = function
+    |formula ( a & b ) -> formula ( {f a} & {f b} )
     |formula ( ~ ( a & b ) ) -> 
-            formula ( {nnf formula ( ~ a )} v {nnf formula ( ~ b )} )
+            formula ( {f formula ( ~ a )} v {f formula ( ~ b )} )
 
-    |formula ( a v b ) -> formula ({nnf a} v {nnf b})
+    |formula ( a v b ) -> formula ({f a} v {f b})
     |formula ( ~ ( a v b ) ) ->
-            formula ( {nnf formula ( ~ a )} & {nnf formula ( ~ b )} )
+            formula ( {f formula ( ~ a )} & {f formula ( ~ b )} )
 
     |formula ( a <-> b ) ->
-            formula ( {nnf formula ( a -> b )} & {nnf formula ( b -> a )} )
+            formula ( {f formula ( a -> b )} & {f formula ( b -> a )} )
     |formula ( ~ ( a <-> b ) ) ->
-            formula ( {nnf formula ( ~ (a -> b) )} v {nnf formula ( ~ (b -> a) )} )
+            formula ( {f formula ( ~ (a -> b) )} v {f formula ( ~ (b -> a) )} )
             
-    |formula ( a -> b ) -> nnf formula ( (~ a) v b )
-    |formula ( ~ (a -> b) ) -> nnf formula ( a & (~ b) )
-    |formula ( ~ ~ a ) -> nnf a
+    |formula ( a -> b ) -> f formula ( (~ a) v b )
+    |formula ( ~ (a -> b) ) -> f formula ( a & (~ b) )
+    |formula ( ~ ~ a ) -> f a
 
     |formula (Verum) -> formula (Verum)
     |formula (Falsum) -> formula (Falsum)
@@ -28,6 +28,8 @@ let rec nnf = function
 
     |formula ( ~ A ) as f -> f
     |formula ( A ) as f -> f
+
+let rec nnf f = nnf_aux nnf f
 
 let cnf t =
     let rec distr = function

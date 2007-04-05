@@ -1,15 +1,20 @@
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  Not, "~_",   Zero;
-  Box, "Box_", Zero;
-  Dia, "Dia_", Zero;
-  Falsum, Const;
-  Verum, Const
+CONNECTIVES [ "~";"&";"v";"->";"<->";"[";"]";"<>" ]
+GRAMMAR
+formula :=
+     Atom | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | [] formula
+    | <> formula
+    | ~ formula
+    ;
+
+expr := formula ;
 END
+
 
 open Twblib
 open Klib
@@ -17,48 +22,33 @@ open Klib
 TABLEAU
 
   RULE K1
-  { Dia a } ; Box x ; Dia y ; z
+  { <> A } ; [] X ; <> Y ; Z
   ===========================
-      a ; x || Dia y ; Box x
+      A ; X || <> Y ; [] X
 
-  BRANCH [ not_emptylist(Dia y) ]
-  END (CACHE)
-
+  BRANCH [ not_emptylist(<> Y) ]
+  END 
+   
   RULE K
-  { Dia a } ; Box x ; z
+  { <> A } ; [] X ;  Z
   ----------------------
-    a ; x
-  END (CACHE)
- 
-  RULE Id
-  { a } ; { ~ a }
-  ===============
-    Close
-  END
-  
-  RULE False
-     Falsum
-  ===============
-    Close
-  END
+          A ; X
+  END 
 
-  RULE And
-  { a & b }
-  ==========
-    a ; b
-  END
+  RULE Id { a } ; { ~ a } === Close END
+  RULE False Falsum === Close END
+  RULE And { A & B } === A ; B END
+  RULE Or { A v B } === A | B END
   
-  RULE Or
-  { a v b }
- ==========
-    a | b
-  END
-
 END
 
-PP := Kopt.nnf
-NEG := neg
 
-let sat = tactic ( (Id|False|And|Or) )
-STRATEGY ((sat)* ; K )*
+STRATEGY := 
+    let sat = tactic ( (Id|False|And|Or) ) in
+    tactic ( ((sat)* ; K )* )
+
+PP := List.map nnf
+NEG := List.map neg
+
+MAIN
 

@@ -1,19 +1,32 @@
+(*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  Not, "~_",   Zero;
-  Dia, "Dia_", Zero;
-  Box, "Box_", Zero;
-  Falsum, Const;
-  Verum, Const
+CONNECTIVES [ "~";"&";"v";"->";"<->";"[";"]";"<>" ]
+GRAMMAR
+formula :=
+     Atom | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | [] formula 
+    | <> formula
+    | ~ formula
+    ;
+
+expr := formula ;
 END
 
+module FormulaSet = TwbSet.Make(
+    struct
+        type t = formula
+        let to_string = formula_printer 
+        let copy s = s
+    end
+)
+
 HISTORIES
-  (DIAMONDS : Set of Formula := new Set.set);
-  (BOXES : Set of Formula := new Set.set)
+  (DIAMONDS : FormulaSet.set := new FormulaSet.set);
+  (BOXES    : FormulaSet.set := new FormulaSet.set)
 END
 
 open Twblib
@@ -22,69 +35,48 @@ open Klib
 TABLEAU
 
   RULE S4
-  { Dia a } ; z
-  ----------------------
-  a ; BOXES 
-  
-  COND notin(Dia a, DIAMONDS)
-  ACTION [ DIAMONDS := add(Dia a,DIAMONDS) ]
-  END (CACHE)
+  { <> A } ; Z
+  ------------
+  A ; BOXES
 
+  COND notin(<> A, DIAMONDS)
+  ACTION [ DIAMONDS := add(<> A,DIAMONDS) ]
+  END
+ 
   RULE S4H
-  { Dia a } ; Dia y ; z
-  ===============================
-     a ; BOXES || Dia y
+  { <> A } ; <> Y ; Z 
+  ======================
+   A ; BOXES || <> Y
 
-  COND notin(Dia a, DIAMONDS)
+  COND notin(<> A, DIAMONDS)
   ACTION [
-      [ DIAMONDS := add(Dia a,DIAMONDS);
-        DIAMONDS := add(Dia y,DIAMONDS)];
+      [ DIAMONDS := add(<> A,DIAMONDS);
+        DIAMONDS := add(<> Y,DIAMONDS)];
 
-      [ DIAMONDS := add(Dia a,DIAMONDS) ]
+      [ DIAMONDS := add(<> Y,DIAMONDS) ]
   ]
-  END (CACHE)
+  BRANCH not_emptylist(<> Y)
+  END
 
-  RULE T
-  { Box a }
-  =========
-     a 
-
-  COND notin(a, BOXES)
-  
+  RULE T { [] A } === A
+  COND notin(A, BOXES)
   ACTION [
-      BOXES    := add(a,BOXES);
+      BOXES    := add(A,BOXES);
       DIAMONDS := emptyset(DIAMONDS)]
   END
 
-  RULE Id
-  { a } ; { ~ a }
-  ===============
-    Close
-  END
-
-  RULE False
-    Falsum
-  =========
-    Close
-  END
+  RULE Id { a } ; { ~ a } === Close END
+  RULE False Falsum === Close END
+  RULE And { A & B } === A ; B END
+  RULE Or { A v B } === A | B END
   
-  RULE And
-  { a & b }
-  =========
-    a ; b
-  END
-  
-  RULE Or
-  { a v b }
- ==========
-    a | b
-  END
-
 END
 
-PP := nnf
-NEG := neg
+STRATEGY := 
+    let sat = tactic ( (False|Id|And|T|Or) )
+    in tactic ( ( (sat)* ; S4H )* )
 
-let sat = tactic ( (False|Id|And|T|Or) )
+PP := List.map nnf
+NEG := List.map neg
 
-STRATEGY ( (sat)* ; S4H )*
+MAIN
