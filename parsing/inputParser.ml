@@ -26,12 +26,12 @@ struct
           incr counter;
           s ^ string_of_int !counter
 
-    let conntab = Hashtbl.create 17
+    let conn_table = Hashtbl.create 17
     let new_conn l =
-    try Hashtbl.find conntab l
+    try Hashtbl.find conn_table l
     with Not_found -> 
         let e = new_co "Conn" in
-        let _ = Hashtbl.add conntab l e
+        let _ = Hashtbl.add conn_table l e
         in e
 
     let make_token self = function
@@ -104,14 +104,13 @@ struct
         in
         let str =
             let s = (String.lowercase Sys.argv.(0)) in
-            let re1 = Str.regexp "[a-z]+\\.twb" in
-            let re2 = Str.regexp "\\([a-z]+\\)\\.twb" in
-            ignore (Str.string_match re1 s 0) ;
-            (* Str.replace_first re2 "\\1" (Str.matched_string s); *)
-            "tt" (* XXX *)
+            let re = Str.regexp
+            "\\(/?[a-z0-9][a-zA-Z0-9]*/\\)*\\(\\./\\)*\\([a-zA-Z0-9]+\\)\\.twb" in
+            if Str.string_match re s 0 then Str.matched_group 3 s
+            else (print_endline s ; assert false)
         in
         let ch = open_in (tmp_dir^str^".gramm") in
-        let gramms = Marshal.from_channel ch in
+        let (_,_,gramms) = Marshal.from_channel ch in
         let _ = close_in ch in
         List.iter (function
             |("expr",rules) -> extend_schema ()

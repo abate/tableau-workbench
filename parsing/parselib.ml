@@ -7,6 +7,7 @@ let vars_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl
 let const_table : (string, unit) Hashtbl.t = Hashtbl.create 50
 let tactic_table : (string, unit) Hashtbl.t = Hashtbl.create 50
 let expr_table : (string, MLast.expr) Hashtbl.t = Hashtbl.create 50
+let symbol_table : (string, unit) Hashtbl.t = Hashtbl.create 17
 
 let (=~) s re = Str.string_match (Str.regexp re) s 0
 let get_match i s = Str.matched_group i s

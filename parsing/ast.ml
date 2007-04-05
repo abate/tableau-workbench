@@ -9,6 +9,7 @@ type history =
 type strategy = Strategy of tactic
 and tactic =
     |TaBasic of string
+    |TaModule of string * string
     |TaSkip
     |TaFail
     |TaSeq  of tactic * tactic

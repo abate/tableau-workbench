@@ -523,8 +523,12 @@ let expand_ruledown ruletype bcond den_args action_args =
                 name context (fun n ->
                     $list_to_exprlist ((aux [] (List.rev den_args,List.rev action_args)))$ ) >>
             |Ast.Implicit, Ast.Linear ->
+                    let aa =
+                        if action_args = [] then <:expr< [] >>
+                        else List.hd action_args
+                    in
                     <:expr< UserRule.down_implicit
-                    name context $List.hd den_args$ $List.hd action_args$ >>
+                    name context $List.hd den_args$ $aa$ >>
             |Ast.Implicit,_ -> failwith "Rule type not allowed"
             end
 
@@ -819,7 +823,10 @@ let expand_matchpatt rulelist =
     let get_schema (Ast.Rule rule) =
         let aux = List.map (fun (_,pa_expr) -> pa_expr ) in
         let (_, _, Ast.Numerator arr, _, _, _, _, _, _, _ ) = rule in
-        List.flatten (Array.to_list (Array.map aux arr))
+        (* we inject all constants *)
+        let constlist = Hashtbl.fold (fun k v acc -> 
+            Ast.PaTerm(Ast.PaCons(k))::acc) const_table []
+        in (List.flatten (Array.to_list (Array.map aux arr)))@constlist
     in
     let pa_expr_to_patt =
         let rec pa_term_to_patt = function
@@ -842,9 +849,10 @@ let expand_matchpatt rulelist =
                     filter_map (fun pa_expr ->
                         match pa_expr_to_patt pa_expr with
                         |None -> None
-                        |Some(pa) -> Some(pa,None,<:expr< $str:pa_expr_to_string pa_expr$ >>)
+                        |Some(pa) ->
+                                Some(pa,None,<:expr< $str:pa_expr_to_string pa_expr$ >>)
                     ) (get_schema rule)
-                ) rulelist 
+                ) rulelist
             )
         )))
     in
@@ -866,6 +874,9 @@ let rec expand_tactic = function
     |Ast.TaBasic(uid) ->
             let id = String.lowercase uid in
             <:expr< Rule( new $lid:id^"_rule"$ ) >>
+    |Ast.TaModule(m,uid) ->
+            let id = String.lowercase uid in
+            <:expr< Rule( new $uid:m$.$lid:id^"_rule"$ ) >>
     |Ast.TaSeq(t1,t2) ->
             let ext1 = expand_tactic t1 in
             let ext2 = expand_tactic t2 in
@@ -936,18 +947,14 @@ let expand_simplification s = failwith "expand_simplification"
 let expand_options s = failwith "expand_options"
 
 let expand_source m =
-    let tmp_dir =
-        let str = "/tmp/twb" ^ Unix.getlogin () in
-        let _ =
-            try ignore(Unix.stat str) with
-            |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
-        in str ^ "/"
-    in
-    let ch = open_in (tmp_dir^String.lowercase m^".gramm") in
-    let gramms = Marshal.from_channel ch in
-    let _ = close_in ch in
+    let (constlist,symbollist,gramms) = ExtGramm.readgramm m in
+    List.iter (fun c -> Hashtbl.add const_table c ()) constlist;
+    List.iter (fun c -> Hashtbl.add symbol_table c ()) symbollist;
     ExtGramm.extgramm gramms;
+    ExtGramm.writegramm gramms;
     let ty = ExtGramm.expand_grammar_type_list gramms in
     let pr = ExtGramm.expand_printer gramms in
+    let ast = ExtGramm.expand_ast2input gramms in
     let sty = <:str_item< type $list:ty$ >> in
-    <:str_item< declare $list:[sty;pr]$ end >>
+    <:str_item< declare $list:[sty;pr;ast]$ end >>
+

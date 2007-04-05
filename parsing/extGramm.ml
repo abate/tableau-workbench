@@ -28,6 +28,16 @@ let expr_patt = PattEntry.add_entry "expr" ; PattEntry.get_entry "expr"
 let expr_expr_schema = create_gramm "expr_expr_schema"
 let expr_patt_schema = create_gramm "expr_patt_schema"
 
+let conn_table = Hashtbl.create 17
+let new_conn = function
+    |[] -> failwith "new_conn empty list"
+    |l ->
+        try Hashtbl.find conn_table l
+        with Not_found ->
+            let e = new_co "Conn" in
+            let _ = Hashtbl.add conn_table l e
+            in e
+
 let make_token ttype self = function
     |Lid("") -> 
             begin match ttype with
@@ -79,14 +89,6 @@ let make_token ttype self = function
             |TExpr | TPatt -> Gramext.Snterm (create_obj test_uid)
             |TExprSchema | TPattSchema -> Gramext.Stoken ("LIDENT", "")
             end
-
-let conntab = Hashtbl.create 17 
-let new_conn l =
-    try Hashtbl.find conntab l
-    with Not_found ->
-        let e = new_co "Conn" in
-        let _ = Hashtbl.add conntab l e
-        in e
 
 let make_entry_patt self token_list =
     let gen_action tl =
@@ -288,7 +290,7 @@ let extend_entry label entrylist =
         None, [None, None, (List.map (make_entry_patt_schema label) entrylist) ]);
     ]
 
-let extgramm gramms =
+let writegramm gramms =
     (* we write a file with the marshalled representation of the grammar
      * to be then reused in other modules.
      * see the directive : source Modulename *)
@@ -302,12 +304,58 @@ let extgramm gramms =
     in
     let str =
         let s = (String.lowercase Sys.argv.(5)) in
-        let re = Str.regexp "\\([a-z]+\\)\\.ml" in
+        let re = Str.regexp "\\([a-zA-z0-9]+\\)\\.ml" in
         Str.replace_first re "\\1" s
     in
+    (* write the grammar definition to a file *)
     let ch = open_out (tmp_dir^str^".gramm") in
-    let _ = Marshal.to_channel ch gramms [] in
-    let _ = close_out ch in
+    let constlist = Hashtbl.fold (fun k _ acc -> k :: acc) const_table [] in
+    let connlist = Hashtbl.fold (fun k _ acc -> k :: acc) symbol_table [] in
+    Marshal.to_channel ch (constlist,connlist,gramms) [];
+    close_out ch
+
+(*
+let readgramm extmodule gramms = 
+    match extmodule with None -> gramms
+    |Some(m) ->
+        let tmp_dir =
+            let str = "/tmp/twb" ^ Unix.getlogin () in
+            let _ =
+                try ignore(Unix.stat str) with
+                |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
+            in str ^ "/"
+        in
+        let ch = open_in (tmp_dir^String.lowercase m^".gramm") in
+        let (_,_,gl) = Marshal.from_channel ch in
+        let _ = close_in ch in
+        let merge l1 l2 =
+            let tab = Hashtbl.create 17 in
+            let _ =
+                List.iter (function
+                    ("expr",r1) -> Hashtbl.replace tab "expr" r1
+                    |(id,r1) ->
+                        try let r2 = Hashtbl.find tab id in
+                            Hashtbl.replace tab id (unique (r1@r2))
+                        with Not_found -> Hashtbl.add tab id r1
+                ) (l1@l2)
+            in Hashtbl.fold (fun k v acc -> (k,v)::acc) tab []
+        in List.rev (merge gramms (List.rev gl))
+*)
+
+let readgramm m = 
+    let tmp_dir =
+        let str = "/tmp/twb" ^ Unix.getlogin () in
+        let _ =
+            try ignore(Unix.stat str) with
+            |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
+        in str ^ "/"
+    in
+    let ch = open_in (tmp_dir^String.lowercase m^".gramm") in
+    let (constlist,symbollist,gramms) = Marshal.from_channel ch in
+    let _ = close_in ch in
+    (constlist,symbollist,gramms)
+
+let extgramm gramms =
     List.iter (function
         |("expr",rules) -> extend_schema rules
         |(id,rules) ->
@@ -317,8 +365,6 @@ let extgramm gramms =
                 PattSchemaEntry.add_entry id; 
                 extend_entry id rules;
     ) gramms 
-
-let symbtab = Hashtbl.create 17 ;;
 
 let lid strm =
     match Stream.peek strm with
@@ -350,7 +396,7 @@ let connective strm =
                 failwith (s^" is an illegal connective")
         |_ -> raise Stream.Failure
     in
-    try Stream.junk strm; Hashtbl.add symbtab s () ; Symbol(s)
+    try Stream.junk strm; Hashtbl.add symbol_table s () ; Symbol(s)
     with Stream.Failure -> raise Stream.Failure
 
 let connective = Grammar.Entry.of_parser Pcaml.gram "connective" connective 
@@ -360,9 +406,9 @@ let symbol strm =
         (* |Some("","|") | Some("",";")
         |Some("","(") | Some("",")") -> raise Stream.Failure
         *)
-        |Some("",s) when (Hashtbl.mem symbtab s) -> s
+        |Some("",s) when (Hashtbl.mem symbol_table s) -> s
         |Some("LIDENT",s)
-        |Some("UIDENT",s) when (Hashtbl.mem symbtab s) -> s 
+        |Some("UIDENT",s) when (Hashtbl.mem symbol_table s) -> s 
         |_ -> raise Stream.Failure
     in
     try Stream.junk strm; Symbol(s)
@@ -371,16 +417,19 @@ let symbol strm =
 let symbol = Grammar.Entry.of_parser Pcaml.gram "symbol" symbol 
 
 let expand_grammar_type (id,rules) =
+    let typevars = ref [(id,(true,true))] in
     let exptype = function
-        |Lid(s) ->   <:ctyp< $lid:s$ >>
-        |List(s) ->  <:ctyp< $lid:s$ list >>
+        |Lid(s) when s = id -> <:ctyp< '$lid:s$ >>
+        |List(s) when s = id ->  <:ctyp< '$lid:s$ list >>
+        |Lid(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ >>
+        |List(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ list >>
         |Atom ->     <:ctyp< string >>
         |Const(s) -> <:ctyp< [= `$uid:s$ ] >>
         |_ -> failwith "exptype"
     in
     let aux = function
         |[Lid(s)] -> None
-        |[Type(t);Symbol(":");Lid(s)]  -> Some("",[<:ctyp< ($exptype t$ * $lid:s$) >>])
+        |[Type(t);Symbol(":");Lid(s)]  -> Some("",[<:ctyp< ($exptype t$ * '$lid:s$) >>])
         |[Atom] -> Some("Atom",[<:ctyp< string >>])
         |[Const(s)] -> Some(s,[])
         |Symbol("(") :: _ -> None
@@ -406,8 +455,12 @@ let expand_grammar_type (id,rules) =
                 in <:ctyp< [= $acc$ | $c$ ] >>
             ) (aux (id, args)) tl
         |[] -> failwith "expand_grammar_type"
-    in 
-    ((_loc,id),[],fields,[])
+    in
+    let closedtype =
+        let tvl = List.map(fun (t,_) -> <:ctyp< '$lid:t$ >>) !typevars in
+        <:ctyp< $lid:id^"_open"$ ($list:tvl$) as '$lid:id$ >>
+    in
+    [((_loc,id^"_open"),!typevars,fields,[]);((_loc,id),[],closedtype,[])]
 
 let rec expand_grammar_expr_type = function
     |[[Lid(s)]] ->   <:ctyp< $lid:s$ >>
@@ -420,11 +473,13 @@ let rec expand_grammar_expr_type = function
     |_ -> failwith "expand_grammar_expr_type"
     
 let expand_grammar_type_list gramms =
-        List.map (function
-            |("expr",rules) -> 
-                    ((_loc,"expr"),[], expand_grammar_expr_type rules ,[])
-            |(id,rules) -> expand_grammar_type (id,rules)
-        ) gramms
+        List.flatten (
+            List.map (function
+                |("expr",rules) -> 
+                        [((_loc,"expr"),[], expand_grammar_expr_type rules ,[])]
+                |(id,rules) -> expand_grammar_type (id,rules)
+            ) gramms
+        )
 
 let expand_printer gramm =
     let aux (name,rules) = 
@@ -521,12 +576,13 @@ Pcaml.str_item: [[
             <:str_item< "" >>
 
     |"GRAMMAR"; gramms = LIST1 gramm; "END" ->
-        extgramm gramms ;
-        let ty = expand_grammar_type_list gramms in
-        let pr = expand_printer gramms in
-        let ast = expand_ast2input gramms in
-        let sty = <:str_item< type $list:ty$ >> in
-        <:str_item< declare $list:[sty;pr;ast]$ end >>
+            let _ = writegramm gramms in
+            let _ = extgramm gramms in
+            let ty = expand_grammar_type_list gramms in
+            let pr = expand_printer gramms in
+            let ast = expand_ast2input gramms in
+            let sty = <:str_item< type $list:ty$ >> in
+            <:str_item< declare $list:[sty;pr;ast]$ end >>
 ]];
 
 gramm: [
@@ -546,6 +602,7 @@ rule: [[ psl = LIST1 psymbol -> psl ]];
 
 psymbol: [
     [ "Atom"  -> Atom
+    (* | "extend"; m = UIDENT -> Extend(m) *)
     | e = symbol -> e
     | e = ptype -> e
     | e = const -> e

@@ -56,6 +56,7 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       | "("; t = tactic; ")"; "*" ->
               let id = new_id "muvar" in
               Ast.TaMu(id,Ast.TaCut(Ast.TaAlt(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip)))
+      | m = UIDENT; "."; r = UIDENT -> Ast.TaModule(m,r)
       | id = test_muvar -> id
       ]
   ];
