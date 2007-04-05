@@ -1,48 +1,33 @@
 
-CONNECTIVES
-DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  Not, "~_", Zero;
-  Falsum, Const;
-  Verum, Const
+CONNECTIVES [ "~";"&";"v";"->";"<->" ]
+GRAMMAR
+formula :=
+     Atom | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | ~ formula
+    ;
+
+expr := formula ;
 END
 
 open Pclib
 
 TABLEAU
 
-  RULE Id
-  { a } ; { ~ a }
-  ===============
-    Close
-  END
-  
-  RULE False
-     Falsum
-  ===============
-    Close
-  END
-
-  RULE And
-  { a & b }
- ==========
-   a ; b 
-  END
-  
-  RULE Or
-  { a v b }
- ==========
-   a | b 
-  END
+  RULE Id { a } ; { ~ a } === Close END
+  RULE False Falsum === Close END
+  RULE And { A & B } === A ; B END
+  RULE Or { A v B } === A | B END
 
 END
 
-PP := nnf
-NEG := neg
+STRATEGY := tactic ( (False|Id|And|Or)* )
 
-let sat = tactic (Id|And|Or)
-let rsat = tactic ( mu(X) . !( (sat ; X) | Skip) )
-STRATEGY (rsat)
+PP := List.map nnf
+NEG := List.map neg
+
+MAIN
 

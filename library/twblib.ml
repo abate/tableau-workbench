@@ -1,5 +1,5 @@
 
-let sof f = (!Basictype.string_of_formula f)
+(* let sof f = (!Basictype.string_of_formula f) *)
 
 (* set history operations *)
 let add (l,h) = h#addlist l
