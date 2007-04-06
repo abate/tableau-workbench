@@ -26,7 +26,6 @@ let rec nnf_aux f : [> 'a formula_open] formula_open -> 'a = function
     |formula ( [] a ) -> formula ( [] {f a} )
     |formula ( ~ ( [] a ) ) -> formula ( <> {f ( formula ( ~ a ) )} )
 
-
     |formula (Verum) -> formula (Verum)
     |formula (Falsum) -> formula (Falsum)
     |formula (~ Verum) -> formula (Falsum)

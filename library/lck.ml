@@ -74,7 +74,7 @@ TABLEAU
   ] ; [] ]
   BRANCH [ [ not_false(uev@1) ; notemptylist(Dia1 q1, Dia2 q2) ] ]
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
-  END (CACHE)
+  END (cache)
 
   RULE Diatwo
   { Dia2 p } ; Box2 x ; Dia1 q1 ; Dia2 q2 ; z
@@ -88,7 +88,7 @@ TABLEAU
   ] ; [] ]
   BRANCH [ [ not_false(uev@1) ; notemptylist(Dia1 q1, Dia2 q2) ] ]
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
-  END (CACHE)
+  END (cache)
   
   RULE Loop Dia1 x1 ; Dia2 x2 ; Box1 y1 ; Box2 y2 == Stop
   BACKTRACK [ uev := setuev_loop(x1, y1, x2, y2, Fev, Br) ]

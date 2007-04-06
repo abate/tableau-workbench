@@ -1,38 +1,46 @@
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  Until, "_Un_", One;
-  Before, "_Bf_", One;
-  Next, "X_", Zero;
-  Generally, "G_", Zero;
-  Sometimes, "F_", Zero;
-  Not, "~_",   Zero;
-  Falsum, Const;
-  Verum, Const
-END
+CONNECTIVES [ "~";"&";"v";"->";"<->";"Un";"Bf";"X";"G";"F" ]
+GRAMMAR
+formula :=
+     Atom | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | formula Un formula
+    | formula Bf formula
+    | F formula
+    | G formula
+    | X formula
+    | ~ formula
+    ;
 
-HISTORIES
-  (Ev : Set of Formula := new Set.set) ;
-  (Br : List of (Set of Formula * Set of Formula) := new Listoftupleset.listobj);
-  (uev : Set of Formula := new Set.set);
-  (status : String := new Set.set);
-  (n : Int := new Set.set default 0)
+expr := formula ;
 END
 
 open Twblib
 open PltlRewrite
 open PltlFunctions
 
-let neg = Basictype.map neg_term ;;
-let nnf = Basictype.map nnf_term ;;
+
+HISTORIES
+  (Ev : FormulaSet.set := new FormulaSet.set);
+  (Br : ListFormulaSet.olist := new ListFormulaSet.olist)
+END
+
+VARIABLES
+  (uev : FormulaSet.set := new FormulaSet.set);
+  (status : string := "Undef" );
+  (n : int := 0)
+END
+
+let neg = List.map neg_term ;;
+let nnf = List.map nnf_term ;;
 
 TABLEAU
 
   RULE Id
-  { a } ; { ~ a } ; z
+  { A } ; { ~ A } ; Z
   ===============
      Stop
 
@@ -44,7 +52,7 @@ TABLEAU
   END
   
   RULE False
-  Falsum ; z
+  Falsum ; Z
   ===============
      Stop
 
@@ -56,43 +64,43 @@ TABLEAU
   END
 
   RULE Loop
-  { X a } ; X b ; z
+  { X A } ; X B ; Z
   =================
        Stop
 
   BACKTRACK [
-      uev := setuev(X a, X b, z, Ev, Br);
-      n   := setn (X a, X b, z, Br)
+      uev := setuev(X A, X B, Z, Ev, Br);
+      n   := setn (X A, X B, Z, Br)
   ]
 
   END
 
   RULE Next
-  { X a } ; X b ; z
+  { X A } ; X B ; Z
   =================
-      a ; b
+      A ; B
       
-  COND [ loop_check(X a, X b, z, Br) ]
+  COND [ loop_check(X A, X B, Z, Br) ]
   ACTION [
       Ev := emptyset(Ev);
-      Br := push(X a, X b, z, Ev, Br)
+      Br := push(X A, X B, Z, Ev, Br)
   ]
 
-  END (CACHE)
+  END
 
   RULE Before
-    {a Bf c}
+    {A Bf C}
   ==========================
-   nnf (~ c) ; a v X (a Bf c)
+   nnf (~ C) ; A v X (A Bf C)
 
   END
 
   RULE Until
            { c Un d } 
   =============================
-      d ||| c ; X ( c Un d ) 
+      D ||| C ; X ( C Un D ) 
 
-  ACTION    [ Ev := add(d, Ev) ] 
+  ACTION    [ Ev := add(D, Ev) ] 
   BRANCH    [ not_emptyset(uev@1) ] 
   BACKTRACK [ 
       uev := beta(uev@1, uev@2, n@1, n@2, Br);
@@ -102,9 +110,9 @@ TABLEAU
   END
  
   RULE Or
-  { a v b }
+  { A v B }
   =========
-   a ||| b
+   A ||| B
 
   BRANCH [ not_emptyset(uev@1) ]  
   BACKTRACK [ 
@@ -115,34 +123,37 @@ TABLEAU
   END
 
   RULE And
-    a & b 
+    A & B 
   =========
-    a ; b
+    A ; B
   END
 
   RULE GE
      { G a }
   =============
-   a ; X (G a)
+   A ; X (G A)
   END
   
 END
 
+(*
 let exit (uev) = 
     match uev#elements with
     |[] -> "Open"
     |[(termfalse)] -> "Closed"
     |_ -> "Closed"
-;;
 
 OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
+*)
  
-PP := nnf_term
-NEG := neg_term
-EXIT := exit (uev@1)
+PP := nnf
+NEG := neg
+(* EXIT := exit (uev@1) *)
 
 let sat = tactic ( (Id | False | And | Before | Ge | Or | Until) )
 
-STRATEGY := (((sat)* ; (Next | Loop))* )
+STRATEGY := tactic (((sat)* ; (Next | Loop))* )
+
+MAIN
