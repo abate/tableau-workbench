@@ -7,8 +7,8 @@ let rec expand_pa_term = function
     |Ast.PaCons(id)   -> <:patt< ( `$uid:id$ as $lid:String.lowercase id$ ) >>
     |Ast.PaAtom(s)    -> <:patt< ( `Atom _ as $lid:String.lowercase s$ ) >>
     |Ast.PaVar(s)     -> <:patt< $lid:String.lowercase s$ >>
-    |Ast.PaVari(s,i)  ->  failwith "not yet"
-    |Ast.PaHist(s)    ->  failwith "not yet"
+    |Ast.PaVari(s,i)  -> assert(false)
+    |Ast.PaHist(s)    -> assert(false)
 
 let rec expand_pa_expr = function
     |Ast.PaTerm(t)       -> <:patt< $expand_pa_term t$ >>
@@ -72,7 +72,7 @@ let pa_expr_to_string =
     in function
         |Ast.PaTerm(t) -> pa_term_to_string t
         |Ast.PaLabt(_,t) -> pa_term_to_string t
-        |_ -> failwith "pa_expr_to_string"
+        |_ -> assert(false)
 
 let ctyp_to_patt ctyp =
     let counter = ref 0 in
@@ -82,7 +82,7 @@ let ctyp_to_patt ctyp =
                 incr counter; 
                 <:patt< $lid:"__t"^string_of_int !counter$ >>
         |MLast.TyAcc(_,_,ctyp) -> aux ctyp
-        |_ -> failwith "ctyp_to_patt"
+        |_ -> assert(false)
     in aux ctyp
 
 let ctyp_to_method_expr m ctyp = 
@@ -101,7 +101,7 @@ let ctyp_to_method_expr m ctyp =
                 |_ -> <:expr< $lid:"__t"^string_of_int !counter$#$lid:m$ >>
                 end
         |MLast.TyAcc(_,_,ctyp) -> aux ctyp
-        |_ -> failwith "ctyp_to_method_expr"
+        |_ -> assert(false) 
     in aux ctyp
 
 let expand_history_type histlist =
@@ -123,7 +123,7 @@ let expand_history_type histlist =
                     incr counter; 
                     <:expr< $lid:"__t"^string_of_int !counter$#to_string >>
             |MLast.TyAcc(_,_,ctyp) -> aux ctyp
-            |_ -> failwith "ctyp_to_string_expr"
+            |_ -> assert(false)
         in aux ctyp
     in
     let tlist =
@@ -200,10 +200,10 @@ let expand_histories =
         |Ast.Variable(l) -> List.iter (aux vars_table) l ; <:str_item< "" >>
         |Ast.History(l)  -> List.iter (aux hist_table) l ; <:str_item< "" >>
 
-let expand_principal expr =
-    let (idlist,termlist) = List.split (extract_pa_expr_vars expr) in
+let expand_principal pa_expr =
+    let (idlist,termlist) = List.split (extract_pa_expr_vars pa_expr) in
     let act =
-        ((expand_pa_expr expr), None,
+        ((expand_pa_expr pa_expr), None,
         <:expr<
             List.map2
             (fun f s ->
@@ -212,11 +212,11 @@ let expand_principal expr =
             ) $list_to_exprlist termlist$ $list_to_exprlist idlist$
         >>)
     in
-    let def = (<:patt< _ >>, None, <:expr< raise FailedMatch >>)
-    in
+    let def = (<:patt< _ >>, None, <:expr< raise FailedMatch >>) in
+    let l = if pa_expr_is_var pa_expr then [act] else [act;def] in
     <:expr<
     fun sbl -> fun fl ->
-        let __rec = fun [ $list:[act;def]$ ] in
+        let __rec = fun [ $list:l$ ] in
         match (* $heuristic$ *) fl with
         [[] -> sbl#add (List.combine $list_to_exprlist idlist$ [[]])
         |[ h::_ ] -> sbl#add (List.combine $list_to_exprlist idlist$ (__rec h))
@@ -279,27 +279,38 @@ let expand_num_triple numl (Ast.Numerator arr) =
 
 let rec expand_ex_term use = function
     |Ast.ExConn(id,l) as ex_term ->
+            let argall = 
+                let rec aux = function
+                    |Ast.ExConn(id,l) ->
+                           List.flatten (List.map (fun e -> aux e) l ) 
+                    |e -> [expand_ex_term `Term e]
+                in List.flatten (List.map (fun e -> aux e) l )
+            in
+            let rec filter (acc,exacc) = function
+                |(pa,ex)::tl when (List.mem ex exacc) -> filter (acc,exacc) tl
+                |(pa,ex)::tl -> filter (((pa,ex)::acc),(ex::exacc)) tl
+                |[] -> acc
+            in
+            let (exl,pel) =
+                List.split (
+                    List.map (function (pa,ex) ->
+                        (<:expr< $lid:pa$ sbl hist varl >>,
+                        (<:patt< $lid:pa$ >>,
+                        <:expr< fun sbl hist varl -> $ex$ >>))
+                    ) (filter ([],[]) argall)
+                )
+            in
             let rec aux = function
                 |Ast.ExConn(id,l) -> <:expr< `$uid:id$($list:List.map aux l$) >>
                 |Ast.ExCons(id)   -> <:expr< `$uid:id$ >>
                 |Ast.ExAtom(s)    -> <:expr< `Atom $str:s$ >>
                 |Ast.ExVar(s)     -> <:expr< $lid:String.lowercase s$ >>
-                |Ast.ExVari(s,i)  ->  failwith "not yet"
-                |Ast.ExHist(s)    ->  failwith "not yet"
-            in
-            let (exl,pel) =
-                List.split (
-                    List.map (fun (pa,ex) ->
-                        (<:expr< $lid:pa$ sbl hist varl >>,
-                        (<:patt< $lid:pa$ >>,
-                        <:expr< fun sbl hist varl -> $ex$ >>))
-                        (* XXX: does this really work ??? *)
-                    ) (List.map (expand_ex_term `Var) l)
-                )
+                |Ast.ExVari(s,i)  -> assert(false) 
+                |Ast.ExHist(s)    -> assert(false)
             in
             let idlist =
                 List.map (fun s -> <:patt< `Term $lid:s$ >>) 
-                (extract_ex_term_vars [] ex_term)
+                ( unique(extract_ex_term_vars [] ex_term) )
             in
             (new_id "ex_expr",
             <:expr< let $list:pel$ in
@@ -321,7 +332,7 @@ let rec expand_ex_term use = function
                 ) ( try (sbl#find $str:id$)#elements
                     with [Not_found -> failwith ("__find: " ^ $str:id$)]) >>
                 )
-             |`Var ->
+             |`Term ->
                 (new_id "ex_term",
                 <:expr<
                 try (sbl#find $str:id$)#elements
@@ -343,9 +354,9 @@ let rec expand_ex_term use = function
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> failwith "varhist"]
                     (varhist#find $str:id$)#elements
-                with [Failure "nth" -> 1 ] >>
+                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
                 )
-            |`Obj |`Var ->
+            |`Obj | `Term ->
                 (new_id "ex_term",
                 <:expr<
                 try
@@ -353,7 +364,7 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> 1 ] >>
+                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.Last) ->
@@ -370,9 +381,9 @@ let rec expand_ex_term use = function
                     [`$uid:var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> 1 ] >>
+                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
                 )
-            |`Obj |`Var ->
+            |`Obj |`Term ->
                 (new_id "ex_term",
                 <:expr<
                 try
@@ -380,20 +391,20 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> 1 ] >>
+                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.All) ->
             begin match use with
-            |`List -> failwith "expand_ex_term var all"
-            |`Obj |`Var ->
+            |`List -> assert(false)
+            |`Obj |`Term ->
                 (new_id "ex_term",
                 <:expr<
                 try List.map (fun v -> v#find $str:id$) varl
-                with [Failure "nth" -> 1 ] >>
+                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
                 )
             end
-    |Ast.ExVari(id,Ast.Null) -> failwith "exvari null"
+    |Ast.ExVari(id,Ast.Null) -> assert(false)
     |Ast.ExHist(id) ->
             let (var,ctyp,def) =
                 try Hashtbl.find hist_table id
@@ -408,7 +419,7 @@ let rec expand_ex_term use = function
                     | _ -> failwith "varhist"]
                 with [Not_found -> failwith ("__find: " ^ $str:id$)] >>
                 )
-            |`Obj |`Var -> 
+            |`Obj |`Term -> 
                 (new_id "ex_term",
                 <:expr< 
                 try match hist#find $str:id$ with
@@ -453,6 +464,7 @@ let rec expand_ex_expr use = function
             let (pa,ex) = expand_ex_term use ex_term in
                 (new_id "ex_expr",
                 <:expr< let $lid:pa$ = fun sbl hist varl -> $ex$ in $lid:pa$ >>)
+    |Ast.ExTupl([]) -> (new_id "ex_expr", <:expr< fun sbl hist varl -> () >>)
     |Ast.ExTupl(l) ->
             let (exl,pel) =
                 List.split (
@@ -505,15 +517,15 @@ let expand_denominator name = function
 
 let expand_ruledown ruletype bcond den_args action_args =
     let rec aux acc = function
-        |[], h::_ -> failwith "expand_ruledown"
+        |[], h::_ -> assert(false)
         |[d],[] -> <:expr< ( n, $d$, [] ) >>::acc
         |[d],[a] -> <:expr< ( n, $d$, $a$ ) >>::acc
         |d::dl,a::al -> aux (<:expr< ( n#copy, $d$, $a$ ) >>::acc) (dl,al)
         |d::dl,[] -> aux (<:expr< ( n#copy, $d$, [] ) >>::acc) (dl,[])
-        |_ -> failwith "expand_ruledown"
+        |_ -> assert(false) 
     in
     function
-        |[] -> failwith "expand_ruledown"
+        |[] -> assert(false)
         |[Ast.Status(s)] -> 
                  <:expr< UserRule.down_axiom name context $List.hd den_args$ >>
         |_ ->
@@ -540,7 +552,7 @@ let expand_action name actionlist =
                     try match arg with
                     |Ast.ExVari(id,Ast.Null) -> (Hashtbl.find vars_table id,id)
                     |Ast.ExHist(id) -> (Hashtbl.find hist_table id,id)
-                    |_ -> failwith "expand_action"
+                    |_ -> assert(false)
                     with Not_found -> failwith ("History or Variable not declared")
                 in
                 (new_id "action",
@@ -558,7 +570,7 @@ let expand_action name actionlist =
 let expand_status_defaults () =
     let (var,_,_) =
         try Hashtbl.find vars_table "status"
-        with Not_found -> failwith "expand_status_defaults"
+        with Not_found -> assert(false)
     in
     <:str_item<
     value status s sbl hist varlist =
@@ -834,7 +846,7 @@ let expand_matchpatt rulelist =
             |Ast.PaCons(s) -> <:patt< `$uid:s$ >>
             |Ast.PaConn(id,l) -> <:patt< `$uid:id$($list:List.map pa_term_to_patt l$) >>
             |Ast.PaVar(_) -> <:patt< _ >>
-            |_ -> failwith "matchpatt"
+            |_ -> assert(false)
         in function
             |Ast.PaTerm(Ast.PaVar(_)) -> None
             |Ast.PaLabt(_,Ast.PaVar(_)) -> None
@@ -925,8 +937,11 @@ let expand_main () =
                 try Hashtbl.find vars_table "status"
                 with Not_found -> failwith ("status not declared")
             in
-            let ex = <:expr< fun [node -> 
-                match UserRule.status node with [ `$uid:var$ s -> s ]
+            let ex =
+                <:expr< fun [node ->
+                    match UserRule.status node with
+                    [ `$uid:var$ s -> s 
+                    | _ -> failwith "exitfun" ]
                 ] >>
             in Some(<:expr< ~exitfun:$ex$ >>)
     in
