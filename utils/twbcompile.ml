@@ -15,9 +15,6 @@ module Options = struct
     
     let tmp = ref ""
 end
-;;
-
-(* Findlib.init () ;; *)
 
 let options = [
     ("-v",  Arg.Set Options.verbose, "verbose");
@@ -30,11 +27,10 @@ let options = [
     
     ("--clean", Arg.Set Options.clean, "clean the temporary directory")
 ]
-;;
 
-let usage = "usage: compile [-options] <files>" ;;
+let usage = "usage: compile [-options] <files>" 
 
-let input_filelist = ref [];;
+let input_filelist = ref []
 let file f =
     try
         match f with
@@ -43,12 +39,10 @@ let file f =
                 let l = Str.split (Str.regexp "[ \t]+") s in
                 input_filelist := !input_filelist @ l
     with _ -> () 
-;;
 
 let get = function
     |None -> failwith "no input file"
     |Some v -> v
-;;
 
 let print_verbose fmt_etc =
     let print s = 
@@ -62,22 +56,18 @@ let print_verbose fmt_etc =
         ) 
     in
     Printf.ksprintf print fmt_etc
-;;
 
 let str_lib_loc =
     try Findlib.package_directory "str"
     with No_such_package (p,i) -> failwith p^i
-;;
 
 let ext_lib_loc =
     try Findlib.package_directory "extlib"
     with No_such_package (p,i) -> failwith p^i
-;;
 
 let twb_lib_loc =
     try Findlib.package_directory "twb"
     with No_such_package (p,i) -> failwith p^i
-;;
 
 let tmp_dir =
     match !Options.tmp with
@@ -88,14 +78,12 @@ let tmp_dir =
                 |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
             in str ^ "/"
     |s -> s ^ "/"
-;;
 
 let noext filename =
     if Str.string_match (Str.regexp "^\\(.*\\).ml$") filename 0 then
         Str.matched_group 1 filename
     else
         filename
-;;
   
 let read_lines fc =
     let read_new_line n = 
@@ -103,7 +91,6 @@ let read_lines fc =
         with End_of_file -> None
     in
         Stream.from read_new_line
-;;
 
 (* pre-processing *)
 let pp filename = 
@@ -120,7 +107,6 @@ let pp filename =
    in
    ignore(system cmd);
    print_verbose "%s\n" cmd
-;; 
  
 let rec get_line ch () =
     let aux s =
@@ -137,61 +123,45 @@ let rec get_line ch () =
     |s when Str.string_match (Str.regexp "^\\(.*.cmo[^:].*\\)$") s 0 ->
             aux s
     |s -> get_line ch ()
-;;
  
 let rec loop ch l =
     try
         let dl = get_line ch () in
         loop ch (dl@l) 
     with End_of_file |Stream.Failure -> l
-;;
 
 let rec uniq = function
     |[] -> []
     |h::t -> h:: uniq (List.filter (fun x -> not(x = h)) t)
-;;
 
 let rec deps deplist filename =
-    let cmd =
-       "ocamldep " ^
-       tmp_dir ^ filename ^
-       " > " ^
-       tmp_dir ^ filename ^
-       ".deps.txt"
+    let cmd = Printf.sprintf 
+       "ocamldep %s%s > %s%s.deps.txt"
+       tmp_dir filename tmp_dir filename
     in
     pp filename;
     ignore(system cmd);
     let fc = open_in (tmp_dir ^ filename ^ ".deps.txt") in
     let ch = read_lines fc in
-    let l = loop ch [] in
-    List.append
-    deplist
-    (List.flatten (List.map (fun f -> deps [f] (f^".ml") ) l))
-;;
+    let l = List.filter (fun f -> not(List.mem f deplist)) (loop ch []) in
+    let ol = List.map (fun f -> deps (f::deplist) (f^".ml") ) l in
+    List.append deplist (List.flatten ol)
 
 let compile elem =
     let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
-    let cmd =
-        "ocamlfind "^
-        ocaml ^
-        " -package twb.core " ^
-        " -c" ^
-        " -I " ^ tmp_dir ^ " "^
-        tmp_dir ^ elem ^ ".ml"
+    let cmd = Printf.sprintf
+        "ocamlfind %s -package twb.core -c -I %s %s%s.ml"
+        ocaml tmp_dir tmp_dir elem
     in
     print_verbose "Compiling: %s\n" cmd;
     ignore(system cmd)
-;;
 
 let link l filename =
     let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
     let ext = if !Options.bytecode then ".cmo " else ".cmx " in
-    let c =
-        "ocamlfind "^
-        ocaml ^
-        " -package camlp4.gramlib,twb.thelot,twb.cli "^
-        " -linkpkg -o "^ 
-        filename ^" "
+    let c = Printf.sprintf
+        "ocamlfind %s -package camlp4.gramlib,twb.thelot,twb.cli -linkpkg -o %s "
+        ocaml filename
     in
     let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ext) c l in
     if !Options.custom = "" then begin
@@ -203,13 +173,11 @@ let link l filename =
             print_verbose "Linking: %s\n" (cmd ^ !Options.custom);
             ignore(system (cmd ^ " " ^ !Options.custom))
         end
-;;
 
 let remove_files () =
     let cmd = "rm -f "^tmp_dir^"*.cm*" in
     ignore(system cmd);
     print_verbose "Cleaning: %s\n" cmd
-;;
 
 let main () =
     let _ =
@@ -219,8 +187,7 @@ let main () =
     if !Options.clean then ( remove_files (); exit(1) )
     else
         List.iter( fun filename ->
-            (* XXX: the deplist should not have duplicates *)
-            let deplist = uniq(List.rev (deps [noext(filename)] filename)) in
+            let deplist = List.rev(uniq(deps [noext(filename)] filename)) in
             List.iter compile deplist;
             if not(!Options.compileonly) then begin
                 let output =
@@ -230,6 +197,5 @@ let main () =
             end;
         ) !input_filelist ;
         print_endline "Done."
-;;
 
 let _ = main ()
