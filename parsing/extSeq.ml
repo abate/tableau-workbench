@@ -5,26 +5,40 @@ open Parselib
 open Tablib
 
 EXTEND
-GLOBAL: ExtCommon.den ExtCommon.num ;
+GLOBAL: 
+ExtGramm.num ExtGramm.denlist
+ExtGramm.denseq ExtGramm.numseq 
+ExtGramm.bladenseq ExtGramm.blanumseq;
 
-  ExtCommon.den: [
-      [d = LIST1 denseq SEP "=>" -> Ast.Denominator (Array.of_list d)
+
+  ExtGramm.denlist: [[
+       d = den; "|";  dl = den_forall -> ((d::dl),Ast.ForAll)
+      |d = den; "||"; dl = den_exists -> ((d::dl),Ast.Exists)
+      |d = den; "|||"; dl = den_exists -> ((d::dl),Ast.User)
+      |d = den -> ([d],Ast.Linear)
+  ]];
+
+  den_forall: [[ dl = LIST1 den SEP "|" -> dl ]];
+  den_exists: [[ dl = LIST1 den SEP "||" -> dl ]];
+
+  den: [
+      [d = ExtGramm.bladenseq -> Ast.Denominator d
       |s = "Close" -> Ast.Status(s)
       |s = "Open"  -> Ast.Status(s)
       |s = "Stop"  -> Ast.Status(s)
       ]
   ];
+  ExtGramm.num: [[ d = ExtGramm.blanumseq -> Ast.Numerator d ]];
 
-  ExtCommon.num: [[ d = LIST1 numseq SEP "=>" -> Ast.Numerator (Array.of_list d) ]];
-
-  denseq: [[ d = LIST1 denformula SEP ";" -> d ]];
-  numseq: [[ d = LIST1 numformula SEP ";" -> d ]];
+  ExtGramm.denseq: [[ d = LIST0 denformula SEP ";" -> d ]];
+  ExtGramm.numseq: [[ d = LIST0 numformula SEP ";" -> d ]];
   
   numformula: [
       [ "{"; t = ExtGramm.expr_patt_schema; "}" -> (Ast.Single,t)
       | "("; t = ExtGramm.expr_patt_schema; ")" -> (Ast.Empty,t)
       | t = ExtGramm.expr_patt_schema -> (Ast.Set,t)
-  ]];
+      ]
+  ];
   
   denformula: [
       [v = test_variable; "@"; i = INT ->

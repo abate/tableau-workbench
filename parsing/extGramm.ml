@@ -27,6 +27,13 @@ let expr_expr = ExprEntry.add_entry "expr" ; ExprEntry.get_entry "expr"
 let expr_patt = PattEntry.add_entry "expr" ; PattEntry.get_entry "expr"
 let expr_expr_schema = create_gramm "expr_expr_schema"
 let expr_patt_schema = create_gramm "expr_patt_schema"
+let blanumseq : Ast.numcont array Grammar.Entry.e = create_gramm "blanumseq"
+let bladenseq : Ast.dencont array Grammar.Entry.e = create_gramm "bladenseq"
+let numseq = create_gramm "numseq"
+let denseq = create_gramm "denseq"
+let node : (Ast.numerator * Ast.ruletype * (Ast.denominator list * Ast.branchcond)) Grammar.Entry.e = create_gramm "node"
+let num = create_gramm "num"
+let denlist = create_gramm "denlist"
 
 let conn_table = Hashtbl.create 17
 let new_conn = function
@@ -77,12 +84,12 @@ let make_token ttype self = function
     |Expr -> 
             begin match ttype with
             |TExpr -> Gramext.Snterm (create_obj Pcaml.expr)
-            |_-> failwith "make_token Expr"
+            |_-> assert(false)
             end
     |Patt -> 
             begin match ttype with
             |TPatt -> Gramext.Stoken ("", "_")
-            |_-> failwith "make_token Patt"
+            |_-> assert(false)
             end
     |Atom -> 
             begin match ttype with
@@ -91,17 +98,16 @@ let make_token ttype self = function
             end
 
 let make_entry_patt self token_list =
-    let gen_action tl =
-        match tl with
+    let gen_action = function
         |[Atom] -> fun l ->      <:patt< `Atom($List.hd l$) >>
         |[Const(s)] -> fun l ->  <:patt< `$uid:s$ >>
         |[Lid(_)] -> fun l ->    <:patt< $List.hd l$ >>
         |[Type(_)] -> fun l ->   <:patt< $List.hd l$ >>
         |[Patt] -> fun l ->      <:patt< _ >>
-        |[Expr] -> fun l ->      failwith "make_entry_patt"
+        |[Expr] -> fun l ->      assert(false)
         |Type(_) :: Symbol(":") :: _ -> fun l -> <:patt< ($list:l$) >>
         |Symbol("(")::_ -> fun l -> <:patt< $List.hd l$ >>
-        |_ -> let id = new_conn tl in fun l -> <:patt< `$uid:id$($list:l$) >>
+        |tl -> let id = new_conn tl in fun l -> <:patt< `$uid:id$($list:l$) >>
     in
     let actiontbl = Hashtbl.create 17 in
     let args : MLast.patt list ref = ref [] in
@@ -121,7 +127,7 @@ let make_entry_patt self token_list =
             |List(_) ->       args := <:patt< $lid:(Obj.magic x)$ >> :: !args 
             |Lid(_) ->        args := <:patt< $lid:(Obj.magic x)$ >> :: !args 
             |Patt ->          args := <:patt< $(Obj.magic x)$ >> :: !args 
-            |Type(_) | Expr -> failwith "make_entry_patt"
+            |Type(_) | Expr -> assert(false)
         else args := (Obj.magic x) :: !args
     in
     let action =
@@ -130,15 +136,14 @@ let make_entry_patt self token_list =
           let l = !args in
           args := [] ;
           try (Hashtbl.find actiontbl token_list) l
-          with Not_found -> failwith "action")
+          with Not_found -> assert(false))
       ) token_list
     in
     (el,Gramext.action (Obj.repr action))
 
 let make_entry_expr self token_list =
     let token_list = token_list in
-    let gen_action tl =
-        match tl with
+    let gen_action = function
         |[Atom] -> fun l ->     <:expr< `Atom($List.hd l$) >>
         |[Const(s)] -> fun l -> <:expr< `$uid:s$ >>
         |[Lid(_)] -> fun l ->   <:expr< $List.hd l$ >>
@@ -146,7 +151,7 @@ let make_entry_expr self token_list =
         |Type(_) :: Symbol(":") :: _ -> fun l -> <:expr< ($list:l$) >>
         |Symbol("(")::_ -> fun l -> <:expr< $List.hd l$ >>
         |Symbol("{")::_ -> fun l -> <:expr< $List.hd l$ >>
-        |_ -> let id = new_conn tl in fun l -> <:expr< `$uid:id$($list:l$) >>
+        |tl -> let id = new_conn tl in fun l -> <:expr< `$uid:id$($list:l$) >>
     in
     let actiontbl = Hashtbl.create 17 in
     let args : MLast.expr list ref = ref [] in
@@ -166,7 +171,7 @@ let make_entry_expr self token_list =
             |List(_) ->       args := <:expr< $lid:(Obj.magic x)$ >> :: !args 
             |Lid(_) ->        args := <:expr< $lid:(Obj.magic x)$ >> :: !args 
             |Expr ->          args := <:expr< $lid:(Obj.magic x)$ >> :: !args 
-            |Type(_) | Patt -> failwith "make_entry_expr"
+            |Type(_) | Patt -> assert(false)
         else args := (Obj.magic x) :: !args
     in
     let action =
@@ -175,7 +180,7 @@ let make_entry_expr self token_list =
           let l = !args in
           args := [] ;
           try (Hashtbl.find actiontbl token_list) l
-          with Not_found -> failwith "action")
+          with Not_found ->  assert(false))
       ) token_list
     in
     (el,Gramext.action (Obj.repr action))
@@ -201,7 +206,7 @@ let make_entry_expr_schema self token_list =
             |Atom ->            args := Ast.ExAtom(x') :: !args
             |Const(_) ->        args := Ast.ExCons(x') :: !args
             |Lid(_) |List(_) -> args := Ast.ExVar(x') :: !args 
-            |Type(_) | Expr | Patt -> failwith "make_entry_expr_schema"
+            |Type(_) | Expr | Patt -> assert(false) 
         else args := x' :: !args
     in
     let action =
@@ -210,16 +215,15 @@ let make_entry_expr_schema self token_list =
           let l = !args in
           args := [] ;
           try (Hashtbl.find actiontbl token_list) l
-          with Not_found -> failwith "action")
+          with Not_found ->  assert(false))
       ) token_list
     in
     (el,Gramext.action (Obj.repr action))
 
 let make_entry_patt_schema self token_list =
-    let gen_action tl =
-        match tl with
+    let gen_action = function
         |[Atom] |[Const(_)] |[Lid(_)] |Symbol("(")::_ -> fun l -> List.hd l
-        |_ -> let id = new_conn tl in fun l -> Ast.PaConn(id,l)
+        |tl -> let id = new_conn tl in fun l -> Ast.PaConn(id,l)
     in
     let actiontbl = Hashtbl.create 17 in
     let args : Ast.pa_term list ref = ref [] in
@@ -236,7 +240,7 @@ let make_entry_patt_schema self token_list =
             |Atom ->            args := Ast.PaAtom(x') :: !args
             |Const(_) ->        args := Ast.PaCons(x') :: !args
             |Lid(_) |List(_) -> args := Ast.PaVar(x') :: !args 
-            |Type(_) |Expr |Patt -> failwith "make_entry_patt_schema"
+            |Type(_) |Expr |Patt -> assert(false)
         else args := x' :: !args
     in
     let action =
@@ -245,7 +249,7 @@ let make_entry_patt_schema self token_list =
           let l = !args in
           args := [] ;
           try (Hashtbl.find actiontbl token_list) l
-          with Not_found -> failwith "action")
+          with Not_found -> assert(false))
       ) token_list
     in
     (el,Gramext.action (Obj.repr action))
@@ -275,6 +279,58 @@ let extend_schema =
     in function
         |[Type(_) :: Symbol(sep) :: _] -> aux1 sep
         |_ -> aux2 ()
+
+let extend_sequent_node (_,l) =
+    let extend_seq cont token_list =
+        let gen_action _ = fun l -> Array.of_list l in
+        let actiontbl = Hashtbl.create 17 in
+        let args = ref [] in
+        let el = 
+            filter_map (function
+                |Type(_) -> Some(Gramext.Snterm (create_obj cont))
+                |Symbol(s) -> Some(Gramext.Stoken ("", s))
+                |_ -> None
+            ) token_list
+        in
+        let _ = 
+            if Hashtbl.mem actiontbl token_list then ()
+            else Hashtbl.add actiontbl token_list (gen_action token_list)
+        in
+        let build_action t x =
+            let x' = Obj.magic x in
+            match t with
+            |Symbol(_) -> ()
+            |Type(_) -> args := x' :: !args
+            |_ -> assert(false)
+        in
+        let action =
+          List.fold_left (fun a t -> Obj.magic (fun ex -> build_action t ex ; a))
+          (Obj.magic (fun _loc ->
+              let l = !args in
+              args := [] ;
+              try (Hashtbl.find actiontbl token_list) l
+              with Not_found -> assert(false))
+          ) token_list
+        in
+        (el,Gramext.action (Obj.repr action))
+    in
+    EXTEND node: [[ dl = denlist; t = test_sep; n = num -> (n,t,dl) ]]; END; 
+    Grammar.extend
+    [ (create_obj blanumseq, None, [None, None, List.map (extend_seq numseq) l ]);
+      (create_obj bladenseq, None, [None, None, List.map (extend_seq denseq) l ]) 
+    ]
+
+let extend_tableau_node () =
+    EXTEND
+      node: [[ n = num; t = test_sep; dl = denlist -> (n,t,dl) ]];
+      bladenseq: [[d = denseq -> [|d|] ]];
+      blanumseq: [[n = numseq -> [|n|] ]];
+    END
+
+let extend_node_type = function
+    |[] -> extend_tableau_node ()
+    |[l] -> extend_sequent_node l
+    |_ -> assert(false)
 
 let extend_entry label entrylist =
     Grammar.extend
@@ -371,22 +427,25 @@ let lid strm =
     |Some(_,"formula") -> Stream.junk strm; "formula"
     |Some("LIDENT",s) when not(s = "expr") -> Stream.junk strm; s
     |_ -> raise Stream.Failure
-;;
-let lid = Grammar.Entry.of_parser Pcaml.gram "lid" lid ;;
+let lid = Grammar.Entry.of_parser Pcaml.gram "lid" lid
 
 let exprid strm =
     match Stream.peek strm with
     |Some(_,"expr") -> Stream.junk strm; "expr"
     |_ -> raise Stream.Failure
-;;
-let exprid = Grammar.Entry.of_parser Pcaml.gram "exprid" exprid ;;
+let exprid = Grammar.Entry.of_parser Pcaml.gram "exprid" exprid 
+
+let nodeid strm =
+    match Stream.peek strm with
+    |Some(_,"node") -> Stream.junk strm; "node"
+    |_ -> raise Stream.Failure
+let nodeid = Grammar.Entry.of_parser Pcaml.gram "nodeid" nodeid 
 
 let formulaid strm =
     match Stream.peek strm with
     |Some(_,"formula") -> Stream.junk strm; "formula"
     |_ -> raise Stream.Failure
-;;
-let formulaid = Grammar.Entry.of_parser Pcaml.gram "formulaid" formulaid ;;
+let formulaid = Grammar.Entry.of_parser Pcaml.gram "formulaid" formulaid 
 
 let connective strm =
     let s =
@@ -425,7 +484,7 @@ let expand_grammar_type (id,rules) =
         |List(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ list >>
         |Atom ->     <:ctyp< string >>
         |Const(s) -> <:ctyp< [= `$uid:s$ ] >>
-        |_ -> failwith "exptype"
+        |_ -> assert(false)
     in
     let aux = function
         |[Lid(s)] -> None
@@ -454,7 +513,7 @@ let expand_grammar_type (id,rules) =
                 let c = (aux (id, args))
                 in <:ctyp< [= $acc$ | $c$ ] >>
             ) (aux (id, args)) tl
-        |[] -> failwith "expand_grammar_type"
+        |[] -> assert(false)
     in
     let closedtype =
         let tvl = List.map(fun (t,_) -> <:ctyp< '$lid:t$ >>) !typevars in
@@ -470,7 +529,7 @@ let rec expand_grammar_expr_type = function
     |[[Type(t);Symbol(":");r]]  -> 
             <:ctyp< ($expand_grammar_expr_type [[t]]$ *
             $expand_grammar_expr_type [[r]]$) >>
-    |_ -> failwith "expand_grammar_expr_type"
+    |_ -> assert(false)
     
 let expand_grammar_type_list gramms =
         List.flatten (
@@ -498,7 +557,6 @@ let expand_printer gramm =
             |Type(_) :: Symbol(":") :: Lid(id) :: _ ->
                     Some(<:patt< (_,f) >>,None,
                      <:expr< $lid:id^"_printer"$ f >>)
-
             |tl ->
                     let f =
                         List.fold_left (fun s i -> s^i) ""
@@ -509,7 +567,7 @@ let expand_printer gramm =
                             match s with
                             |Symbol(_) -> (acc,i)
                             |Lid(id) -> (("c"^string_of_int i,id)::acc,i+1)
-                            |_ -> failwith "printer"
+                            |_ -> assert(false)
                         ) ([],0) tl
                     in
                     let exl =
@@ -530,8 +588,7 @@ let expand_printer gramm =
                         )
         in
         <:str_item<
-        value rec $lid:name^"_printer"$ = 
-            fun [ $list:filter_map gen_pel rules$ ]
+        value rec $lid:name^"_printer"$ = fun [ $list:filter_map gen_pel rules$ ]
         >>
     in <:str_item< declare $list:List.map aux gramm$ end >>
 
@@ -552,7 +609,7 @@ let expand_ast2input gramm =
                                 <:expr<
                                 $lid:id^"_ast2input"$ (List.nth l $int:string_of_int i$)
                                 >>::acc,i+1)
-                            |_ -> failwith "ast2input"
+                            |_ -> assert(false) 
                         ) ([],0) tl
                     in
                     let id = new_conn tl in
@@ -568,6 +625,9 @@ let expand_ast2input gramm =
         >>
     in <:str_item< declare $list:List.map aux gramm$ end >>
 
+let remove_node_entry = List.filter (fun (l,_) -> not(l = "node"))
+let select_node_entry = List.filter (fun (l,_) -> l = "node")
+
 EXTEND
 GLOBAL: Pcaml.str_item; 
 
@@ -577,10 +637,11 @@ Pcaml.str_item: [[
 
     |"GRAMMAR"; gramms = LIST1 gramm; "END" ->
             let _ = writegramm gramms in
-            let _ = extgramm gramms in
-            let ty = expand_grammar_type_list gramms in
-            let pr = expand_printer gramms in
-            let ast = expand_ast2input gramms in
+            let _ = extgramm (remove_node_entry gramms) in
+            let _ = extend_node_type (select_node_entry gramms) in 
+            let ty = expand_grammar_type_list (remove_node_entry gramms) in
+            let pr = expand_printer (remove_node_entry gramms) in
+            let ast = expand_ast2input (remove_node_entry gramms) in
             let sty = <:str_item< type $list:ty$ >> in
             <:str_item< declare $list:[sty;pr;ast]$ end >>
 ]];
@@ -591,11 +652,18 @@ gramm: [
           |None -> ("expr", [[t]])
           |Some(l) -> ("expr",[Type(t)::[Symbol(":");Lid(l)]])
           end
-(*  
-    | nodeid ; ":="; l = LIST1 [ p = plid -> p | "=>" -> Symbol("=>") ]; ";" -> 
-*)        
+  
+    | nodeid ; ":="; c = cont ; l = LIST0 [ s = symbol; c = cont -> [s;c] ] ; ";" ->
+            ("node",[c::(List.flatten l)])
+        
     | p = lid; ":="; rules = LIST1 rule SEP "|" ; ";" ->
         (p,rules@[[Lid("")]]@[[Symbol("(");Lid(p);Symbol(")")]]) 
+]];
+
+cont: [
+    [ "set" -> Type(Lid "set")
+    | "mset" -> Type(Lid "mset")
+    | "singleton" -> Type(Lid "singleton") 
 ]];
 
 rule: [[ psl = LIST1 psymbol -> psl ]];
@@ -644,29 +712,6 @@ ocaml_expr_term: [
   |t = formula_expr -> Ast.Term(t)
 ]];
 
-ocaml_patt_term: [
-  [t = formula_patt -> Ast.Term(t)]
-];
-
-ocaml_expr:   
-[["["; e = Pcaml.expr LEVEL "simple"; "]" -> Ast.Expr e
-  |x = test_constant -> Ast.Const x
-  |x = test_uid -> Ast.Atom x
-  |x = LIDENT; "("; e = Pcaml.expr; ")" -> Ast.FAtom(x,e)
-  |x = LIDENT -> Ast.Var x
-  |"("; p = formula_expr; ")" -> p
-  ] 
-];
-
-ocaml_patt:
-[["Constant" -> Ast.Const ""
-  |"Atom" -> Ast.Atom ""
-  |x = test_constant -> Ast.Const x
-  |x = test_uid -> Ast.Atom x
-  |x = LIDENT -> Ast.Var x
-  |"("; p = formula_patt; ")" -> p
-  ]
-];
 *)
 END
 ;;

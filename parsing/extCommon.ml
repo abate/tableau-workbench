@@ -4,9 +4,6 @@ open Genlex
 open Parselib
 open Tablib
 
-let num = ExtGramm.create_gramm "num";;
-let den = ExtGramm.create_gramm "den";;
-
 EXTEND
 GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
 
@@ -72,9 +69,7 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
   rule: [[
       "RULE";
       id = UIDENT;
-      n = num;
-      t = test_sep;
-      dl = denlist; 
+      (n,t,dl) = ExtGramm.node;
       cl = OPT condition;
       hl = OPT actionlist;
       bl = OPT branchlist; 
@@ -142,7 +137,8 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       |"@"; i = INT -> Ast.Int(int_of_string i)
   ]];
 
-  denlist: [[
+  (*
+  ExtGramm.denlist: [[
        d = den; "|";  dl = den_forall -> ((d::dl),Ast.ForAll)
       |d = den; "||"; dl = den_exists -> ((d::dl),Ast.Exists)
       |d = den; "|||"; dl = den_exists -> ((d::dl),Ast.User)
@@ -151,5 +147,5 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
 
   den_forall: [[ dl = LIST1 den SEP "|" -> dl ]];
   den_exists: [[ dl = LIST1 den SEP "||" -> dl ]];
-  
+  *)
 END

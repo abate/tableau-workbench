@@ -77,9 +77,16 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         let negfun = if !Options.noneg then (fun x -> x) else neg in
         let newnode s =
             let container = new Container.container mapcont in
-            let input = (ppfun (negfun (inputparser s))) in
-            let map  = (container#get 0)#addlist "" input in
-            let cont = (container)#set 0 map in
+            let inputlist =
+                Array.of_list (
+                    List.map (fun i -> ppfun (negfun i)) (inputparser s)
+                )
+            in
+            let cont =
+                Array.fold_left(fun cont (i,il) ->
+                    (cont)#set i ((cont#get i)#addlist "" il)
+                ) container (Array.mapi(fun i il -> (i,il)) inputlist)
+            in
             let hmap =
                 List.fold_left (fun acc (s,v) -> acc#add s v) 
                 (new Hmap.map) histlist

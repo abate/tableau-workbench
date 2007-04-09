@@ -259,6 +259,10 @@ let expand_numcont index numcontlist =
         ) numcontlist
 
 let expand_rule_num name (Ast.Numerator arr) =
+    let e = <:expr<
+        Array.create $int:string_of_int(Array.length arr)$ 
+        (new TwbCont.map match_schema) >> 
+    in Hashtbl.add expr_table "mapcont" e;
     List.flatten (Array.to_list (Array.mapi expand_numcont arr))
 
 let expand_num_triple numl (Ast.Numerator arr) =
@@ -907,50 +911,51 @@ let rec expand_tactic = function
 
 let expand_main () =
     let pp =
-        try Some(<:expr< ~pp:$Hashtbl.find expr_table "pp"$ >> )
-        with Not_found -> None
+        try <:expr< ~pp:$Hashtbl.find expr_table "pp"$ >>
+        with Not_found -> <:expr< ~pp:(fun x -> x) >>
     in
     let neg =
-        try Some(<:expr< ~neg:$Hashtbl.find expr_table "neg"$>> )
-        with Not_found -> None
+        try <:expr< ~neg:$Hashtbl.find expr_table "neg"$>>
+        with Not_found -> <:expr< ~neg:(fun x -> x) >>
     in
     let histlist = 
-        try Some(<:expr< ~histlist:$Hashtbl.find expr_table "histlist"$ >>)
-        with Not_found -> Some(<:expr< ~histlist:[] >>)
+        try <:expr< ~histlist:$Hashtbl.find expr_table "histlist"$ >>
+        with Not_found -> <:expr< ~histlist:[] >>
     in
     let varlist = 
-        try Some(<:expr< ~varlist:$Hashtbl.find expr_table "varlist"$ >>)
-        with Not_found -> Some(<:expr< ~varlist:[] >>)
+        try <:expr< ~varlist:$Hashtbl.find expr_table "varlist"$ >>
+        with Not_found -> <:expr< ~varlist:[] >>
     in
-    let mapcont =
-        Some(<:expr< ~mapcont:[| new TwbCont.map match_schema |] >>)
+    let mapcont = 
+        try <:expr< ~mapcont:$Hashtbl.find expr_table "mapcont"$ >>
+        with Not_found ->
+            <:expr< ~mapcont:[| new TwbCont.map match_schema |] >>
     in
     let strategy =
-        try Some(<:expr< ~strategy:$Hashtbl.find expr_table "strategy"$ >>)
+        try <:expr< ~strategy:$Hashtbl.find expr_table "strategy"$ >>
         with Not_found -> failwith "Strategy not specified"
     in
-    let inputparser = Some(<:expr< ~inputparser:TwbParser.buildParser >>) in
+    let inputparser = <:expr< ~inputparser:TwbParser.buildParser >> in
     let exitfun =
-        try Some(<:expr< ~exitfun$Hashtbl.find expr_table "exitfun"$ >>)
+        try <:expr< ~exitfun$Hashtbl.find expr_table "exitfun"$ >>
         with Not_found ->
             let (var,_,_) =
                 try Hashtbl.find vars_table "status"
                 with Not_found -> failwith ("status not declared")
             in
+            (* XXX I should check if there is only one variable in vars_table
+             * and avoid the warning *)
             let ex =
                 <:expr< fun [node ->
                     match UserRule.status node with
                     [ `$uid:var$ s -> s 
                     | _ -> failwith "exitfun" ]
                 ] >>
-            in Some(<:expr< ~exitfun:$ex$ >>)
+            in <:expr< ~exitfun:$ex$ >>
     in
     let ex =
-        List.fold_left (fun acc label ->
-            match label with
-            |None -> acc
-            |Some(e) -> <:expr< $acc$ $e$>>
-        ) <:expr< TwbMain.main >>
+        List.fold_left (fun acc e -> <:expr< $acc$ $e$>>)
+        <:expr< TwbMain.main >>
         [histlist;varlist;neg;pp;mapcont;inputparser;strategy;exitfun]
     in <:str_item< $exp:ex$ >>
 
