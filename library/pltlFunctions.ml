@@ -18,16 +18,15 @@ module ListFormulaSet = TwbList.Make(
     end
 )
 
-let debug = ref false
+let debug = ref true
 
 let push (xa,xb,z,ev,br) = 
     let set = (new FormulaSet.set)#addlist (xa@xb@z)
     in br#add (set, ev)
-;;
 
-let termfalse = expr ( Falsum ) ;; 
-let setclose () = (new FormulaSet.set)#add termfalse ;;
-let setclosen br = br#length ;;
+let termfalse = expr ( Falsum ) 
+let setclose () = (new FormulaSet.set)#add termfalse 
+let setclosen br = br#length 
 
 let beta (uev1, uev2, n1, n2, br) =
     let m = (br#length - 1) in
@@ -44,7 +43,6 @@ let beta (uev1, uev2, n1, n2, br) =
     else if n1 <= m && n2 > m then uev1
     else if n1 > m && n2 <= m then uev2
     else uev1#intersect uev2
-;;
 
 (* we effectively use a list, not a queue, so we need to reverse
  * the list to look up the index *)
@@ -55,8 +53,6 @@ let rec index n s l =
             if n < ((List.length l) - 1) then index (n+1) s l
             else failwith "index: core not found"
     else failwith "index: list empty"
-;;
-
 
 let loop_check (xa,xb,z,br) =
     let (br1, br2) = List.split br#elements in

@@ -346,7 +346,7 @@ let rec expand_ex_term use = function
     |Ast.ExVari(id,Ast.Int i) ->
             let (var,ctyp,def) =
                 try Hashtbl.find vars_table id
-                with Not_found -> failwith ("Variable "^id^ "not declared")
+                with Not_found -> failwith ("Variable "^id^ " not declared")
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -358,7 +358,7 @@ let rec expand_ex_term use = function
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> failwith "varhist"]
                     (varhist#find $str:id$)#elements
-                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
+                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
                 )
             |`Obj | `Term ->
                 (new_id "ex_term",
@@ -368,13 +368,13 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
+                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.Last) ->
             let (var,ctyp,def) =
                 try Hashtbl.find vars_table id
-                with Not_found -> failwith ("Variable "^id^ "not declared")
+                with Not_found -> failwith ("Variable "^id^ " not declared")
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -385,7 +385,7 @@ let rec expand_ex_term use = function
                     [`$uid:var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
+                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
                 )
             |`Obj |`Term ->
                 (new_id "ex_term",
@@ -395,7 +395,7 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
+                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.All) ->
@@ -405,7 +405,7 @@ let rec expand_ex_term use = function
                 (new_id "ex_term",
                 <:expr<
                 try List.map (fun v -> v#find $str:id$) varl
-                with [Failure "nth" -> failwith $str:id^ "index out of bound"$ ] >>
+                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.Null) -> assert(false)
@@ -480,7 +480,6 @@ let rec expand_ex_expr use = function
             in 
             (new_id "ex_expr",
             <:expr< let $list:pel$ in fun sbl hist varl -> ( $list:exl$ ) >>)
-
     |Ast.ExExpr(ex) -> (new_id "ex_expr",ex)
 
 let expand_condition name condlist =
@@ -839,10 +838,11 @@ let expand_matchpatt rulelist =
     let get_schema (Ast.Rule rule) =
         let aux = List.map (fun (_,pa_expr) -> pa_expr ) in
         let (_, _, Ast.Numerator arr, _, _, _, _, _, _, _ ) = rule in
-        (* we inject all constants *)
+        (* we inject all constants and atom *)
         let constlist = Hashtbl.fold (fun k v acc -> 
             Ast.PaTerm(Ast.PaCons(k))::acc) const_table []
-        in (List.flatten (Array.to_list (Array.map aux arr)))@constlist
+        in Ast.PaTerm(Ast.PaAtom(""))::
+            (List.flatten (Array.to_list (Array.map aux arr)))@constlist
     in
     let pa_expr_to_patt =
         let rec pa_term_to_patt = function
@@ -872,7 +872,8 @@ let expand_matchpatt rulelist =
             )
         )))
     in
-    let def = <:patt< _ >>, None, <:expr< failwith "match_schema" >> in
+    let def = <:patt< _ >>, None,
+    <:expr< failwith "no rule match this formula" >> in
     <:str_item< value match_schema = fun [ $list:pel@[def]$ ] >>
 
 let expand_tableau (Ast.Tableau rulelist) =
@@ -937,20 +938,20 @@ let expand_main () =
     in
     let inputparser = <:expr< ~inputparser:TwbParser.buildParser >> in
     let exitfun =
-        try <:expr< ~exitfun$Hashtbl.find expr_table "exitfun"$ >>
+        try <:expr< ~exitfun:$Hashtbl.find expr_table "exitfun"$ >>
         with Not_found ->
             let (var,_,_) =
                 try Hashtbl.find vars_table "status"
                 with Not_found -> failwith ("status not declared")
             in
-            (* XXX I should check if there is only one variable in vars_table
-             * and avoid the warning *)
-            let ex =
-                <:expr< fun [node ->
-                    match UserRule.status node with
-                    [ `$uid:var$ s -> s 
-                    | _ -> failwith "exitfun" ]
-                ] >>
+            let pel = 
+                let e = <:patt< `$uid:var$ s >>,None,<:expr< s >> in
+                if Hashtbl.length vars_table > 1 then
+                    [e;(<:patt< _ >>, None, <:expr< failwith "exitfun" >>)]
+                else [e]
+            in
+            let ex = <:expr< fun [node -> 
+                match UserRule.status node with [ $list:pel$ ] ] >>
             in <:expr< ~exitfun:$ex$ >>
     in
     let ex =
@@ -959,10 +960,20 @@ let expand_main () =
         [histlist;varlist;neg;pp;mapcont;inputparser;strategy;exitfun]
     in <:str_item< $exp:ex$ >>
 
+
+let expand_exit ex_expr =
+    let (id,ex) = expand_ex_expr `Obj ex_expr in
+    let e = <:expr< fun node ->
+        let (_,_,varhist) =  (UserRule.unbox_tree node)#get in
+        let s = new Substitution.sbl in
+        let h = new Hmap.map in
+        let $lid:id$ = $ex$ in $lid:id$ s h [varhist] >> in
+    Hashtbl.add expr_table "exitfun" e ; 
+    <:str_item< "" >>
+
 let expand_strategy e = Hashtbl.add expr_table "strategy" e ; <:str_item< "" >>
 let expand_preproc e  = Hashtbl.add expr_table "pp" e ; <:str_item< "" >>
 let expand_negation e = Hashtbl.add expr_table "neg" e ; <:str_item< "" >>
-let expand_exit e     = Hashtbl.add expr_table "exitfun" e ; <:str_item< "" >>
 let expand_simplification s = failwith "expand_simplification"
 let expand_options s = failwith "expand_options"
 

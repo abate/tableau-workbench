@@ -447,6 +447,24 @@ let formulaid strm =
     |_ -> raise Stream.Failure
 let formulaid = Grammar.Entry.of_parser Pcaml.gram "formulaid" formulaid 
 
+let setid strm =
+    match Stream.peek strm with
+    |Some(_,"set") -> Stream.junk strm; "set"
+    |_ -> raise Stream.Failure
+let setid = Grammar.Entry.of_parser Pcaml.gram "setid" setid 
+
+let msetid strm =
+    match Stream.peek strm with
+    |Some(_,"mset") -> Stream.junk strm; "mset"
+    |_ -> raise Stream.Failure
+let msetid = Grammar.Entry.of_parser Pcaml.gram "msetid" msetid 
+
+let singletonid strm =
+    match Stream.peek strm with
+    |Some(_,"singleton") -> Stream.junk strm; "singleton"
+    |_ -> raise Stream.Failure
+let singletonid = Grammar.Entry.of_parser Pcaml.gram "singletonid" singletonid 
+
 let connective strm =
     let s =
         match Stream.peek strm with
@@ -515,11 +533,11 @@ let expand_grammar_type (id,rules) =
             ) (aux (id, args)) tl
         |[] -> assert(false)
     in
-    let closedtype =
-        let tvl = List.map(fun (t,_) -> <:ctyp< '$lid:t$ >>) !typevars in
+    let closetype =
+        let tvl = List.map(fun (t,_) -> <:ctyp< '$lid:t$ >>) (unique !typevars) in
         <:ctyp< $lid:id^"_open"$ ($list:tvl$) as '$lid:id$ >>
     in
-    [((_loc,id^"_open"),!typevars,fields,[]);((_loc,id),[],closedtype,[])]
+    [((_loc,id^"_open"),unique !typevars,fields,[]);((_loc,id),[],closetype,[])]
 
 let rec expand_grammar_expr_type = function
     |[[Lid(s)]] ->   <:ctyp< $lid:s$ >>
@@ -661,9 +679,9 @@ gramm: [
 ]];
 
 cont: [
-    [ "set" -> Type(Lid "set")
-    | "mset" -> Type(Lid "mset")
-    | "singleton" -> Type(Lid "singleton") 
+    [ setid -> Type(Lid "set")
+    | msetid -> Type(Lid "mset")
+    | singletonid -> Type(Lid "singleton") 
 ]];
 
 rule: [[ psl = LIST1 psymbol -> psl ]];
@@ -714,4 +732,3 @@ ocaml_expr_term: [
 
 *)
 END
-;;

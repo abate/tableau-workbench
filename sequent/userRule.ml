@@ -195,7 +195,6 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         try varhist#find "status"
         with Not_found -> failwith "userrule status"
 
-
     (* up method - simple. explore the first branch, if the
      * branch condition is true, then explore the second branch. 
      * On backtrack apply a synth action. *)

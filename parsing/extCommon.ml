@@ -26,7 +26,7 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       |"SIMPLIFICATION"; OPT ":="; e = Pcaml.expr -> expand_simplification e
       |"PP"; OPT ":="; e = Pcaml.expr -> expand_preproc e
       |"NEG"; OPT ":="; e = Pcaml.expr -> expand_negation e
-      (* |"EXIT"; OPT ":="; f = userfunction -> expand_exit f *)
+      |"EXIT"; OPT ":="; f = userfunction -> expand_exit f 
       |"OPTIONS"; l = LIST1 options SEP ";"; "END" -> expand_options l
       |"source"; m = UIDENT -> expand_source m
   ]];
@@ -137,15 +137,4 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       |"@"; i = INT -> Ast.Int(int_of_string i)
   ]];
 
-  (*
-  ExtGramm.denlist: [[
-       d = den; "|";  dl = den_forall -> ((d::dl),Ast.ForAll)
-      |d = den; "||"; dl = den_exists -> ((d::dl),Ast.Exists)
-      |d = den; "|||"; dl = den_exists -> ((d::dl),Ast.User)
-      |d = den -> ([d],Ast.Linear)
-  ]];
-
-  den_forall: [[ dl = LIST1 den SEP "|" -> dl ]];
-  den_exists: [[ dl = LIST1 den SEP "||" -> dl ]];
-  *)
 END

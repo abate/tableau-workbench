@@ -121,12 +121,17 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
             while true do
                 try
                     let line = get_line () in
+                    let node = newnode line in
                     let _ = 
                         if !Options.verbose
-                        then Printf.printf "Proving: %s \n" line
+                        then begin 
+                            Printf.printf "Proving: %s \n" line;
+                            let (cont,_,_) = node#get in
+                            Printf.printf "Initial node: %s \n"
+                            (UserRule.DataType.Store.to_string cont)
+                        end
                         else ()
                     in
-                    let node = newnode line in
                     let cache = (new Cache.cache !Options.cache) in
                     let _ = OutputBroker.rulecounter := 0 in
                 

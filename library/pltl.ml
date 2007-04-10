@@ -40,7 +40,7 @@ let nnf = List.map nnf_term ;;
 TABLEAU
 
   RULE Id
-  { A } ; { ~ A } ; Z
+  { A } ; { ~ A } 
   ===============
      Stop
 
@@ -52,7 +52,7 @@ TABLEAU
   END
   
   RULE False
-  Falsum ; Z
+     { Falsum }
   ===============
      Stop
 
@@ -89,14 +89,14 @@ TABLEAU
   END
 
   RULE Before
-    {A Bf C}
+           {A Bf C}
   ==========================
-   nnf (~ C) ; A v X (A Bf C)
+   nnf (~ C) ; A v X (A Bf C) 
 
   END
 
   RULE Until
-           { c Un d } 
+           { C Un D } 
   =============================
       D ||| C ; X ( C Un D ) 
 
@@ -128,21 +128,20 @@ TABLEAU
     A ; B
   END
 
-  RULE GE
-     { G a }
+  RULE Ge
+     { G A }
   =============
    A ; X (G A)
   END
   
 END
 
-(*
-let exit (uev) = 
-    match uev#elements with
-    |[] -> "Open"
-    |[(termfalse)] -> "Closed"
-    |_ -> "Closed"
 
+let exit (uev) = match uev#elements with
+    |[] -> "Open"
+    |[formula ( Falsum )] -> "Closed"
+    |_ -> "Closed"
+(*
 OPTIONS
     ("-D", (Arg.Set debug), "Enable debug")
 END
@@ -150,7 +149,7 @@ END
  
 PP := nnf
 NEG := neg
-(* EXIT := exit (uev@1) *)
+EXIT := exit (uev@1)
 
 let sat = tactic ( (Id | False | And | Before | Ge | Or | Until) )
 
