@@ -3,29 +3,30 @@
 open Parselib
 
 let rec expand_pa_term = function
-    |Ast.PaConn(id,l) -> <:patt< `$uid:id$($list:List.map expand_pa_term l$) >>
-    |Ast.PaCons(id)   -> <:patt< ( `$uid:id$ as $lid:String.lowercase id$ ) >>
-    |Ast.PaAtom(s)    -> <:patt< ( `Atom _ as $lid:String.lowercase s$ ) >>
-    |Ast.PaVar(s)     -> <:patt< $lid:String.lowercase s$ >>
+    |Ast.PaConn(_,id,l) -> <:patt< `$uid:id$($list:List.map expand_pa_term l$) >>
+    |Ast.PaCons(_,id)   -> <:patt< ( `$uid:id$ as $lid:String.lowercase id$ ) >>
+    |Ast.PaAtom(_,s)    -> <:patt< ( `Atom _ as $lid:String.lowercase s$ ) >>
+    |Ast.PaVar(_,s)     -> <:patt< $lid:String.lowercase s$ >>
     |Ast.PaVari(s,i)  -> assert(false)
     |Ast.PaHist(s)    -> assert(false)
 
 let rec expand_pa_expr = function
     |Ast.PaTerm(t)       -> <:patt< $expand_pa_term t$ >>
-    |Ast.PaLabt(label,t) -> <:patt< ($label$, $expand_pa_term t$) >>
+    |Ast.PaLabt((_,deco),t) -> <:patt< ($deco$, $expand_pa_term t$) >>
     |Ast.PaTupl(l)       -> <:patt< ($list:List.map expand_pa_expr l$) >>
     |Ast.PaPatt(pa)      -> pa
 
 let rec extract_pa_term_vars acc = function
-    |Ast.PaConn(id,l) -> (List.flatten (List.map (extract_pa_term_vars []) l)) 
-    |Ast.PaCons(s) |Ast.PaAtom(s)
-    |Ast.PaVar(s)  |Ast.PaHist(s) -> s::acc
-    |Ast.PaVari(s,i)  -> s::acc
+    |Ast.PaConn(_,id,l) -> (List.flatten (List.map (extract_pa_term_vars []) l)) 
+    |Ast.PaCons(label,s) |Ast.PaAtom(label,s) |Ast.PaVar(label,s) -> 
+            (String.capitalize label,s)::acc
+    |Ast.PaHist(s) |Ast.PaVari(s,_) -> ("AAA",s)::acc
 
 let rec extract_ex_term_vars acc = function
-    |Ast.ExConn(id,l) -> (List.flatten (List.map (extract_ex_term_vars []) l)) 
-    |Ast.ExCons(s) |Ast.ExAtom(s) |Ast.ExVar(s) |Ast.ExHist(s) -> (String.lowercase s)::acc
-    |Ast.ExVari(s,i)  -> (String.lowercase s)::acc
+    |Ast.ExConn(_,id,l) -> (List.flatten (List.map (extract_ex_term_vars []) l)) 
+    |Ast.ExCons(label,s) |Ast.ExAtom(label,s) |Ast.ExVar(label,s) ->
+            (String.capitalize label,String.lowercase s)::acc
+    |Ast.ExHist(s) |Ast.ExVari(s,_) -> ("AAA",String.lowercase s)::acc
 
 let rec extract_patt_vars acc = function
     |MLast.PaAny(_)   -> acc 
@@ -46,16 +47,17 @@ let rec extract_expr_vars acc = function
 
 let rec extract_pa_expr_vars = function
     |Ast.PaTerm(t) ->
-            List.map (fun id -> 
-                (<:expr< $str:id$ >>,<:expr< `Term $lid:String.lowercase id$ >>) )
+            List.map (fun (label,id) -> 
+                (<:expr< $str:id$ >>,<:expr< `$uid:label$ $lid:String.lowercase id$ >>) )
             (extract_pa_term_vars [] t)
-    |Ast.PaLabt(label,t) ->
+    |Ast.PaLabt((decolabel,deco),t) ->
             List.append
                 (List.map (fun id -> 
-                    (<:expr< $str:id$ >>,<:expr< `Label $lid:String.lowercase id$ >>) )
-                (extract_patt_vars [] label))
-                (List.map (fun id ->
-                    (<:expr< $str:id$ >>,<:expr< `Term $lid:String.lowercase id$ >>) )
+                    (<:expr< $str:id$ >>,
+                    <:expr< `$uid:String.capitalize decolabel$ $lid:String.lowercase id$ >>) )
+                (extract_patt_vars [] deco))
+                (List.map (fun (label,id) ->
+                    (<:expr< $str:id$ >>,<:expr< `$uid:label$ $lid:String.lowercase id$ >>) )
                 (extract_pa_term_vars [] t))
     |Ast.PaTupl(l) -> List.flatten (List.map extract_pa_expr_vars l)
     |Ast.PaPatt(pa) -> 
@@ -65,9 +67,9 @@ let rec extract_pa_expr_vars = function
 
 let pa_expr_to_string =
     let rec pa_term_to_string = function
-        |Ast.PaAtom(s) -> "__atom"
-        |Ast.PaCons(s) -> "__const"
-        |Ast.PaConn(id,l) -> List.fold_left (fun s e -> s^(pa_term_to_string e)) id l
+        |Ast.PaAtom(_,s) -> "__atom"
+        |Ast.PaCons(_,s) -> "__const"
+        |Ast.PaConn(_,id,l) -> List.fold_left (fun s e -> s^(pa_term_to_string e)) id l
         |_ -> ""
     in function
         |Ast.PaTerm(t) -> pa_term_to_string t
@@ -282,10 +284,10 @@ let expand_num_triple numl (Ast.Numerator arr) =
     aux (List.flatten (Array.to_list arr)) numl
 
 let rec expand_ex_term use = function
-    |Ast.ExConn(id,l) as ex_term ->
+    |Ast.ExConn(_,id,l) as ex_term ->
             let argall = 
                 let rec aux = function
-                    |Ast.ExConn(id,l) ->
+                    |Ast.ExConn(_,id,l) ->
                            List.flatten (List.map (fun e -> aux e) l ) 
                     |e -> [expand_ex_term `Term e]
                 in List.flatten (List.map (fun e -> aux e) l )
@@ -305,15 +307,15 @@ let rec expand_ex_term use = function
                 )
             in
             let rec aux = function
-                |Ast.ExConn(id,l) -> <:expr< `$uid:id$($list:List.map aux l$) >>
-                |Ast.ExCons(id)   -> <:expr< `$uid:id$ >>
-                |Ast.ExAtom(s)    -> <:expr< `Atom $str:s$ >>
-                |Ast.ExVar(s)     -> <:expr< $lid:String.lowercase s$ >>
+                |Ast.ExConn(_,id,l) -> <:expr< `$uid:id$($list:List.map aux l$) >>
+                |Ast.ExCons(_,id)   -> <:expr< `$uid:id$ >>
+                |Ast.ExAtom(_,s)    -> <:expr< `Atom $str:s$ >>
+                |Ast.ExVar(_,s)     -> <:expr< $lid:String.lowercase s$ >>
                 |Ast.ExVari(s,i)  -> assert(false) 
                 |Ast.ExHist(s)    -> assert(false)
             in
             let idlist =
-                List.map (fun s -> <:patt< `Term $lid:s$ >>) 
+                List.map (fun (label,s) -> <:patt< `$uid:label$ $lid:s$ >>) 
                 ( unique(extract_ex_term_vars [] ex_term) )
             in
             (new_id "ex_expr",
@@ -324,13 +326,13 @@ let rec expand_ex_term use = function
                 ]
             ) ( $list:exl$ ) >>
             )
-    |Ast.ExVar(id) |Ast.ExCons(id) |Ast.ExAtom(id) ->
+    |Ast.ExVar(label,id) |Ast.ExCons(label,id) |Ast.ExAtom(label,id) ->
             begin match use with
             |`List | `Obj ->
                 (new_id "ex_term",
                 <:expr<
                 ExtList.map1 (fun
-                    [`Term e -> e
+                    [`$uid:String.capitalize label$ e -> e
                     |_ -> failwith ("__build")
                     ]
                 ) ( try (sbl#find $str:id$)#elements
@@ -454,9 +456,9 @@ let rec expand_ex_expr use = function
             (new_id "ex_expr",
             <:expr< let $lid:pa$ = $ex$ in
             fun sbl hist varl -> $lid:f$ ( $lid:pa$ sbl hist varl ) >>)
-    |Ast.ExLabt(label,ex_term) ->
+    |Ast.ExLabt((_,deco),ex_term) ->
             let (pa1,ex1) = expand_ex_term use ex_term in
-            let (pa2,ex2) = expand_ex_patt label in
+            let (pa2,ex2) = expand_ex_patt deco in
             (new_id "ex_expr",
             <:expr<
             let $lid:pa1$ = fun sbl hist varl -> $ex1$ in
@@ -787,6 +789,21 @@ let expand_rule (Ast.Rule rule) =
 let expand_preamble () =
     let hist = expand_histories_aux hist_table (Ast.History([])) in
     let vars = expand_histories_aux vars_table (Ast.Variable([])) in
+    let l = Hashtbl.fold (fun k _ acc -> k::acc) gramm_table [] in
+    let sbltype =
+        let aux s = <:ctyp< [= `$uid:String.capitalize s$ of $lid:s$ ] >> in
+        match l with
+        |[] -> assert(false)
+        |[h] -> aux h
+        |h::tl -> List.fold_left (fun acc s -> 
+                    <:ctyp< [= $acc$ | $aux s$ ] >>) (aux h) tl
+    in
+    let sblprint = 
+        List.fold_left (fun acc c ->
+            (<:patt< `$uid:String.capitalize c$ f >>, None, 
+            <:expr< $lid:c^"_printer"$ f >>)::acc
+        ) [] l
+    in
     <:str_item< declare
     $hist$;
     $vars$;
@@ -799,11 +816,9 @@ let expand_preamble () =
     ;
     module SblType =
         struct
-            type t = [= `Label of int |`Term of formula ];
+            type t = $sbltype$;
             value copy s = s ;
-            value to_string = fun
-                [`Label i -> string_of_int i
-                |`Term f -> formula_printer f];
+            value to_string = fun [ $list:sblprint$ ];
         end
     ;
     module MapSet   = TwbSet.Make(BaseType);
@@ -840,20 +855,20 @@ let expand_matchpatt rulelist =
         let (_, _, Ast.Numerator arr, _, _, _, _, _, _, _ ) = rule in
         (* we inject all constants and atom *)
         let constlist = Hashtbl.fold (fun k v acc -> 
-            Ast.PaTerm(Ast.PaCons(k))::acc) const_table []
-        in Ast.PaTerm(Ast.PaAtom(""))::
+            Ast.PaTerm(Ast.PaCons("AAA",k))::acc) const_table []
+        in Ast.PaTerm(Ast.PaAtom("AAA","")):: (* XXX *)
             (List.flatten (Array.to_list (Array.map aux arr)))@constlist
     in
     let pa_expr_to_patt =
         let rec pa_term_to_patt = function
-            |Ast.PaAtom(s) -> <:patt< `Atom _ >>
-            |Ast.PaCons(s) -> <:patt< `$uid:s$ >>
-            |Ast.PaConn(id,l) -> <:patt< `$uid:id$($list:List.map pa_term_to_patt l$) >>
-            |Ast.PaVar(_) -> <:patt< _ >>
+            |Ast.PaAtom(_,s) -> <:patt< `Atom _ >>
+            |Ast.PaCons(_,s) -> <:patt< `$uid:s$ >>
+            |Ast.PaConn(_,id,l) -> <:patt< `$uid:id$($list:List.map pa_term_to_patt l$) >>
+            |Ast.PaVar(_,_) -> <:patt< _ >>
             |_ -> assert(false)
         in function
-            |Ast.PaTerm(Ast.PaVar(_)) -> None
-            |Ast.PaLabt(_,Ast.PaVar(_)) -> None
+            |Ast.PaTerm(Ast.PaVar(_,_)) -> None
+            |Ast.PaLabt(_,Ast.PaVar(_,_)) -> None
             |Ast.PaTerm(t) -> Some(<:patt< $pa_term_to_patt t$ >>)
             |Ast.PaLabt(_,t) -> Some(<:patt< (_,$pa_term_to_patt t$) >>)
             |_ -> None

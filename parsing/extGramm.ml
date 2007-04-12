@@ -189,7 +189,7 @@ let make_entry_expr_schema self token_list =
     let gen_action tl =
         match tl with
         |[Atom] |[Const(_)] |[Lid(_)] |Symbol("(")::_ -> fun l -> List.hd l
-        |_ -> let id = new_conn tl in fun l -> Ast.ExConn(id,l)
+        |_ -> let id = new_conn tl in fun l -> Ast.ExConn(self,id,l)
     in
     let actiontbl = Hashtbl.create 17 in
     let args : Ast.ex_term list ref = ref [] in
@@ -203,9 +203,10 @@ let make_entry_expr_schema self token_list =
         if Obj.tag x = Obj.string_tag then
             match t with
             |Symbol(_) -> ()
-            |Atom ->            args := Ast.ExAtom(x') :: !args
-            |Const(_) ->        args := Ast.ExCons(x') :: !args
-            |Lid(_) |List(_) -> args := Ast.ExVar(x') :: !args 
+            |Atom ->            args := Ast.ExAtom(self,x') :: !args
+            |Const(_) ->        args := Ast.ExCons(self,x') :: !args
+            |Lid("") ->         args := Ast.ExVar(self,x') :: !args 
+            |Lid(s) |List(s) -> args := Ast.ExVar(s,x') :: !args 
             |Type(_) | Expr | Patt -> assert(false) 
         else args := x' :: !args
     in
@@ -223,7 +224,7 @@ let make_entry_expr_schema self token_list =
 let make_entry_patt_schema self token_list =
     let gen_action = function
         |[Atom] |[Const(_)] |[Lid(_)] |Symbol("(")::_ -> fun l -> List.hd l
-        |tl -> let id = new_conn tl in fun l -> Ast.PaConn(id,l)
+        |tl -> let id = new_conn tl in fun l -> Ast.PaConn(self,id,l)
     in
     let actiontbl = Hashtbl.create 17 in
     let args : Ast.pa_term list ref = ref [] in
@@ -237,9 +238,10 @@ let make_entry_patt_schema self token_list =
         if Obj.tag x = Obj.string_tag then
             match t with
             |Symbol(_) -> ()
-            |Atom ->            args := Ast.PaAtom(x') :: !args
-            |Const(_) ->        args := Ast.PaCons(x') :: !args
-            |Lid(_) |List(_) -> args := Ast.PaVar(x') :: !args 
+            |Atom ->            args := Ast.PaAtom(self,x') :: !args
+            |Const(_) ->        args := Ast.PaCons(self,x') :: !args
+            |Lid("") ->         args := Ast.PaVar(self,x') :: !args 
+            |Lid(s) |List(s) -> args := Ast.PaVar(s,x') :: !args 
             |Type(_) |Expr |Patt -> assert(false)
         else args := x' :: !args
     in
@@ -255,17 +257,17 @@ let make_entry_patt_schema self token_list =
     (el,Gramext.action (Obj.repr action))
 
 let extend_schema = 
-    let aux1 sep =
+    let aux1 s sep =
         EXTEND
         expr_expr: [
             [ex = Pcaml.expr; $sep$; sc = formula_expr -> <:expr< ($ex$,$sc$) >>]];
         expr_patt: [
             [pa = Pcaml.patt; $sep$; sc = formula_patt -> <:patt< ($pa$,$sc$) >>]];
 
-        expr_expr_schema: [
-                [ex = Pcaml.expr; $sep$; sc = formula_expr_schema -> Ast.ExLabt(ex,sc)]];
-        expr_patt_schema: [
-                [pa = Pcaml.patt; $sep$; sc = formula_patt_schema -> Ast.PaLabt(pa,sc)]];
+        expr_expr_schema: [ [ex = Pcaml.expr; $sep$; sc = formula_expr_schema ->
+                    Ast.ExLabt((s,ex),sc)]];
+        expr_patt_schema: [ [pa = Pcaml.patt; $sep$; sc = formula_patt_schema ->
+                    Ast.PaLabt((s,pa),sc)]];
         END
     in
     let aux2 () =
@@ -277,7 +279,8 @@ let extend_schema =
         expr_patt_schema: [[sc = formula_patt_schema -> Ast.PaTerm(sc)]];
         END
     in function
-        |[Type(_) :: Symbol(sep) :: _] -> aux1 sep
+        |[Type(List(s)) :: Symbol(sep) :: _] -> aux1 s sep
+        |[Type(Lid(s)) :: Symbol(sep) :: _] -> aux1 s sep
         |_ -> aux2 ()
 
 let extend_sequent_node (_,l) =
@@ -534,8 +537,15 @@ let expand_grammar_type (id,rules) =
         |[] -> assert(false)
     in
     let closetype =
-        let tvl = List.map(fun (t,_) -> <:ctyp< '$lid:t$ >>) (unique !typevars) in
-        <:ctyp< $lid:id^"_open"$ ($list:tvl$) as '$lid:id$ >>
+        let tvl = List.map(function
+            |(t,_) when t = id -> <:ctyp< '$lid:t$ >>
+            |(t,_) -> <:ctyp< $lid:t$ >>
+            ) (unique !typevars) 
+        in 
+        let t = List.fold_left (fun acc e ->
+            <:ctyp< $acc$ $e$ >>
+            ) <:ctyp< $lid:id^"_open"$ >> tvl
+        in <:ctyp< ( $t$ as '$lid:id$) >>
     in
     [((_loc,id^"_open"),unique !typevars,fields,[]);((_loc,id),[],closetype,[])]
 
@@ -613,8 +623,8 @@ let expand_printer gramm =
 let expand_ast2input gramm = 
     let rec aux (name,rules) =
         let gen_pel = function
-            |[Atom] -> Some(<:patt< Ast.ExAtom(a) >>,None,<:expr< `Atom a>>)
-            |[Const(s)] -> Some(<:patt< Ast.ExCons($str:s$) >>,None,<:expr< `$uid:s$>>)
+            |[Atom] -> Some(<:patt< Ast.ExAtom(_,a) >>,None,<:expr< `Atom a>>)
+            |[Const(s)] -> Some(<:patt< Ast.ExCons(_,$str:s$) >>,None,<:expr< `$uid:s$>>)
             |[Lid(_)] |[Type(_)] |[Patt] |[Expr] 
             |Type(_) :: Symbol(":") :: _
             |Symbol("("):: _ -> None
@@ -632,7 +642,7 @@ let expand_ast2input gramm =
                     in
                     let id = new_conn tl in
                     Some(
-                        <:patt< Ast.ExConn($str:id$,l) >>,None,
+                        <:patt< Ast.ExConn(_,$str:id$,l) >>,None,
                         <:expr< `$uid:id$($list:List.rev l$) >>
                         )
         in
@@ -645,20 +655,26 @@ let expand_ast2input gramm =
 
 let remove_node_entry = List.filter (fun (l,_) -> not(l = "node"))
 let select_node_entry = List.filter (fun (l,_) -> l = "node")
+let update_gramm_table gramms =
+    List.iter (function
+        |("node",_) -> () 
+        |("expr",_) -> ()
+        |(n,_) -> Hashtbl.add gramm_table n ()
+    ) gramms
 
 EXTEND
 GLOBAL: Pcaml.str_item; 
 
 Pcaml.str_item: [[
-    "CONNECTIVES"; "["; l = LIST1 connective SEP ";"; "]" ->
-            <:str_item< "" >>
+    "CONNECTIVES"; "["; l = LIST1 connective SEP ";"; "]" -> <:str_item< "" >>
 
     |"GRAMMAR"; gramms = LIST1 gramm; "END" ->
-            let _ = writegramm gramms in
-            let _ = extgramm (remove_node_entry gramms) in
-            let _ = extend_node_type (select_node_entry gramms) in 
-            let ty = expand_grammar_type_list (remove_node_entry gramms) in
-            let pr = expand_printer (remove_node_entry gramms) in
+            let _   = writegramm gramms in
+            let _   = update_gramm_table gramms in
+            let _   = extgramm (remove_node_entry gramms) in
+            let _   = extend_node_type (select_node_entry gramms) in 
+            let ty  = expand_grammar_type_list (remove_node_entry gramms) in
+            let pr  = expand_printer (remove_node_entry gramms) in
             let ast = expand_ast2input (remove_node_entry gramms) in
             let sty = <:str_item< type $list:ty$ >> in
             <:str_item< declare $list:[sty;pr;ast]$ end >>

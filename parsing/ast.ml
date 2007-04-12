@@ -39,37 +39,38 @@ and denominator = Denominator of dencont array | Status of string
 and numcont = (arity * pa_expr) list
 and arity = Single | Empty | Set
 and dencont = ex_expr list
+and label = string
 
 and pa_expr =
     |PaTerm of pa_term
-    |PaLabt of MLast.patt * pa_term
+    |PaLabt of (label * MLast.patt) * pa_term
     |PaTupl of pa_expr list
     |PaPatt of MLast.patt
 
 and ex_expr =
     |ExAppl of string * ex_expr
-    |ExLabt of MLast.expr * ex_term
+    |ExLabt of (label * MLast.expr) * ex_term
     |ExTerm of ex_term
     |ExTupl of ex_expr list
     |ExExpr of MLast.expr
 (*    |ExLet  of pa_term * ex_expr *)
 
 and ex_term =
-    |ExConn  of string * ex_term list
-    |ExCons  of string
-    |ExAtom  of string
-    |ExVar   of string
+    |ExConn  of label * string * ex_term list
+    |ExCons  of label * string
+    |ExAtom  of label * string
+    |ExVar   of label * string
     |ExHist  of string
     |ExVari  of string * varindex
 
 and pa_term =
-    |PaConn of string * pa_term list
-    |PaCons of string
-    |PaAtom of string
-    |PaVar  of string
+    |PaConn of label * string * pa_term list
+    |PaCons of label * string
+    |PaAtom of label * string
+    |PaVar  of label * string
     |PaHist of string
     |PaVari of string * varindex
-
+ 
 and varindex  = Int of int | All | Last | Null
 and condition = Condition of ex_expr
 and branchcond = ForAll | Exists | User | Linear

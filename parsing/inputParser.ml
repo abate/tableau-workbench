@@ -60,7 +60,7 @@ struct
         let gen_action tl =
             match tl with 
             |[Atom] |[Const(_)] |[Lid(_)] |Symbol("(")::_ -> fun l -> List.hd l
-            |_ -> let id = new_conn tl in fun l -> Ast.ExConn(id,l)
+            |_ -> let id = new_conn tl in fun l -> Ast.ExConn("",id,l)
         in
         let actiontbl = Hashtbl.create 17 in
         let args : Ast.ex_term list ref = ref [] in
@@ -74,8 +74,8 @@ struct
             if Obj.tag x = Obj.string_tag then
                 match t with
                 |Symbol(_) -> ()
-                |Atom ->            args := Ast.ExAtom(x') :: !args
-                |Const(_) ->        args := Ast.ExCons(x') :: !args
+                |Atom ->            args := Ast.ExAtom("",x') :: !args
+                |Const(_) ->        args := Ast.ExCons("",x') :: !args
                 |Lid(_) |List(_) (*  -> args := Ast.ExVar(x') :: !args *)
                 |Type(_) | Expr | Patt -> failwith "make_entry_input"
             else args := x' :: !args
