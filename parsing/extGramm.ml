@@ -355,7 +355,7 @@ let writegramm gramms =
      * see the directive : source Modulename *)
     (* XXX: 4 is not fool proof !! *)
     let tmp_dir =
-        let str = "/tmp/twb" ^ Unix.getlogin () in
+        let str = "/tmp/twb" ^ Sys.getenv("LOGNAME") in
         let _ =
             try ignore(Unix.stat str) with
             |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)

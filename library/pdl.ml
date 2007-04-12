@@ -24,26 +24,26 @@ END
 
 TABLEAU
 
-  RULE Union < A U B > P === < A > < B > P END
-  RULE Star < * A > P === < A > < * A > P END
+RULE Union { < A U B > P } === < A > < B > P END
+RULE Star { < * A > P } === < A > < * A > P END
 
-  RULE K < a > P ; [ a ] X ; Z  --- P ; X END
-  RULE Id { a } ; { ~ a } === Close END
-  RULE False Falsum === Close END
-  RULE And { A & B } === A ; B END
-  RULE Or { A v B } === A | B END
+RULE K { < a > P }  ; [ a ] X ; Z  --- P ; X END
+RULE Id { a } ; { ~ a } === Close END
+RULE False Falsum === Close END
+RULE And { A & B } === A ; B END
+RULE Or { A v B } === A | B END
 
 END
-(*
+
 STRATEGY := 
     let sat = tactic ( (False|Id|And|Or|Star|Union) )
     in tactic ( ( (sat)* ; K )* )
-
+(*
 PP := List.map nnf
 NEG := List.map neg
-
-MAIN
 *)
+MAIN
+
 (*
 let a = formula ( Verum ) 
 let b = formula ( a v D ) 

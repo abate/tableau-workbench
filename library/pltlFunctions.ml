@@ -18,7 +18,7 @@ module ListFormulaSet = TwbList.Make(
     end
 )
 
-let debug = ref true
+let debug = ref false
 
 let push (xa,xb,z,ev,br) = 
     let set = (new FormulaSet.set)#addlist (xa@xb@z)

@@ -315,8 +315,10 @@ let rec expand_ex_term use = function
                 |Ast.ExHist(s)    -> assert(false)
             in
             let idlist =
-                List.map (fun (label,s) -> <:patt< `$uid:label$ $lid:s$ >>) 
-                ( unique(extract_ex_term_vars [] ex_term) )
+                List.rev (
+                    List.map (fun (label,s) -> <:patt< `$uid:label$ $lid:s$ >>) 
+                    ( unique(extract_ex_term_vars [] ex_term) )
+                )
             in
             (new_id "ex_expr",
             <:expr< let $list:pel$ in
@@ -360,7 +362,7 @@ let rec expand_ex_term use = function
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> failwith "varhist"]
                     (varhist#find $str:id$)#elements
-                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
+                with [Failure "nth" -> [] ] >>
                 )
             |`Obj | `Term ->
                 (new_id "ex_term",
@@ -370,7 +372,7 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
+                with [Failure "nth" -> $def$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.Last) ->
@@ -387,7 +389,7 @@ let rec expand_ex_term use = function
                     [`$uid:var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
+                with [Failure "nth" -> [] ] >>
                 )
             |`Obj |`Term ->
                 (new_id "ex_term",
@@ -397,7 +399,7 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> failwith "varhist"]
-                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
+                with [Failure "nth" -> $def$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.All) ->

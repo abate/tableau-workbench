@@ -153,10 +153,10 @@ struct
 
     let extgramm () =
         let tmp_dir =
-            let str = "/tmp/twb" ^ Unix.getlogin () in
+            let str = "/tmp/twb" ^ Sys.getenv("LOGNAME") in
             let _ =
-                try ignore(Unix.stat str) with
-                |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
+                try ignore(Unix.stat str)
+                with Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
             in str ^ "/"
         in
         let str =
