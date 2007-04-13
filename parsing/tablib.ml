@@ -523,13 +523,29 @@ let expand_denominator name = function
     |Ast.Status s -> [expand_status s]
 
 let expand_ruledown ruletype bcond den_args action_args =
-    let rec aux acc = function
-        |[], h::_ -> assert(false)
-        |[d],[] -> <:expr< ( n, $d$, [] ) >>::acc
-        |[d],[a] -> <:expr< ( n, $d$, $a$ ) >>::acc
-        |d::dl,a::al -> aux (<:expr< ( n#copy, $d$, $a$ ) >>::acc) (dl,al)
-        |d::dl,[] -> aux (<:expr< ( n#copy, $d$, [] ) >>::acc) (dl,[])
-        |_ -> assert(false) 
+    let aux l1 l2 =
+        let rec fill_list acc l1 l2 =
+            match l1,l2 with
+            |[],_ -> acc
+            |a::la,[] -> fill_list (([a],[])::acc) la []
+            |a::la,b::lb -> fill_list (([a],[b])::acc) la lb
+        in
+        match List.rev (fill_list [] l1 l2) with
+        |([a],b) :: tl ->
+                let acc =
+                    match b with
+                    |[]  -> <:expr< ( n , $a$, [] ) >>
+                    |[b] -> <:expr< ( n , $a$, $b$ ) >>
+                    |_ -> assert(false)
+                in
+                List.rev (
+                    List.fold_left (fun acc -> function
+                        |([a],[b]) -> <:expr< ( n#copy, $a$, $b$ ) >>::acc
+                        |([a],[])  -> <:expr< ( n#copy, $a$, [] ) >>::acc
+                        |_ -> assert(false)
+                    ) [acc] tl
+                )
+        |_ -> assert(false)
     in
     function
         |[] -> assert(false)
@@ -540,7 +556,7 @@ let expand_ruledown ruletype bcond den_args action_args =
             |Ast.Explicit, _ ->
                 <:expr< UserRule.down_explicit 
                 name context (fun n ->
-                    $list_to_exprlist ((aux [] (List.rev den_args,List.rev action_args)))$ ) >>
+                    $list_to_exprlist (aux den_args action_args)$ ) >>
             |Ast.Implicit, Ast.Linear ->
                     let aa =
                         if action_args = [] then <:expr< [] >>
