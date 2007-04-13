@@ -328,7 +328,19 @@ let rec expand_ex_term use = function
                 ]
             ) ( $list:exl$ ) >>
             )
-    |Ast.ExVar(label,id) |Ast.ExCons(label,id) |Ast.ExAtom(label,id) ->
+    |Ast.ExAtom(label,id) ->
+            begin match use with
+            |`List | `Obj -> assert(false)
+            |`Term -> (new_id "ex_term",
+            <:expr< [`$uid:String.capitalize label$ `Atom $str:id$] >>)
+            end
+    |Ast.ExCons(label,id) ->
+            begin match use with
+            |`List | `Obj -> assert(false)
+            |`Term -> (new_id "ex_term",
+            <:expr< [`$uid:String.capitalize label$ `$uid:id$] >>)
+            end
+    |Ast.ExVar(label,id) ->
             begin match use with
             |`List | `Obj ->
                 (new_id "ex_term",
@@ -905,8 +917,8 @@ let expand_matchpatt rulelist =
             )
         )))
     in
-    let def = <:patt< _ >>, None,
-    <:expr< failwith "no rule match this formula" >> in
+    let def = <:patt< f >>, None,
+    <:expr< failwith ("no rule match this formula"^(formula_printer f)) >> in
     <:str_item< value match_schema = fun [ $list:pel@[def]$ ] >>
 
 let expand_tableau (Ast.Tableau rulelist) =

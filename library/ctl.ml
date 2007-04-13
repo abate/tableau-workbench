@@ -55,7 +55,7 @@ TABLEAU
   END
   
   RULE False
-  Falsum == Stop
+  { Falsum } == Stop
   BACKTRACK [ uev := setclose (Br) ]
   END
 
@@ -65,6 +65,16 @@ TABLEAU
    P ||| EX (E P U Q)
 
   ACTION [ [ Fev := add(E P U Q, Fev) ] ; [] ]
+  BRANCH [ [ not_emptyset(uev@1) ] ] 
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
+  END 
+
+  RULE Axu
+      { A P U Q }
+  ===================
+   P ||| AX (A P U Q)
+
+  ACTION [ [ Fev := add(A P U Q, Fev) ] ; [] ]
   BRANCH [ [ not_emptyset(uev@1) ] ] 
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
   END 
@@ -104,7 +114,8 @@ TABLEAU
   END
 
   RULE And P & Q == P ; Q END
-  RULE Axu A P U Q == P ; A P U Q END
+  RULE Exb { E P B Q } == P ; E P B Q END
+  RULE Axb { A P B Q } == P ; A P B Q END
 
 END
 
@@ -130,7 +141,7 @@ PP := nnf
 NEG := neg
 EXIT := exit (uev@1)
   
-let saturation = tactic ( (Id | False | And | Or | Axu | Exu ) )
+let saturation = tactic ( (Id | False | And | Or | Axu | Exu | Exb | Axb ) )
 let modal = tactic ( ( (saturation)* ; (Ref | Exx | Loop) ) )
 STRATEGY := tactic ( (modal)* )
 
