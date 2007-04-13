@@ -10,7 +10,7 @@ let print_down name node parentid =
             let (m,h,_) = node#get in
             Printf.printf
             "%s ( %d -> %d )\n%s\n%s\n\n"
-            name parentid !rulecounter m#to_string h#to_string
+            name parentid !rulecounter m#to_string (h#to_string true)
         end
     else ()
 
@@ -20,7 +20,7 @@ let print_up name node =
             let (_,_,v) = node#get in
             Printf.printf
             "Up %s \n%s\n"
-            name v#to_string
+            name (v#to_string true)
         end
     else ()
 
@@ -30,6 +30,6 @@ let print_check name node =
             let (m,h,_) = node#get in
             Printf.printf
             "Check %s \n%s\n%s\n\n"
-            name m#to_string h#to_string
+            name m#to_string (h#to_string true)
         end
     else ()

@@ -26,7 +26,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         struct
             type store = Hmap.map
             let copy s = s#copy
-            let to_string s = s#to_string
+            let to_string s = s#to_string true
             let make () = new Hmap.map
         end
 
@@ -34,7 +34,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         struct
             type store = Vmap.map
             let copy s = s#copy
-            let to_string s = s#to_string
+            let to_string s = s#to_string true
             let make () = new Vmap.map
         end
 
@@ -47,8 +47,9 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                 (Store.to_string m)
                 (History.to_string h)
                 (Variable.to_string v)
-            let marshal (m,h,v) =
-                string_of_int (Hashtbl.hash (m#to_string ^ h#to_string))
+            let marshal (m,h,_) =
+                string_of_int 
+                (Hashtbl.hash ((Store.to_string m)^(History.to_string h)))
         end
 
     module Node = Node.Make(NodeType)

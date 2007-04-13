@@ -61,7 +61,7 @@ module Make(T: sig type t class set : [t] TwbSet.ct end) = struct
 
             method empty = {< data = new Map.map >}
 
-            method to_string = data#to_string
+            method to_string = data#to_string false
         end
 
 end
