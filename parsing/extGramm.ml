@@ -368,9 +368,8 @@ let writegramm gramms =
     in
     (* write the grammar definition to a file *)
     let ch = open_out (tmp_dir^str^".gramm") in
-    let constlist = Hashtbl.fold (fun k _ acc -> k :: acc) const_table [] in
-    let connlist = Hashtbl.fold (fun k _ acc -> k :: acc) symbol_table [] in
-    Marshal.to_channel ch (constlist,connlist,gramms) [];
+    let symbollist = Hashtbl.fold (fun k _ acc -> k :: acc) symbol_table [] in
+    Marshal.to_channel ch (symbollist,gramms) [];
     close_out ch
 
 (*
@@ -410,9 +409,9 @@ let readgramm m =
         in str ^ "/"
     in
     let ch = open_in (tmp_dir^String.lowercase m^".gramm") in
-    let (constlist,symbollist,gramms) = Marshal.from_channel ch in
+    let (symbollist,gramms) = Marshal.from_channel ch in
     let _ = close_in ch in
-    (constlist,symbollist,gramms)
+    (symbollist,gramms)
 
 let extgramm gramms =
     List.iter (function
@@ -508,7 +507,8 @@ let expand_grammar_type (id,rules) =
         |_ -> assert(false)
     in
     let aux = function
-        |[Lid(s)] -> None
+        |[Lid("")] -> None
+        |[Lid(s)] -> Some("",[<:ctyp< $lid:s^"_open"$ '$lid:s$ >>]) 
         |[Type(t);Symbol(":");Lid(s)]  -> Some("",[<:ctyp< ($exptype t$ * '$lid:s$) >>])
         |[Atom] -> Some("Atom",[<:ctyp< string >>])
         |[Const(s)] -> Some(s,[])
@@ -560,13 +560,11 @@ let rec expand_grammar_expr_type = function
     |_ -> assert(false)
     
 let expand_grammar_type_list gramms =
-        List.flatten (
-            List.map (function
-                |("expr",rules) -> 
-                        [((_loc,"expr"),[], expand_grammar_expr_type rules ,[])]
-                |(id,rules) -> expand_grammar_type (id,rules)
-            ) gramms
-        )
+        List.map (function
+            |("expr",rules) -> 
+                    [((_loc,"expr"),[], expand_grammar_expr_type rules ,[])]
+            |(id,rules) -> expand_grammar_type (id,rules)
+        ) gramms
 
 let expand_printer gramm =
     let aux (name,rules) = 
@@ -574,13 +572,13 @@ let expand_printer gramm =
             |[Atom] ->
                     Some(<:patt< `Atom( a ) >>,None,
                     <:expr< Printf.sprintf $str:"%s"$ a >>)
-            |[Const(s)] ->
+            |[Const(s)] -> 
                     Some(<:patt< `$uid:s$ >>,None,
                     <:expr< Printf.sprintf $str:s$  >>)
             |[Lid("")] |[Type(_)] |[Patt] |[Expr] 
             |Symbol("("):: _ -> None
             |[Lid(id)] ->
-                    Some(<:patt< f >>,None,
+                    Some(<:patt< ( #$lid:id$ as f ) >>,None,
                      <:expr< $lid:id^"_printer"$ f >>)
             |Type(_) :: Symbol(":") :: Lid(id) :: _ ->
                     Some(<:patt< (_,f) >>,None,
@@ -624,7 +622,7 @@ let expand_ast2input gramm =
     let rec aux (name,rules) =
         let gen_pel = function
             |[Atom] -> Some(<:patt< Ast.ExAtom(_,a) >>,None,<:expr< `Atom a>>)
-            |[Const(s)] -> Some(<:patt< Ast.ExCons(_,$str:s$) >>,None,<:expr< `$uid:s$>>)
+            |[Const(s)] -> None
             |[Lid(_)] |[Type(_)] |[Patt] |[Expr] 
             |Type(_) :: Symbol(":") :: _
             |Symbol("("):: _ -> None
@@ -646,20 +644,42 @@ let expand_ast2input gramm =
                         <:expr< `$uid:id$($list:List.rev l$) >>
                         )
         in
+        let const = Hashtbl.fold( fun s k acc ->
+            if k = name then
+                (<:patt< Ast.ExCons(_,$str:s$) >>,
+                None,<:expr< `$uid:s$>>)::acc
+            else acc
+            ) const_table []
+        in
         let def = <:patt< _ >>, None, <:expr< failwith "ast2input" >> in
         <:str_item<
         value rec $lid:name^"_ast2input"$ = 
-            fun [ $list:(filter_map gen_pel rules)@[def]$ ]
+            fun [ $list:(filter_map gen_pel rules)@const@[def]$ ]
         >>
     in <:str_item< declare $list:List.map aux gramm$ end >>
 
 let remove_node_entry = List.filter (fun (l,_) -> not(l = "node"))
 let select_node_entry = List.filter (fun (l,_) -> l = "node")
 let update_gramm_table gramms =
+    let tb = (Hashtbl.create 17) in
+    let _ = List.iter (fun (k,v) -> Hashtbl.add tb k v) gramms in 
+    let rec aux n rules =
+        List.iter(function
+            |[Const(u)] -> 
+                    if Hashtbl.mem const_table u then ()
+                    else Hashtbl.add const_table u n
+            |[Lid(id)] when not(id = n) && not(id = "") ->
+                    aux id (Hashtbl.find tb id)
+            |_ -> ()
+        ) rules
+    in
     List.iter (function
         |("node",_) -> () 
         |("expr",_) -> ()
-        |(n,_) -> Hashtbl.add gramm_table n ()
+        |("formula",rules) ->
+                Hashtbl.add gramm_table "formula" ();
+                aux "formula" rules
+        |(n,rule) -> Hashtbl.add gramm_table n ()
     ) gramms
 
 EXTEND
@@ -676,8 +696,8 @@ Pcaml.str_item: [[
             let ty  = expand_grammar_type_list (remove_node_entry gramms) in
             let pr  = expand_printer (remove_node_entry gramms) in
             let ast = expand_ast2input (remove_node_entry gramms) in
-            let sty = <:str_item< type $list:ty$ >> in
-            <:str_item< declare $list:[sty;pr;ast]$ end >>
+            let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
+            <:str_item< declare $list:sty@[pr;ast]$ end >>
 ]];
 
 gramm: [
@@ -710,7 +730,7 @@ psymbol: [
     | e = const -> e
 ]];
 
-const: [[ u = UIDENT -> Hashtbl.add const_table u () ; Const(u) ]];
+const: [[ u = UIDENT -> Const(u) ]];
 
 ptype: [
     [ t = plid ; "list" -> List(t) 

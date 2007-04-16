@@ -4,7 +4,7 @@ let _loc = Token.dummy_loc
 
 let hist_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
 let vars_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
-let const_table : (string, unit) Hashtbl.t = Hashtbl.create 50
+let const_table : (string, string) Hashtbl.t = Hashtbl.create 50
 let tactic_table : (string, unit) Hashtbl.t = Hashtbl.create 50
 let expr_table : (string, MLast.expr) Hashtbl.t = Hashtbl.create 50
 let symbol_table : (string, unit) Hashtbl.t = Hashtbl.create 17

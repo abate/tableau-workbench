@@ -1037,14 +1037,14 @@ let expand_simplification s = failwith "expand_simplification"
 let expand_options s = failwith "expand_options"
 
 let expand_source m =
-    let (constlist,symbollist,gramms) = ExtGramm.readgramm m in
-    List.iter (fun c -> Hashtbl.add const_table c ()) constlist;
+    let (symbollist,gramms) = ExtGramm.readgramm m in
+    ExtGramm.update_gramm_table gramms;
     List.iter (fun c -> Hashtbl.add symbol_table c ()) symbollist;
     ExtGramm.extgramm gramms;
     ExtGramm.writegramm gramms;
     let ty = ExtGramm.expand_grammar_type_list gramms in
     let pr = ExtGramm.expand_printer gramms in
     let ast = ExtGramm.expand_ast2input gramms in
-    let sty = <:str_item< type $list:ty$ >> in
-    <:str_item< declare $list:[sty;pr;ast]$ end >>
+    let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
+    <:str_item< declare $list:sty@[pr;ast]$ end >>
 

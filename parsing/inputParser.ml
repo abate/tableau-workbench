@@ -167,7 +167,7 @@ struct
             else (print_endline s ; assert false)
         in
         let ch = open_in (tmp_dir^str^".gramm") in
-        let (_,_,gramms) = Marshal.from_channel ch in
+        let (_,gramms) = Marshal.from_channel ch in
         let _ = close_in ch in
         let remove_node_entry = List.filter (fun (l,_) -> not(l = "node")) in
         let select_node_entry = List.filter (fun (l,_) -> l = "node") in
