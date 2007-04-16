@@ -346,7 +346,7 @@ let rec expand_ex_term use = function
             begin match use with
             |`List | `Obj -> assert(false)
             |`Term -> (new_id "ex_term",
-            <:expr< [`$uid:String.capitalize label$ `Atom $str:id$] >>)
+            <:expr< [`$uid:String.capitalize label$ ( `Atom $str:id$ ) ] >>)
             end
     |Ast.ExCons(label,id) ->
             begin match use with
@@ -1040,8 +1040,8 @@ let expand_source m =
     let (symbollist,gramms) = ExtGramm.readgramm m in
     ExtGramm.update_gramm_table gramms;
     List.iter (fun c -> Hashtbl.add symbol_table c ()) symbollist;
-    ExtGramm.extgramm gramms;
-    ExtGramm.writegramm gramms;
+    ExtGramm.extgramm (ExtGramm.remove_node_entry gramms);
+    ExtGramm.extend_node_type (ExtGramm.select_node_entry gramms);
     let ty = ExtGramm.expand_grammar_type_list gramms in
     let pr = ExtGramm.expand_printer gramms in
     let ast = ExtGramm.expand_ast2input gramms in
