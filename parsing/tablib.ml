@@ -227,21 +227,35 @@ let expand_principal pa_expr =
 
 let expand_set pa_expr = 
     let (idlist,termlist) = List.split (extract_pa_expr_vars pa_expr) in
-    if pa_expr_is_var pa_expr then
-        <:expr<
-        fun sbl fl ->
-            let __rec = fun
-                [ $expand_pa_expr pa_expr$ ->  $List.hd termlist$ ]
-            in sbl#add [($List.hd idlist$, List.map __rec fl)]
-        >>
-    else
-        <:expr<
-        fun sbl fl ->
-            let __rec = fun
-                [ $expand_pa_expr pa_expr$ ->  $list_to_exprlist termlist$
-                | _ -> raise FailedMatch ]
-            in sbl#add (ExtList.fold __rec fl $list_to_exprlist idlist$)
-        >>
+    let rec aux = function
+        |[id],[ex] -> 
+            <:expr<
+            try
+                if (sbl#find $id$)#elements = [$ex$]
+                then $list_to_exprlist termlist$
+                else [] 
+            with [ Not_found -> $list_to_exprlist termlist$ ]
+            >>
+        |id::tl1,ex::tl2 ->
+            <:expr<
+            try
+                if (sbl#find $id$)#elements = [$ex$]
+                then $aux (tl1,tl2)$ 
+                else [] 
+            with [ Not_found -> $aux (tl1,tl2)$ ]
+            >>
+        |_ -> assert(false) 
+    in
+    let exl =
+         let ex = (expand_pa_expr pa_expr,None,aux (idlist,termlist)) in
+         let def = (<:patt< _ >>, None, <:expr< raise FailedMatch >>) in
+         if pa_expr_is_var pa_expr then [ex] else [ex;def]
+    in
+    <:expr<
+    fun sbl fl ->
+        let __rec = fun [ $list:exl$ ]
+        in sbl#add (ExtList.fold __rec fl $list_to_exprlist idlist$)
+    >>
 
 let expand_arity_pa_expr t = function
     |Ast.Single | Ast.Empty -> expand_principal t

@@ -263,44 +263,48 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         let map = List.map
         let map1 = List.map
         let map2 f (l1,l2) =
-            let rec _aux acc = function
-                |h1::t1,h2::t2 -> _aux (f (h1,h2)::acc) (t1,t2)
+            let rec aux acc = function
+                |h1::t1,h2::t2 -> aux (f (h1,h2)::acc) (t1,t2)
                 |[],[] -> List.rev acc
-                |_ -> raise (Different_list_size "map3")
-            in _aux [] (l1,l2)
+                |_ -> raise (Different_list_size "map2")
+            in aux [] (l1,l2)
 
         let map3 f (l1,l2,l3) =
-            let rec _aux acc = function
-                |h1::t1,h2::t2,h3::t3 -> _aux (f (h1,h2,h3)::acc) (t1,t2,t3)
+            let rec aux acc = function
+                |h1::t1,h2::t2,h3::t3 -> aux (f (h1,h2,h3)::acc) (t1,t2,t3)
                 |[],[],[] -> List.rev acc
                 |_ -> raise (Different_list_size "map3")
-            in _aux [] (l1,l2,l3)
+            in aux [] (l1,l2,l3)
 
         let map4 f (l1,l2,l3,l4) =
-            let rec _aux acc = function
-                |h1::t1,h2::t2,h3::t3,h4::t4 -> _aux (f (h1,h2,h3,h4)::acc) (t1,t2,t3,t4)
+            let rec aux acc = function
+                |h1::t1,h2::t2,h3::t3,h4::t4 -> aux (f (h1,h2,h3,h4)::acc) (t1,t2,t3,t4)
                 |[],[],[],[] -> List.rev acc
                 |_ -> raise (Different_list_size "map4")
-            in _aux [] (l1,l2,l3,l4)
+            in aux [] (l1,l2,l3,l4)
 
         let map5 f (l1,l2,l3,l4,l5) =
-            let rec _aux acc = function
+            let rec aux acc = function
                 |h1::t1,h2::t2,h3::t3,h4::t4,h5::t5 ->
-                        _aux (f (h1,h2,h3,h4,h5)::acc) (t1,t2,t3,t4,t5)
+                        aux (f (h1,h2,h3,h4,h5)::acc) (t1,t2,t3,t4,t5)
                 |[],[],[],[],[] -> List.rev acc
                 |_ -> raise (Different_list_size "map5")
-            in _aux [] (l1,l2,l3,l4,l5)
+            in aux [] (l1,l2,l3,l4,l5)
 
-        let fold f l s =
-            let n = List.length s in
+        let fold f fl sl =
             let rec def acc = function
                 |0 -> acc
                 |i -> def ([]::acc) (i-1)
             in
-            let r = List.fold_left (fun l el ->
-                let rl = f el in List.map2 (fun r l -> r::l) rl l
-                ) (def [] n) l
-            in List.combine s r
+            let rec aux acc = function
+                |h::tl ->
+                        begin match f h with
+                        |[] -> aux acc tl
+                        |rl -> aux (List.map2 (fun e l -> e::l) rl acc) tl end
+                |[] -> acc
+            in match aux (def [] (List.length sl)) fl with
+            |[] -> []
+            |rl -> List.map2 (fun e l  -> (e,l)) sl rl
 
         let rec list_uniq = function 
           | [] -> []
