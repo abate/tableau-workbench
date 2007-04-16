@@ -1,20 +1,5 @@
-(*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
 
-CONNECTIVES [ "~";"&";"v";"->";"<->";"[";"]";"<>" ]
-GRAMMAR
-formula :=
-     Atom | Verum | Falsum
-    | formula & formula
-    | formula v formula
-    | formula -> formula
-    | formula <-> formula
-    | [] formula 
-    | <> formula
-    | ~ formula
-    ;
-
-expr := formula ;
-END
+source K
 
 module FormulaSet = TwbSet.Make(
     struct

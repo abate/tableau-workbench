@@ -22,49 +22,88 @@ formula :=
 expr := formula ;
 END
 
+open Twblib
+open PdlRewrite
+open PdlFunctions
+
+HISTORIES
+  (Fev : FormulaSet.set := new FormulaSet.set);
+  (Br  : ListFormulaSet.olist := new ListFormulaSet.olist)
+END
+
+VARIABLES
+  (uev : FormulaIntSet.set := new FormulaIntSet.set);
+  (fev : FormulaIntSet.set := new FormulaIntSet.set);
+  (status : string := "Undef" )
+END
+
 TABLEAU
 
-RULE Union { < A U B > P } === < A > < B > P END
-RULE Star { < * A > P } === < A > < * A > P END
+RULE Or 
+  { A v B } === A ||| B
 
-RULE K { < a > P }  ; [ a ] X ; Z  --- P ; X END
-RULE Id { a } ; { ~ a } === Close END
-RULE False Falsum === Close END
+  BRANCH [ [ not_emptyset(uev@1) ] ]
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
+END
+
+RULE UnionD
+  { < A U B > P } === < A > P ||| < B > P
+
+  BRANCH [ [ not_emptyset(uev@1) ] ]
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
+END
+
+
+RULE StarD
+  { < * A > P } === P ||| < A > < * A > P
+
+  BRANCH [ [ not_emptyset(uev@1) ] ]
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
+END
+
+RULE K 
+  { < a > P }  ; [ a ] Y ; Z --- P ; Y
+
+  COND [ loop_check(P, Y, Br) ]
+  ACTION [ Br  := push(P, Y, Fev, Br); Fev := emptyset(Fev) ]
+  BRANCH [ not_false(uev@1) ]
+  BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
+
+END
+
+RULE Loop
+  < a > P ; [ a ] Y == Stop
+  COND [ not_emptylist(< a > P) ]
+  BACKTRACK [ uev := setuev_loop(P, Y, Fev, Br) ]
+END
+
 RULE And { A & B } === A ; B END
-RULE Or { A v B } === A | B END
+RULE StarB { [ * A ] P } === P ; [ A ] [ * A ] P END
+RULE UnionB { [ A U B ] P } === [ A ] P ;  [ B ] P END
+
+RULE Id
+  { P } ; { ~ P } == Stop
+  BACKTRACK [ uev := setclose (Br) ]
+END
+
+RULE False
+  { Falsum } === Stop
+  BACKTRACK [ uev := setclose (Br) ]
+END
 
 END
 
 STRATEGY := 
-    let sat = tactic ( (False|Id|And|Or|Star|Union) )
-    in tactic ( ( (sat)* ; K )* )
-(*
+    let sat = tactic ( (False|Id|And|Or|StarD|StarB|UnionD|UnionB) )
+    in tactic ( ( (sat)* ; (K | Loop) )* )
+
+let exit (uev) = match uev#elements with
+    |[] -> "Open"
+    |[formula ( Falsum ),_] -> "Closed"
+    |_ -> "Closed"
+
+EXIT := exit (uev@1)
 PP := List.map nnf
 NEG := List.map neg
-*)
+
 MAIN
-
-(*
-let a = formula ( Verum ) 
-let b = formula ( a v D ) 
-let c = formula ( b & ( a v b ) )  
-let d = formula ( < B > c ) 
-let e = formula ( < * A U B > c & ( c v d ) ) 
-let f = formula ( <> c ) 
-let g = formula ( { formula ( A ) } v B ) 
-let g = formula ( { nnf c } ) 
-(* let h = expr ( 1 : < * A U B > c & ( c v d ) ) ;; *)
-(* let i = expr ( [1] : b ) ;; *)
-
-let ff = function
-    |formula ( D ) -> 1 
-    |formula ( < * A U B > e & ( c v d ) ) -> 1 
-    |formula ( a & _ ) -> failwith "ff" 
-    |formula ( _ ) -> failwith "ff"
-
-(*
-let ff = function
-    |expr ( 1 : a ) -> 1 
-    |expr ( _ ) -> 0
-*)
-*)
