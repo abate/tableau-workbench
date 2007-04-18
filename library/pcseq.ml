@@ -11,7 +11,7 @@ formula :=
     ;
 
 expr := formula ;
-node := set => set ;
+node := mset => singleton ;
 END
 
 SEQUENT

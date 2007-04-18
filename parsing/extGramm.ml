@@ -330,9 +330,20 @@ let extend_tableau_node () =
       blanumseq: [[n = numseq -> [|n|] ]];
     END
 
+let expand_mapcont (_,l) =
+    let newl = filter_map (function
+        |Type(Lid "set") -> Some(<:expr< (new TwbContSet.map match_schema) >>)
+        |Type(Lid "mset") -> Some(<:expr< (new TwbContMSet.map match_schema) >>)
+        |Type(Lid "singleton") -> Some(<:expr< (new TwbContSingleton.map match_schema) >>)
+        |Symbol(_) -> None
+        |_ -> assert(false)
+    ) (List.hd l)
+    in 
+    Hashtbl.add expr_table "mapcont" (<:expr< [| $list:List.rev newl$ |] >>) 
+
 let extend_node_type = function
-    |[] -> extend_tableau_node ()
-    |[l] -> extend_sequent_node l
+    |[] -> extend_tableau_node () ; expand_mapcont ("node",[[Type(Lid "set")]])
+    |[l] -> extend_sequent_node l ; expand_mapcont l
     |_ -> assert(false)
 
 let extend_entry label entrylist =

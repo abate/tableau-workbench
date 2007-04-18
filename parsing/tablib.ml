@@ -275,10 +275,6 @@ let expand_numcont index numcontlist =
         ) numcontlist
 
 let expand_rule_num name (Ast.Numerator arr) =
-    let e = <:expr<
-        Array.create $int:string_of_int(Array.length arr)$ 
-        (new TwbCont.map match_schema) >> 
-    in Hashtbl.add expr_table "mapcont" e;
     List.flatten (Array.to_list (Array.mapi expand_numcont arr))
 
 let expand_num_triple numl (Ast.Numerator arr) =
@@ -865,20 +861,28 @@ let expand_preamble () =
             value to_string = fun [ $list:sblprint$ ];
         end
     ;
-    module MapSet   = TwbSet.Make(BaseType);
-    module SblSet   = TwbSet.Make(SblType);
+    (* XXX it's not necessary to build all these modules all the time,
+     * but it shouldn't hurt run time performances *)
+    module MapSet         = TwbSet.Make(BaseType);
+    module MapMSet        = TwbMSet.Make(BaseType);
+    module SblSet         = TwbSet.Make(SblType);
 
-    module MapCont  = struct type t = BaseType.t; class set = MapSet.set; end;
+    module MapContSet  = struct type t = BaseType.t; class set = MapSet.set; end;
+    module MapContMSet  = struct type t = BaseType.t; class set = MapMSet.set; end;
     module SblCont  = struct type t = SblType.t ; class set = SblSet.set; end;
 
-    module TwbMain  = TwbMain.Make(MapCont)(SblCont)(HistType)(VarType);
+    (* MapContMSet in TwbMain is used only to provide the base type, but it is
+     * not instantiated anywhere... XXX *)
+    module TwbMain  = TwbMain.Make(MapContSet)(SblCont)(HistType)(VarType);
     open TwbMain;
     open TwbMain.UserRule;
     open TwbMain.UserRule.DataType;
     open TwbMain.UserRule.DataType.Strategy;
     open TwbMain.UserRule.DataType.Partition;
 
-    module TwbCont = TwbMap.Make(MapCont);
+    module TwbContSet = TwbMap.Make(MapContSet);
+    module TwbContMSet = TwbMap.Make(MapContMSet);
+    module TwbContSingleton = TwbSingleton.Make(BaseType);
     end >>
 
 let expand_init =
