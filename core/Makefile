@@ -6,7 +6,6 @@ SOURCES := \
 	tree.ml \
 	cache.ml \
 	rule.ml \
-	strategy.ml \
 	visit.ml \
 	
 RESULT := twbcore

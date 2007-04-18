@@ -55,7 +55,8 @@ module Make (N:Node.S) =
                  * avoid Lazy.Undefined *)
                 method add k v =
                     if enabled then
-                        Hash.add data k (Llist.return (Llist.hd v))
+                        try Hash.add data k (Llist.return (Llist.hd v))
+                        with Llist.LListEmpty -> failwith "cache add"
                     else ()
 
                 method to_string = ""

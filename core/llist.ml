@@ -67,15 +67,27 @@ let rec filter f s =
         | Empty -> Empty
     end
 
-let reverse =
-    let rec loop stack = function
-        | LList (hd, tl) -> loop (hd :: stack) (Lazy.force tl)
-        | Empty -> stack
-    in
-    fun s ->
-        loop [] (Lazy.force s)
+let rec clone s =
+    lazy begin
+        match Lazy.force s with
+        | LList (hd, tl) -> LList(hd,clone s)
+        | Empty -> Empty
+    end
 
-let to_list s = List.rev (reverse s)
+let reverse s =
+    let rec loop acc l =
+        begin
+            match Lazy.force l with
+            | LList (hd, tl) -> loop (push hd acc) tl
+            | Empty -> acc
+        end
+    in loop empty s
+
+let to_list s = 
+    let rec loop acc = function
+        | LList (hd, tl) -> loop (hd :: acc) (Lazy.force tl)
+        | Empty -> acc
+    in List.rev (loop [] (Lazy.force s))
 
 let rec of_list = function
     | [] -> lazy(Empty)
@@ -87,6 +99,20 @@ let is_empty s =
     |_ -> false
 
 type 'a excp = Nothing | Just of ('a * 'a llist)
+
+let rec xmerge ll =
+    lazy begin match Lazy.force ll with
+    |Empty -> LList(empty,empty)
+    (* |LList(h,t) when is_empty h -> Empty *)
+    |LList(h,t) ->
+            Lazy.force(
+                flatten (
+                    map (fun ha ->
+                        map (fun ta -> push ha ta) (xmerge t)
+                    ) h
+                )
+            )
+    end
 
 (* monadic operators *)
 type 'a m = 'a llist
