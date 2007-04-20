@@ -877,7 +877,7 @@ let expand_preamble () =
     open TwbMain;
     open TwbMain.UserRule;
     open TwbMain.UserRule.DataType;
-    open TwbMain.UserRule.DataType.Strategy;
+    open TwbMain.UserRule.DataType.Visit;
     open TwbMain.UserRule.DataType.Partition;
 
     module TwbContSet = TwbMap.Make(MapContSet);

@@ -100,7 +100,6 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         
     end
 
-    module Strategy = Strategy.Make(Node)(Rule) 
-    module Visit = Visit.Make(Node)(Rule)(Strategy)
+    module Visit = Visit.Make(Node)(Rule)
 
 end

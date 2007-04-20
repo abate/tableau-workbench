@@ -37,20 +37,18 @@ let rec filter_map f = function
 (* debug flag *)
 let debug = ref false
 
-let not_false l =
+let not_false uev =
     not(List.exists (function
         |formula ( Falsum ),_ -> true
         |_ -> false
-    ) l#elements)
-
+    ) uev#elements)
 
 let push (dia,box,fev,br) = 
     let nodeset = (new FormulaSet.set)#addlist (dia@box) 
     in br#add (nodeset,fev)
-;;
 
-let termfalse = formula ( Falsum ) ;; 
-let setclose br = (new FormulaIntSet.set)#add (termfalse, br#length) ;;
+let termfalse = formula ( Falsum ) 
+let setclose br = (new FormulaIntSet.set)#add (termfalse, br#length)
 
 let setuev_beta (uev1, uev2, br) =
     let l = (br#length -1) in
@@ -87,7 +85,6 @@ let setuev_beta (uev1, uev2, br) =
             ) uev2#elements
         )
         in if !debug then (Printf.printf "INTER %s\n" a#to_string ; a) else a
-;;
 
 let rec index n s l =
     if List.length l > 0 then
@@ -96,13 +93,12 @@ let rec index n s l =
             if n < ((List.length l) - 1) then index (n+1) s l
             else failwith "index: core not found"
     else failwith "index: list empty"
-;;
+
 
 (* true if there is not an element in the list equal to (dia@box) *)
 let loop_check (dia,box,br) =
     let set = (new FormulaSet.set)#addlist (dia@box) in
     not(List.exists (fun (s,_) -> set#is_equal s) br#elements)
-;;
 
 exception Stop_exn of int ;;
 let procastinator idx ev (br1,br2) = 
@@ -121,7 +117,6 @@ let procastinator idx ev (br1,br2) =
         ) (Array.sub bra2 (idx + 1) ( len - (idx + 1) )) ;
         true
     with Stop_exn _ -> false
-;;
 
 let setuev_loop (diax,box,fev,brl) =
     let (br1, br2) = List.split brl#elements in
@@ -162,7 +157,6 @@ let setuev_loop (diax,box,fev,brl) =
     if !debug then Printf.printf "SetUevLoop: %s\n" (uev#to_string)
     else () ;
     uev
-;;
 
 let setuev_pi (uev1, uev2, br) = 
     let l = (br#length -1) in
@@ -182,4 +176,3 @@ let setuev_pi (uev1, uev2, br) =
     else if List.for_all ( fun (_,n) -> n <= l ) uev#elements
     then uev
     else failwith ("pi: impossible")
-;;

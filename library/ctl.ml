@@ -62,7 +62,7 @@ TABLEAU
   RULE Exu
       { E P U Q }
   ===================
-   P ||| EX (E P U Q)
+   Q ||| EX (E P U Q)
 
   ACTION [ [ Fev := add(E P U Q, Fev) ] ; [] ]
   BRANCH [ [ not_emptyset(uev@1) ] ] 
@@ -72,7 +72,7 @@ TABLEAU
   RULE Axu
       { A P U Q }
   ===================
-   P ||| AX (A P U Q)
+   Q ||| AX (A P U Q)
 
   ACTION [ [ Fev := add(A P U Q, Fev) ] ; [] ]
   BRANCH [ [ not_emptyset(uev@1) ] ] 
@@ -114,8 +114,8 @@ TABLEAU
   END
 
   RULE And P & Q == P ; Q END
-  RULE Exb { E P B Q } == P ; E P B Q END
-  RULE Axb { A P B Q } == P ; A P B Q END
+  RULE Exb { E P B Q } == nnf(~ Q) ; P v EX (E P B Q) END
+  RULE Axb { A P B Q } == nnf(~ Q) ; P v AX (A P B Q) END
 
 END
 

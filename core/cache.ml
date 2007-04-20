@@ -56,7 +56,7 @@ module Make (N:Node.S) =
                 method add k v =
                     if enabled then
                         try Hash.add data k (Llist.return (Llist.hd v))
-                        with Llist.LListEmpty -> failwith "cache add"
+                        with Llist.LListEmpty _ -> assert(false)
                     else ()
 
                 method to_string = ""

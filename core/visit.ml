@@ -19,23 +19,19 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         |Cut of tactic
         |Seq of tactic * tactic
         |Alt of tactic * tactic
-        |Repeat of tactic
+        |Mu of (string * tactic)
+        |Var of string
 
     module Cache = Cache.Make(N)   
     let table = ref (new Cache.cache true)
 
-    let rec visit_aux acc = function
+    let rec visit_aux env acc = function
         |Skip -> fun n ->
                 begin match acc with
                 |[] -> Llist.return (Leaf(n)) (* no more rules applicable *)
-                |h::t -> visit_aux t h n 
+                |h::t -> visit_aux env t h n 
                 end
         |Fail -> fun _ -> Llist.mzero
-        (* t* ; t = fail
-         * t* ; Skip ; t = fail 
-         * ( s | t* ) ; t = ( s ; t | t* ; t ) = s ; t
-         * ... tactic normal form ? *)
-        |Seq(Repeat(t1),t2) when t1 = t2 -> fun _ -> Llist.mzero
         |Rule(rule) -> fun n ->
                 Llist.bind (Llist.return (lazy(rule#check n))) (fun cxt ->
                     let context = Lazy.force(cxt) in
@@ -48,29 +44,31 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
                             |Tree(l),[] -> (* but no more rules applicable *)
                                     Llist.return (up (Llist.map (fun n -> Leaf(n)) l))
                             |Tree(l),h::t -> (* and keep going *)
-                                    Llist.map up
-                                    (Llist.xmerge (Llist.map (
-                                        memo_visit ~cache:rule#use_cache t h
-                                    ) l))
+                                    let f = memo_visit env ~cache:rule#use_cache t h 
+                                    in Llist.map up (Llist.xmerge (Llist.map f l))
                             end
                     |false -> Llist.mzero
                 )
-        |Seq(t1,t2) -> visit_aux (t2::acc) t1 
-        |Cut(t1)    -> fun n -> Llist.determ (visit_aux acc t1 n)
-        |Alt(t1,t2) -> fun n -> Llist.mplus (visit_aux acc t1 n) (visit_aux acc t2 n)
-        |Repeat(t1) -> visit_aux acc (Cut(Alt(Seq(t1,Repeat(t1)),Skip))) 
+        |Seq(t1,t2) -> visit_aux env (t2::acc) t1 
+        |Cut(t1)    -> fun n -> Llist.determ (visit_aux env acc t1 n)
+        |Alt(t1,t2) -> fun n ->
+                Llist.mplus (visit_aux env acc t1 n) (visit_aux env acc t2 n)
+        |Mu(x,t) -> visit_aux ((x,t)::env) acc t
+        |Var(x)  ->
+                try visit_aux env acc (List.assoc x env)
+                with Not_found -> failwith "Variable not defined"
 
-    and memo_visit ?(cache=false) acc str node =
+    and memo_visit env ?(cache=false) acc str node =
         if cache then
             try !table#find node
             with Not_found ->
-                let res = visit_aux acc str node in
+                let res = visit_aux env acc str node in
                 !table#add node res;
                 res
         else
-            visit_aux acc str node
+            visit_aux env acc str node
     ;;
 
-    let visit cache t n = visit_aux [] t n
+    let visit cache t n = visit_aux [] [] t n
 
 end

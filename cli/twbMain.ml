@@ -72,7 +72,6 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         ?(histlist=[]) ?(varlist=[])
         ?(pp=fun x -> x) ?(neg=fun x -> x)
         ~inputparser ~exitfun ~strategy ~mapcont =
-        let strategy = Strategy.strategy [] strategy in
         let ppfun = if !Options.nopp then (fun x -> x) else pp in
         let negfun = if !Options.noneg then (fun x -> x) else neg in
         let newnode s =

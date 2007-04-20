@@ -2,24 +2,24 @@
 type 'a llist = 'a cell Lazy.t
 and 'a cell = LList of 'a * 'a llist | Empty
 
-exception LListEmpty
+exception LListEmpty of string
 
 let empty = lazy(Empty)
 let push e l = lazy(LList(e,l))
 let pop s = 
     match Lazy.force s with
     | LList (hd, tl) -> (hd,tl)
-    | Empty -> raise LListEmpty
+    | Empty -> raise (LListEmpty "pop")
 
 let hd s =
     match Lazy.force s with
     | LList (hd, _) -> hd
-    | Empty -> raise LListEmpty
+    | Empty -> raise (LListEmpty "hd")
 
 let tl s =
     match Lazy.force s with
     | LList (_, tl) -> tl
-    | Empty -> raise LListEmpty
+    | Empty -> raise (LListEmpty "tl")
 
 let rec append s1 s2 =
     lazy begin
@@ -100,18 +100,20 @@ let is_empty s =
 
 type 'a excp = Nothing | Just of ('a * 'a llist)
 
+(* XXX *)
 let rec xmerge ll =
     lazy begin match Lazy.force ll with
-    |Empty -> LList(empty,empty)
-    (* |LList(h,t) when is_empty h -> Empty *)
-    |LList(h,t) ->
-            Lazy.force(
-                flatten (
-                    map (fun ha ->
-                        map (fun ta -> push ha ta) (xmerge t)
-                    ) h
-                )
-            )
+        |Empty -> Empty 
+        |LList(h,t) -> 
+                let tl = filter_map (fun l ->
+                    try Some(tl l) with LListEmpty _ -> None) ll
+                in 
+                let hd () =
+                    let tl = filter_map (fun l ->
+                        try Some(hd l) with LListEmpty _ -> None ) t
+                    in if is_empty h then Lazy.force(tl) else LList(hd h,tl)
+                in 
+                LList(lazy(hd ()),xmerge tl)
     end
 
 (* monadic operators *)

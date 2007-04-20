@@ -9,11 +9,8 @@ let clear h = h#empty
 let emptyset = clear
 
 (* list operations *)
-let not_emptylist = function [] -> false | h::_ -> true
-let is_emptylist = function [] -> true | h::_ -> false
-
-(* debug flag *)
-let debug = ref false
+let not_emptylist = function [] -> false |_ -> true
+let is_emptylist  = function [] -> true  |_ -> false
 
 (* general functions *)
 let min (a,b) = min a b

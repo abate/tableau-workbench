@@ -17,7 +17,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
     let rec branchcond ?(implicit=false) context acctl tLl bll =
         let treelist = 
             try (Llist.hd tLl)::acctl
-            with Llist.LListEmpty -> acctl
+            with Llist.LListEmpty _ -> acctl
         in
         let checknext cxt tl = function
             |[] -> true
@@ -27,7 +27,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                 let varlist = 
                     List.map ( function
                         |Leaf(n) -> let (_,_,v) = n#get in v 
-                        |_ -> failwith "check_branch_cond"
+                        |_ -> assert(false)
                     ) (List.rev tl)
                     (* I've to revert the list as this is the result of
                      * the accumulator acctl plus the last explored branch *)
@@ -116,7 +116,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
             ) hist hl
         in
         let newnode = node#set (newcont, newhist, varhist) in
-        let _ = OutputBroker.print_down name newnode ruleid in newnode
+        let _ = OutputBroker.print_down name sbl newnode ruleid in newnode
       in
       let rec make_llist sbl oldvar = function
           |[] -> Llist.empty
@@ -144,7 +144,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
             ) hist hl
         in
         let newnode = node#set (newmap, newhist, varhist) in
-        let _ = OutputBroker.print_down name newnode ruleid in newnode
+        let _ = OutputBroker.print_down name sbl newnode ruleid in newnode
       in
       let rec make_llist oldvar l =
           match Lazy.force l with
@@ -183,17 +183,17 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         let (enum,sbl,newnode) = context#get in
         let (m, h, varhist) = newnode#get in
         let newnode = newnode#set(m#empty, h#empty, status varhist) in
-        let _ = OutputBroker.print_down name newnode !OutputBroker.rulecounter in 
+        let _ = OutputBroker.print_down name sbl newnode !OutputBroker.rulecounter in 
         Leaf(newnode)
 
     let unbox_tree = function
         Leaf (n) -> n
-        |_ -> failwith "unbox_tree"
+        |_ -> assert(false)
 
     let status node =
         let (_, _, varhist) = (unbox_tree node)#get in
         try varhist#find "status"
-        with Not_found -> failwith "userrule status"
+        with Not_found -> assert(false)
 
     (* up method - simple. explore the first branch, if the
      * branch condition is true, then explore the second branch. 
@@ -205,13 +205,13 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         (* since the list is lazy, the computation is triggered here *)
         let tl = (branchcond ~implicit:implicit context [] treelist branchll) in
         let t = match List.rev tl with
-            |[] -> failwith "up_explore_aux : t"
+            |[] -> assert(false)
             |h::_ -> h
         in
         let varlist = 
             List.map ( function
                 |Leaf(n) -> let (_,_,v) = n#get in v 
-                |_ -> failwith "up_explore_aux : varlist"
+                |_ -> assert(false)
             ) tl
         in
         let newnode =
@@ -239,7 +239,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         let (_, hist, _) = node#get in
         let tl = (Llist.to_list treelist) in
         let t = match tl with
-            |[] -> failwith "up_explore_linear : t"
+            |[] -> assert(false)
             |h::_ -> h
         in
         let varhist =
