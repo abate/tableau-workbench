@@ -1,60 +1,53 @@
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  Not, "~_",   Zero;
-  Falsum, Const;
-  Verum, Const
+CONNECTIVES [ "~";"&";"v";"->";"<->" ]
+GRAMMAR
+formula :=
+     Atom | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | ~ formula
+    ;;
+
+expr := int list : formula ;;
 END
 
-HISTORIES
-(Idx : Int := new Set.set default 0);
-(bj : ListInt := new Set.set default [])
-END
+HISTORIES Idx : int := 0 END
+VARIABLES bj  : int list := [] END
 
-let nnf_term l = Basictype.map Pcopt.nnf l ;;
+(* open Pclib *)
 open Twblib
-open Pcopt
+(* open Pcopt *)
 
 TABLEAU
 
   RULE Id
-  { a } ; { ~ a }
-  ===============
+  { i : a } ; { j : ~ a }
+  =======================
     Close
 
-  BACKTRACK [ bj := addlabel(a, ~ a) ]
+  BACKTRACK [ bj := addlabel(I,J) ]
   END
   
-  RULE False
-    Falsum
-  =========
-    Close
-  END
-
-  RULE And
-  {a & b}
- =========
-   a; b
-  END
-  
-  RULE Or
-  { a v b } 
- ===========================
-  fixlabel(Idx,a) | fixlabel(Idx,b) 
+  RULE False _ : Falsum === Close END
+  RULE And {i : A & B} === i : A; i : B END
+  (*
+  RULE Or 
+      { _ : A v B } 
+  =====================
+    Idx : a | Idx : b
 
   ACTION    [[ Idx := inc(Idx) ]; [ Idx := inc(Idx) ]]
   BRANCH    [ backjumping(Idx,bj@1) ]
   BACKTRACK [ bj := mergelabel(bj@all,status@last) ]
   END
-
+  *)
 END
 
-PP := Pcopt.nnf
-NEG := Pclib.neg
+STRATEGY := tactic ( (False|Id|And|Or)* )
 
-STRATEGY := ( (Id|False|And|Or)* )
+PP := List.map nnf
+NEG := List.map neg
 
-
+MAIN

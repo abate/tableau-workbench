@@ -24,9 +24,9 @@ formula :=
     | EX formula
     | AX formula
     | ~ formula
-    ;
+;;
 
-expr := formula ;
+expr := formula ;;
 END
 
 open Twblib
@@ -34,14 +34,14 @@ open CtlFunctions
 open CtlRewrite
 
 HISTORIES
-  (Fev : FormulaSet.set := new FormulaSet.set);
-  (Br  : ListFormulaSet.olist := new ListFormulaSet.olist)
+  Fev : FormulaSet.set := new FormulaSet.set;
+  Br  : ListFormulaSet.olist := new ListFormulaSet.olist
 END
 
 VARIABLES
-  (uev : FormulaIntSet.set := new FormulaIntSet.set);
-  (fev : FormulaIntSet.set := new FormulaIntSet.set);
-  (status : string := "Undef" )
+  uev : FormulaIntSet.set := new FormulaIntSet.set;
+  fev : FormulaIntSet.set := new FormulaIntSet.set;
+  status : string := "Undef" 
 END
 
 let neg = List.map neg_term ;;
@@ -94,7 +94,7 @@ TABLEAU
   END
 
   RULE Ref
-  EX Y ; {AX P} == EX Verum ; AX P
+  EX Y ;  (AX P) == EX Verum ; AX P
   COND [ is_emptylist(EX Y) ]
   END
 

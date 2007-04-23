@@ -1,14 +1,16 @@
 
 CONNECTIVES [ "~";"&";"v";"->";"<->";"[";"]";"<>";"<";">" ]
 GRAMMAR
+idx := One | Two ;;
 formula :=
      Atom | Verum | Falsum
+    | idx
     | formula & formula
     | formula v formula
     | formula -> formula
     | formula <-> formula
-    | [] formula
-    | <> formula
+    | [ idx ] formula
+    | < idx > formula
     | ~ formula
 ;;
 
@@ -17,20 +19,20 @@ END
 
 
 open Twblib
-open Klib
+open Kmlib
 
 TABLEAU
 
   RULE K1
-  { <> A } ; [] X ; <> Y ; Z
+  { < I > A } ; [ I ] X ; < I > Y ; Z
   ===========================
-      A ; X || <> Y ; [] X
+      A ; X || < I > Y ; [ I ] X
 
-  BRANCH [ not_emptylist(<> Y) ]
+  BRANCH [ not_emptylist(< I > Y) ]
   END 
    
   RULE K
-  { <> A } ; [] X ;  Z
+  { < I > A } ; [ I ] X ;  Z
   ----------------------
           A ; X
   END 
@@ -41,7 +43,6 @@ TABLEAU
   RULE Or { A v B } === A | B END
   
 END
-
 
 STRATEGY := 
     let sat = tactic ( (Id|False|And|Or) ) in

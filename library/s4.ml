@@ -10,8 +10,8 @@ module FormulaSet = TwbSet.Make(
 )
 
 HISTORIES
-  (DIAMONDS : FormulaSet.set := new FormulaSet.set);
-  (BOXES    : FormulaSet.set := new FormulaSet.set)
+  DIAMONDS : FormulaSet.set := new FormulaSet.set;
+  BOXES    : FormulaSet.set := new FormulaSet.set
 END
 
 open Twblib
@@ -36,9 +36,7 @@ TABLEAU
   COND notin(<> A, DIAMONDS)
   ACTION [
       [ DIAMONDS := add(<> A,DIAMONDS);
-        DIAMONDS := add(<> Y,DIAMONDS)];
-
-      [ DIAMONDS := add(<> Y,DIAMONDS) ]
+        DIAMONDS := add(<> Y,DIAMONDS)]
   ]
   BRANCH not_emptylist(<> Y)
   END
@@ -59,7 +57,7 @@ END
 
 STRATEGY := 
     let sat = tactic ( (False|Id|And|T|Or) )
-    in tactic ( ( (sat)* ; S4H )* )
+    in tactic ( ( (sat)* ; S4 )* )
 
 PP := List.map nnf
 NEG := List.map neg

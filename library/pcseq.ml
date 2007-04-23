@@ -8,10 +8,10 @@ formula :=
     | formula -> formula
     | formula <-> formula
     | ~ formula
-    ;
+;;
 
-expr := formula ;
-node := mset => singleton ;
+expr := formula ;;
+node := set => singleton ;;
 END
 
 SEQUENT

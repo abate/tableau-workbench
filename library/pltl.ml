@@ -13,9 +13,9 @@ formula :=
     | G formula
     | X formula
     | ~ formula
-    ;
+;;
 
-expr := formula ;
+expr := formula ;;
 END
 
 open Twblib
@@ -24,14 +24,14 @@ open PltlFunctions
 
 
 HISTORIES
-  (Ev : FormulaSet.set := new FormulaSet.set);
-  (Br : ListFormulaSet.olist := new ListFormulaSet.olist)
+  Ev : FormulaSet.set := new FormulaSet.set;
+  Br : ListFormulaSet.olist := new ListFormulaSet.olist
 END
 
 VARIABLES
-  (uev : FormulaSet.set := new FormulaSet.set);
-  (status : string := "Undef" );
-  (n : int := 0)
+  uev : FormulaSet.set := new FormulaSet.set;
+  status : string := "Undef";
+  n : int := 0
 END
 
 let neg = List.map neg_term ;;

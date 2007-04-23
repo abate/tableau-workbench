@@ -8,9 +8,9 @@ formula :=
     | formula -> formula
     | formula <-> formula
     | ~ formula
-    ;
+    ;;
 
-expr := formula ;
+expr := formula ;;
 END
 
 open Pclib
