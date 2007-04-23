@@ -45,6 +45,12 @@ let new_conn = function
             let _ = Hashtbl.add conn_table l e
             in e
 
+let forbidden_symbol s name =
+    let l = ["|";"||";"|||";"(";")";";"] in
+    match name with
+    |"formula" |"node" |"expr" -> List.mem s l
+    |_ -> false
+
 let make_token ttype self = function
     |Lid("") -> 
             begin match ttype with
@@ -79,6 +85,10 @@ let make_token ttype self = function
                         Gramext.Snterm (create_obj (PattSchemaEntry.get_entry s)),
                         Gramext.Stoken ("", ";"))
             end
+    |Symbol(s) when Hashtbl.mem symbol_table s ->
+            if forbidden_symbol s self then failwith (Printf.sprintf
+            "The symbol \"%s\" is not allowed in %s" s self)
+            else Gramext.Stoken ("", s)
     |Symbol(s) -> Gramext.Stoken ("", s)
     |Const(s) ->  Gramext.Stoken ("", s) 
     |Expr -> 
@@ -419,7 +429,13 @@ let readgramm m =
             |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
         in str ^ "/"
     in
-    let ch = open_in (tmp_dir^String.lowercase m^".gramm") in
+    let ch =
+        try open_in (tmp_dir^String.lowercase m^".gramm")
+        with Sys_error _ -> 
+            failwith (Printf.sprintf
+            "Dependency error: compile the file %s.ml first" 
+            (String.lowercase m))
+    in
     let (symbollist,gramms) = Marshal.from_channel ch in
     let _ = close_in ch in
     (symbollist,gramms)
@@ -478,12 +494,16 @@ let singletonid strm =
     |_ -> raise Stream.Failure
 let singletonid = Grammar.Entry.of_parser Pcaml.gram "singletonid" singletonid 
 
+let listid strm =
+    match Stream.peek strm with
+    |Some(_,"list") -> Stream.junk strm; "list"
+    |_ -> raise Stream.Failure
+let listid = Grammar.Entry.of_parser Pcaml.gram "listid" listid 
+
 let connective strm =
     let s =
         match Stream.peek strm with
-        |Some("STRING",s) when not(List.mem s ["|";";";"(";")";"_"]) -> s
-        |Some("STRING",s) when List.mem s ["|";";";"(";")";"_"] ->
-                failwith (s^" is an illegal connective")
+        |Some("STRING",s) -> s 
         |_ -> raise Stream.Failure
     in
     try Stream.junk strm; Hashtbl.add symbol_table s () ; Symbol(s)
@@ -493,9 +513,6 @@ let connective = Grammar.Entry.of_parser Pcaml.gram "connective" connective
 
 let symbol strm =
     let s = match Stream.peek strm with
-        (* |Some("","|") | Some("",";")
-        |Some("","(") | Some("",")") -> raise Stream.Failure
-        *)
         |Some("",s) when (Hashtbl.mem symbol_table s) -> s
         |Some("LIDENT",s)
         |Some("UIDENT",s) when (Hashtbl.mem symbol_table s) -> s 
@@ -510,9 +527,9 @@ let expand_grammar_type (id,rules) =
     let typevars = ref [(id,(true,true))] in
     let exptype = function
         |Lid(s) when s = id -> <:ctyp< '$lid:s$ >>
-        |List(s) when s = id ->  <:ctyp< '$lid:s$ list >>
+        |List(s) when s = id ->  <:ctyp< list '$lid:s$ >>
         |Lid(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ >>
-        |List(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ list >>
+        |List(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< list '$lid:s$ >>
         |Atom ->     <:ctyp< string >>
         |Const(s) -> <:ctyp< [= `$uid:s$ ] >>
         |_ -> assert(false)
@@ -564,7 +581,7 @@ let rec expand_grammar_expr_type = function
     |[[Lid(s)]] ->   <:ctyp< $lid:s$ >>
     |[[Atom]] ->     <:ctyp< string >>
     |[[Const(s)]] -> <:ctyp< [= `$uid:s$ ] >>
-    |[[List(s)]] ->  <:ctyp< $lid:s$ list>>
+    |[[List(s)]] ->  <:ctyp< list $lid:s$ >>
     |[[Type(t);Symbol(":");r]]  -> 
             <:ctyp< ($expand_grammar_expr_type [[t]]$ *
             $expand_grammar_expr_type [[r]]$) >>
@@ -686,6 +703,12 @@ let update_gramm_table gramms =
     in
     List.iter (function
         |("node",_) -> () 
+        |("expr",[Type(t)::[Symbol(":");Lid(_)]]) ->
+                begin match t with
+                |List(s) -> Hashtbl.add gramm_table (s ^ " list") ()
+                |Lid(s)  -> Hashtbl.add gramm_table s ()
+                |_ -> assert(false)
+                end
         |("expr",_) -> ()
         |("formula",rules) ->
                 Hashtbl.add gramm_table "formula" ();
@@ -712,16 +735,16 @@ Pcaml.str_item: [[
 ]];
 
 gramm: [
-    [ exprid ; ":=" ; t = ptype ;  e = OPT [ ":" ; p = plid -> p ]; ";" ->
+    [ exprid ; ":=" ; t = ptype ; e = OPT [ ":" ; p = plid -> p ]; ";;" ->
           begin match e with
           |None -> ("expr", [[t]])
           |Some(l) -> ("expr",[Type(t)::[Symbol(":");Lid(l)]])
           end
   
-    | nodeid ; ":="; c = cont ; l = LIST0 [ s = symbol; c = cont -> [s;c] ] ; ";" ->
+    | nodeid ; ":="; c = cont ; l = LIST0 [ s = symbol; c = cont -> [s;c] ] ; ";;" ->
             ("node",[c::(List.flatten l)])
         
-    | p = lid; ":="; rules = LIST1 rule SEP "|" ; ";" ->
+    | p = lid; ":="; rules = LIST1 rule SEP "|" ; ";;" ->
         (p,rules@[[Lid("")]]@[[Symbol("(");Lid(p);Symbol(")")]]) 
 ]];
 
@@ -744,7 +767,7 @@ psymbol: [
 const: [[ u = UIDENT -> Const(u) ]];
 
 ptype: [
-    [ t = plid ; "list" -> List(t) 
+    [ t = plid ; listid -> List(t) 
 (*    | l = LIST1 plid SEP "*" -> Tuple(l) *)
     | t = plid -> Lid(t)
 ]];

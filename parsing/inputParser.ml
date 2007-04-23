@@ -166,7 +166,12 @@ struct
             if Str.string_match re s 0 then Str.matched_group 3 s
             else (print_endline s ; assert false)
         in
-        let ch = open_in (tmp_dir^str^".gramm") in
+        let ch =
+            try open_in (tmp_dir^str^".gramm")
+            with Sys_error _ ->
+                failwith (Printf.sprintf
+                "Dependency error: compile the file %s.ml first" str)
+        in
         let (_,gramms) = Marshal.from_channel ch in
         let _ = close_in ch in
         let remove_node_entry = List.filter (fun (l,_) -> not(l = "node")) in

@@ -12,12 +12,10 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
   ]];
 
   Pcaml.str_item: [
-      ["HISTORIES"; l = LIST1 [ "("; h = history; ")" -> h ] SEP ";"; "END" ->
-          expand_histories (Ast.History l)
-
-      |"VARIABLES"; l = LIST1 [ "("; h = variable; ")" -> h ] SEP ";"; "END" ->
-          expand_histories (Ast.Variable l)
-
+      ["HISTORIES"; l = LIST1 history SEP ";"; "END" ->
+              expand_histories (Ast.History l)
+      |"VARIABLES"; l = LIST1 variable SEP ";"; "END" ->
+              expand_histories (Ast.Variable l)
       |"TABLEAU"; l = LIST1 rule; "END" -> expand_tableau (Ast.Tableau l)
       |"SEQUENT"; l = LIST1 rule; "END" -> expand_tableau (Ast.Tableau l)
       |"STRATEGY"; OPT ":="; t = Pcaml.expr -> expand_strategy t
@@ -30,6 +28,10 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       |"OPTIONS"; l = LIST1 options SEP ";"; "END" -> expand_options l
       |"source"; m = UIDENT -> expand_source m
   ]];
+
+  history:  [[ name = UIDENT; (t,e) = def -> (name,t,e)]];
+  variable: [[ name = LIDENT; (t,e) = def -> (name,t,e)]];
+  def: [[ ":"; t = Pcaml.ctyp; ":="; e = Pcaml.expr LEVEL "simple" -> (t,e) ]];
 
   options : [[
       OPT "(";
@@ -58,13 +60,6 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       ]
   ];
 
-  history: [[
-      v = UIDENT; ":"; m = Pcaml.ctyp; ":="; d = Pcaml.expr LEVEL "simple" -> (v,m,d)
-  ]];
-
-  variable: [[
-      v = LIDENT; ":"; m = Pcaml.ctyp; ":="; d = Pcaml.expr LEVEL "simple" -> (v,m,d)
-  ]];
 
   rule: [[
       "RULE";
@@ -126,8 +121,8 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       |s = test_history  -> Ast.ExTerm(Ast.ExHist s)
       |f = LIDENT; "("; args = LIST0 userfunction SEP ","; ")" ->
               Ast.ExAppl(f, Ast.ExTupl(args))
-      |ex = ExtGramm.expr_expr_schema -> ex
       |t  = ExtGramm.formula_expr_schema -> Ast.ExTerm(t)
+      |ex = ExtGramm.expr_expr_schema -> ex
       |ex = Pcaml.expr -> Ast.ExExpr(ex)
   ]];
 

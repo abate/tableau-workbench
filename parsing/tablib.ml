@@ -84,6 +84,7 @@ let ctyp_to_patt ctyp =
                 incr counter; 
                 <:patt< $lid:"__t"^string_of_int !counter$ >>
         |MLast.TyAcc(_,_,ctyp) -> aux ctyp
+        |MLast.TyApp(_,MLast.TyLid(_,"list"),ctyp) -> aux ctyp
         |_ -> assert(false)
     in aux ctyp
 
@@ -103,30 +104,35 @@ let ctyp_to_method_expr m ctyp =
                 |_ -> <:expr< $lid:"__t"^string_of_int !counter$#$lid:m$ >>
                 end
         |MLast.TyAcc(_,_,ctyp) -> aux ctyp
+        |MLast.TyApp(_,MLast.TyLid(_,"list"),ctyp) -> aux ctyp
         |_ -> assert(false) 
     in aux ctyp
 
 let expand_history_type histlist =
     let ctyp_to_string_expr ctyp =
         let counter = ref 0 in
-        let rec aux = function
+        let rec aux1 s = function
+            |MLast.TyLid(_,"int") -> <:expr< string_of_int $lid:s$ >>
+            |MLast.TyLid(_,"string") -> <:expr< $lid:s$ >>
+            |MLast.TyLid(_,id) -> <:expr< $lid:s$#to_string >>
+            |MLast.TyApp(_,MLast.TyLid(_,"list"),ctyp) ->
+                    <:expr<List.fold_left (fun s e -> s^ ($aux1 "e" ctyp$)) "" $lid:s$ >>
+            |_ -> assert(false)
+        and aux2 = function
             |MLast.TyTup(_,l)  ->
                     let f = List.fold_left (fun acc _ -> acc^",%s") "" l in
                     List.fold_left (fun acc arg ->
                         <:expr< $acc$ $arg$ >>
-                    ) <:expr< Printf.sprintf $str:"("^f^")"$ >> (List.map aux l)
-            |MLast.TyLid(_,"int") ->
-                    incr counter; 
-                    <:expr< string_of_int $lid:"__t"^string_of_int !counter$ >>
-            |MLast.TyLid(_,"string") ->
-                    incr counter; 
-                    <:expr< $lid:"__t"^string_of_int !counter$ >>
-            |MLast.TyLid(_,id) ->
-                    incr counter; 
-                    <:expr< $lid:"__t"^string_of_int !counter$#to_string >>
-            |MLast.TyAcc(_,_,ctyp) -> aux ctyp
+                    ) <:expr< Printf.sprintf $str:"("^f^")"$ >> 
+                    (List.map aux2 l)
+            |MLast.TyLid(_,_) as ctyp ->
+                    incr counter;
+                    aux1 ("__t"^string_of_int !counter) ctyp
+            |MLast.TyApp(_,_,_) as ctyp ->
+                    incr counter;
+                    aux1 ("__t"^string_of_int !counter) ctyp
             |_ -> assert(false)
-        in aux ctyp
+        in aux2 ctyp
     in
     let tlist =
         let l =
@@ -340,13 +346,33 @@ let rec expand_ex_term use = function
             )
     |Ast.ExAtom(label,id) ->
             begin match use with
-            |`List | `Obj -> assert(false)
+            |`Obj -> assert(false)
+            |`List ->
+                (new_id "ex_term",
+                <:expr<
+                ExtList.map1 (fun
+                    [`$uid:String.capitalize label$ e -> e
+                    |_ -> failwith ("__build")
+                    ]
+                ) ( try (sbl#find $str:id$)#elements
+                    with [Not_found -> failwith ("__find: " ^ $str:id$)]) >>
+                )
             |`Term -> (new_id "ex_term",
             <:expr< [`$uid:String.capitalize label$ ( `Atom $str:id$ ) ] >>)
             end
     |Ast.ExCons(label,id) ->
             begin match use with
-            |`List | `Obj -> assert(false)
+            |`Obj -> assert(false)
+            |`List ->
+                (new_id "ex_term",
+                <:expr<
+                ExtList.map1 (fun
+                    [`$uid:String.capitalize label$ e -> e
+                    |_ -> failwith ("__build")
+                    ]
+                ) ( try (sbl#find $str:id$)#elements
+                    with [Not_found -> failwith ("__find: " ^ $str:id$)]) >>
+                )
             |`Term -> (new_id "ex_term",
             <:expr< [`$uid:String.capitalize label$ `$uid:id$] >>)
             end
@@ -831,7 +857,9 @@ let expand_preamble () =
     let vars = expand_histories_aux vars_table (Ast.Variable([])) in
     let l = Hashtbl.fold (fun k _ acc -> k::acc) gramm_table [] in
     let sbltype =
-        let aux s = <:ctyp< [= `$uid:String.capitalize s$ of $lid:s$ ] >> in
+        let aux s = 
+            let ss = Str.global_substitute (Str.regexp " +") (fun _ -> "") s in
+            <:ctyp< [= `$uid:String.capitalize ss$ of $lid:s$ ] >> in
         match l with
         |[] -> assert(false)
         |[h] -> aux h
@@ -839,9 +867,10 @@ let expand_preamble () =
                     <:ctyp< [= $acc$ | $aux s$ ] >>) (aux h) tl
     in
     let sblprint = 
-        List.fold_left (fun acc c ->
-            (<:patt< `$uid:String.capitalize c$ f >>, None, 
-            <:expr< $lid:c^"_printer"$ f >>)::acc
+        List.fold_left (fun acc s ->
+            let ss = Str.global_substitute (Str.regexp " +") (fun _ -> "") s in
+            (<:patt< `$uid:String.capitalize ss$ f >>, None, 
+            <:expr< $lid:ss^"_printer"$ f >>)::acc
         ) [] l
     in
     <:str_item< declare
@@ -902,10 +931,16 @@ let expand_matchpatt rulelist =
         let aux = List.map (fun (_,pa_expr) -> pa_expr ) in
         let (_, _, Ast.Numerator arr, _, _, _, _, _, _, _ ) = rule in
         (* we inject all constants and atom *)
+        let l = (List.flatten (Array.to_list (Array.map aux arr))) in
         let constlist = Hashtbl.fold (fun k v acc -> 
-            Ast.PaTerm(Ast.PaCons("AAA",k))::acc) const_table []
-        in Ast.PaTerm(Ast.PaAtom("AAA","")):: (* XXX *)
-            (List.flatten (Array.to_list (Array.map aux arr)))@constlist
+            Ast.PaCons("AAA",k)::acc) const_table []
+        in
+        if List.exists (function Ast.PaTerm(_) -> true | _ -> false) l then
+            Ast.PaTerm(Ast.PaAtom("AAA",""))::
+            l@(List.map (fun e -> Ast.PaTerm(e)) constlist)
+        else
+            Ast.PaLabt(("",<:patt< "" >>),Ast.PaAtom("AAA","")):: 
+            l@(List.map (fun e -> Ast.PaLabt(("",<:patt< "" >>),e)) constlist)
     in
     let pa_expr_to_patt =
         let rec pa_term_to_patt = function
@@ -936,7 +971,7 @@ let expand_matchpatt rulelist =
         )))
     in
     let def = <:patt< f >>, None,
-    <:expr< failwith ("no rule match this formula"^(formula_printer f)) >> in
+    <:expr< failwith ("no rule match this formula"^(expr_printer f)) >> in
     <:str_item< value match_schema = fun [ $list:pel@[def]$ ] >>
 
 let expand_tableau (Ast.Tableau rulelist) =
@@ -1042,6 +1077,7 @@ let expand_options s = failwith "expand_options"
 
 let expand_source m =
     let (symbollist,gramms) = ExtGramm.readgramm m in
+    ExtGramm.writegramm gramms;
     ExtGramm.update_gramm_table gramms;
     List.iter (fun c -> Hashtbl.add symbol_table c ()) symbollist;
     ExtGramm.extgramm (ExtGramm.remove_node_entry gramms);

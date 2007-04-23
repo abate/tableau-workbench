@@ -113,7 +113,11 @@ let rec xmerge ll =
                         try Some(hd l) with LListEmpty _ -> None ) t
                     in if is_empty h then Lazy.force(tl) else LList(hd h,tl)
                 in 
-                LList(lazy(hd ()),xmerge tl)
+                Lazy.force(
+                    filter_map (fun n ->
+                        if is_empty n then None else Some(n)
+                    ) (lazy(LList(lazy(hd ()),xmerge tl)))
+                )
     end
 
 (* monadic operators *)
