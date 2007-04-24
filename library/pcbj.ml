@@ -25,24 +25,24 @@ TABLEAU
   RULE Id
   { i : a } ; { j : ~ a }
   =======================
-    Close
+          Close
 
-  BACKTRACK [ bj := addlabel(I,J) ]
+  BACKTRACK [ bj := addlabel(i,j) ]
   END
   
   RULE False _ : Falsum === Close END
-  RULE And {i : A & B} === i : A; i : B END
-  (*
+  RULE And {l : A & B} === l : A; l : B END
+  
   RULE Or 
-      { _ : A v B } 
+      { l : A v B } 
   =====================
-    Idx : a | Idx : b
+   Idx :: l : A | Idx :: l : B
 
   ACTION    [[ Idx := inc(Idx) ]; [ Idx := inc(Idx) ]]
   BRANCH    [ backjumping(Idx,bj@1) ]
   BACKTRACK [ bj := mergelabel(bj@all,status@last) ]
   END
-  *)
+  
 END
 
 STRATEGY := tactic ( (False|Id|And|Or)* )
