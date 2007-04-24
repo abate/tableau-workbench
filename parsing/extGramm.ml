@@ -274,9 +274,9 @@ let extend_schema =
         expr_patt: [
             [pa = Pcaml.patt; $sep$; sc = formula_patt -> <:patt< ($pa$,$sc$) >>]];
 
-        expr_expr_schema: [ [ex = Pcaml.expr; $sep$; sc = formula_expr_schema ->
+        expr_expr_schema: [[ex = Pcaml.expr; $sep$; sc = formula_expr_schema ->
                     Ast.ExLabt((s,ex),sc)]];
-        expr_patt_schema: [ [pa = Pcaml.patt; $sep$; sc = formula_patt_schema ->
+        expr_patt_schema: [[pa = Pcaml.patt; $sep$; sc = formula_patt_schema ->
                     Ast.PaLabt((s,pa),sc)]];
         END
     in
@@ -289,7 +289,7 @@ let extend_schema =
         expr_patt_schema: [[sc = formula_patt_schema -> Ast.PaTerm(sc)]];
         END
     in function
-        |[Type(List(s)) :: Symbol(sep) :: _] -> aux1 s sep
+        |[Type(List(s)) :: Symbol(sep) :: _] -> aux1 (s^" list") sep
         |[Type(Lid(s)) :: Symbol(sep) :: _] -> aux1 s sep
         |_ -> aux2 ()
 

@@ -51,10 +51,11 @@ let rec extract_pa_expr_vars = function
                 (<:expr< $str:id$ >>,<:expr< `$uid:label$ $lid:String.lowercase id$ >>) )
             (extract_pa_term_vars [] t)
     |Ast.PaLabt((decolabel,deco),t) ->
+            let ss = Str.global_substitute (Str.regexp " +") (fun _ -> "") decolabel in
             List.append
                 (List.map (fun id -> 
                     (<:expr< $str:id$ >>,
-                    <:expr< `$uid:String.capitalize decolabel$ $lid:String.lowercase id$ >>) )
+                    <:expr< `$uid:String.capitalize ss$ $lid:String.lowercase id$ >>) )
                 (extract_patt_vars [] deco))
                 (List.map (fun (label,id) ->
                     (<:expr< $str:id$ >>,<:expr< `$uid:label$ $lid:String.lowercase id$ >>) )
@@ -114,9 +115,11 @@ let expand_history_type histlist =
         let rec aux1 s = function
             |MLast.TyLid(_,"int") -> <:expr< string_of_int $lid:s$ >>
             |MLast.TyLid(_,"string") -> <:expr< $lid:s$ >>
-            |MLast.TyLid(_,id) -> <:expr< $lid:s$#to_string >>
+            |MLast.TyLid(_,_) -> <:expr< $lid:s$#to_string >>
             |MLast.TyApp(_,MLast.TyLid(_,"list"),ctyp) ->
-                    <:expr<List.fold_left (fun s e -> s^ ($aux1 "e" ctyp$)) "" $lid:s$ >>
+                    <:expr< List.fold_left (fun s e -> 
+                        s^ ($aux1 "e" ctyp$)) "" $lid:s$ >>
+            |MLast.TyAcc(_,_,ctyp) -> <:expr< $lid:s$#to_string >>
             |_ -> assert(false)
         and aux2 = function
             |MLast.TyTup(_,l)  ->
@@ -129,6 +132,9 @@ let expand_history_type histlist =
                     incr counter;
                     aux1 ("__t"^string_of_int !counter) ctyp
             |MLast.TyApp(_,_,_) as ctyp ->
+                    incr counter;
+                    aux1 ("__t"^string_of_int !counter) ctyp
+            |MLast.TyAcc(_,_,_) as ctyp ->
                     incr counter;
                     aux1 ("__t"^string_of_int !counter) ctyp
             |_ -> assert(false)
