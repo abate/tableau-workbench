@@ -1,3 +1,15 @@
+#ctl
+(E p U q) -> (E p U q)
+(E p U q) -> EF q
+(A p U q) -> (A p U q)
+(A p U q) -> AF q
+AF a <-> (A Verum U a)
+EF a <-> (E Verum U a)
+AG a <-> ~ ( E Verum U ~ a)
+EG a <-> ~ ( A Verum U ~ a)
+A p U q <-> q v (p & AX (A p U q))
+E p U q <-> q v (p & EX (E p U q))
+#ub
 ~ ( AG p & EF ~ p )
 #axioms 
 # A.1

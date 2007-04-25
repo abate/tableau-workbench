@@ -62,7 +62,7 @@ TABLEAU
   RULE Exu
       { E P U Q }
   ===================
-   Q ||| EX (E P U Q)
+  Q ||| P ; EX (E P U Q)
 
   ACTION [ [ Fev := add(E P U Q, Fev) ] ; [] ]
   BRANCH [ [ not_emptyset(uev@1) ] ] 
@@ -72,7 +72,7 @@ TABLEAU
   RULE Axu
       { A P U Q }
   ===================
-   Q ||| AX (A P U Q)
+  Q ||| P ; AX (A P U Q)
 
   ACTION [ [ Fev := add(A P U Q, Fev) ] ; [] ]
   BRANCH [ [ not_emptyset(uev@1) ] ] 
