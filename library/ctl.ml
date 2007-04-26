@@ -93,7 +93,7 @@ TABLEAU
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
   END
 
-  RULE Ref
+  RULE D
   EX Y ;  (AX P) == EX Verum ; AX P
   COND [ is_emptylist(EX Y) ]
   END
@@ -142,7 +142,7 @@ NEG := neg
 EXIT := exit (uev@1)
   
 let saturation = tactic ( (Id | False | And | Or | Axu | Exu | Exb | Axb ) )
-let modal = tactic ( ( (saturation)* ; (Ref | Exx | Loop) ) )
+let modal = tactic ( ( (saturation)* ; (D | Exx | Loop) ) )
 STRATEGY := tactic ( (modal)* )
 
 MAIN

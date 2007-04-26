@@ -19,14 +19,14 @@ open Klib
 
 TABLEAU
 
-  RULE S4
+  RULE K4
   { <> A } ; Z --- A ; BOXES
   COND notin(<> A, DIAMONDS)
   ACTION [ DIAMONDS := add(<> A,DIAMONDS) ]
   END
 
-  RULE T
-  { [] A } === A
+  RULE NewBox
+  { [] A } ; Z === Z
   COND notin(A, BOXES)
   ACTION [
       BOXES    := add(A,BOXES);
@@ -41,25 +41,10 @@ TABLEAU
 END
 
 STRATEGY := 
-    let sat = tactic ( (False|Id|And|T|Or) )
-    in tactic ( ( (sat)* ; S4 )* )
+    let sat = tactic ( (False|Id|And|NewBox|Or) )
+    in tactic ( ( (sat)* ; K4 )* )
 
 PP := List.map nnf
 NEG := List.map neg
 
 MAIN
-
-(*
-  RULE S4H
-  { <> A } ; <> Y ; Z 
-  ======================
-   A ; BOXES || <> Y
-
-  COND notin(<> A, DIAMONDS)
-  ACTION [
-      [ DIAMONDS := add(<> A,DIAMONDS);
-        DIAMONDS := add(<> Y,DIAMONDS)]
-  ]
-  BRANCH not_emptylist(<> Y)
-  END
-*)
