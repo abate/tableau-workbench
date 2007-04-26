@@ -926,6 +926,7 @@ let expand_init =
         module AstTrans = struct 
             type t = formula;
             value ast2input = formula_ast2input;
+            value gramms = __gramms;
         end;
         module TwbParser   = InputParser.Make(AstTrans);
         TwbParser.initParser ();
@@ -1091,6 +1092,7 @@ let expand_source m =
     let ty = ExtGramm.expand_grammar_type_list gramms in
     let pr = ExtGramm.expand_printer gramms in
     let ast = ExtGramm.expand_ast2input gramms in
+    let sl  = ExtGramm.expand_grammar_syntax_list gramms in
     let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
-    <:str_item< declare $list:sty@[pr;ast]$ end >>
+    <:str_item< declare $list:sty@[pr;ast;sl]$ end >>
 

@@ -1,11 +1,18 @@
 (*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
 
-module Make(T: sig type t val ast2input : Ast.ex_term -> t end) = 
-struct
+module PcamlGramm = Entrylib.Make(struct
+    let gram = Grammar.gcreate (Plexer.gmake ()) end
+)
 
-    module PcamlGramm = Entrylib.Make(struct
-        let gram = Grammar.gcreate (Plexer.gmake ()) end
-    )
+module type S = 
+    sig 
+        type t 
+        val ast2input : Ast.ex_term -> t
+        val gramms : (string * PcamlGramm.stype list list) list
+    end
+
+module Make(T:S) = struct
+
     open PcamlGramm
 
     module ExprEntry = EntryMake(
@@ -152,37 +159,15 @@ struct
         |_ -> assert(false)
 
     let extgramm () =
-        let tmp_dir =
-            let str = "/tmp/twb" ^ Sys.getenv("LOGNAME") in
-            let _ =
-                try ignore(Unix.stat str)
-                with Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
-            in str ^ "/"
-        in
-        let str =
-            let s = (String.lowercase Sys.argv.(0)) in
-            let re = Str.regexp
-            "\\(/?[a-z0-9][a-zA-Z0-9]*/\\)*\\(\\./\\)*\\([a-zA-Z0-9]+\\)\\.twb" in
-            if Str.string_match re s 0 then Str.matched_group 3 s
-            else (print_endline s ; assert false)
-        in
-        let ch =
-            try open_in (tmp_dir^str^".gramm")
-            with Sys_error _ ->
-                failwith (Printf.sprintf
-                "Dependency error: compile the file %s.ml first" str)
-        in
-        let (_,gramms) = Marshal.from_channel ch in
-        let _ = close_in ch in
         let remove_node_entry = List.filter (fun (l,_) -> not(l = "node")) in
         let select_node_entry = List.filter (fun (l,_) -> l = "node") in
-        extend_node_type (select_node_entry gramms);
+        extend_node_type (select_node_entry T.gramms);
         List.iter (function
             |("expr",rules) -> extend_schema ()
             |(id,rules) ->
                     ExprEntry.add_entry id;
                     extend_entry id rules;
-        ) (remove_node_entry gramms)
+        ) (remove_node_entry T.gramms)
 
     let initParser = extgramm 
 

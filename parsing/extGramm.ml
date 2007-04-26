@@ -588,11 +588,35 @@ let rec expand_grammar_expr_type = function
     |_ -> assert(false)
     
 let expand_grammar_type_list gramms =
-        List.map (function
-            |("expr",rules) -> 
-                    [((_loc,"expr"),[], expand_grammar_expr_type rules ,[])]
-            |(id,rules) -> expand_grammar_type (id,rules)
-        ) gramms
+    List.map (function
+        |("expr",rules) -> 
+                [((_loc,"expr"),[], expand_grammar_expr_type rules ,[])]
+        |(id,rules) -> expand_grammar_type (id,rules)
+    ) gramms
+
+let expand_grammar_syntax_list gramms =
+    let rec aux1 = function
+        | Atom -> <:expr< InputParser.PcamlGramm.Atom >>
+        | Const s -> <:expr< InputParser.PcamlGramm.Const $str:s$ >>
+        | Symbol s -> <:expr< InputParser.PcamlGramm.Symbol $str:s$ >>
+        | Lid s -> <:expr< InputParser.PcamlGramm.Lid $str:s$ >>
+        | List s -> <:expr< InputParser.PcamlGramm.List $str:s$ >>
+        | Type s -> <:expr< InputParser.PcamlGramm.Type $aux1 s$ >>
+        | Patt -> <:expr< InputParser.PcamlGramm.Patt >>
+        | Expr -> <:expr< InputParser.PcamlGramm.Expr >>
+    in
+    let aux2 rules = list_to_exprlist (
+        List.map (fun l ->
+            list_to_exprlist (List.map aux1 l) 
+            ) rules
+        )
+    in
+    let e = list_to_exprlist (
+        List.map (function |(id,rules) ->
+            <:expr< ($str:id$,$aux2 rules$) >>
+            ) gramms
+        )
+    in <:str_item< value __gramms = $e$ >>
 
 let expand_printer gramm =
     let aux (name,rules) = 
@@ -727,11 +751,12 @@ Pcaml.str_item: [[
             let _   = update_gramm_table gramms in
             let _   = extgramm (remove_node_entry gramms) in
             let _   = extend_node_type (select_node_entry gramms) in 
+            let sl  = expand_grammar_syntax_list gramms in
             let ty  = expand_grammar_type_list (remove_node_entry gramms) in
             let pr  = expand_printer (remove_node_entry gramms) in
             let ast = expand_ast2input (remove_node_entry gramms) in
             let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
-            <:str_item< declare $list:sty@[pr;ast]$ end >>
+            <:str_item< declare $list:sty@[pr;ast;sl]$ end >>
 ]];
 
 gramm: [

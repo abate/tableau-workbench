@@ -10,7 +10,7 @@ module FormulaSet = TwbSet.Make(
 )
 
 HISTORIES
-(BOXES    : FormulaSet.set := new FormulaSet.set)
+BOXES    : FormulaSet.set := new FormulaSet.set
 END
 
 open Twblib
@@ -21,7 +21,7 @@ TABLEAU
   RULE T
   { [] A }
   =========
-      A ; [] A
+  A ; [] A
 
   COND notin(A, BOXES)
 

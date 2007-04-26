@@ -149,7 +149,7 @@ SEQUENT
             => A ; A & B ; D      |    => B ;  A & B ; D
             =============================================
                 => { A & B } ; D
-;;
+
        COND [ conjnotin(A,B,D,D) ]
        ACTION [  s := setofsetsunion(s@1, s@2) 
                ; p := setofsetsunion(p@1, p@2) 
