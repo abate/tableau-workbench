@@ -4,8 +4,33 @@ open Genlex
 open Parselib
 open Tablib
 
+let source strm =
+    match Stream.peek strm with
+    |Some(_,"source") -> Stream.junk strm; "source"
+    |_ -> raise Stream.Failure
+let source = Grammar.Entry.of_parser Pcaml.gram "source" source
+
+let mu strm =
+    match Stream.peek strm with
+    |Some(_,"mu") -> Stream.junk strm; "mu"
+    |_ -> raise Stream.Failure
+let mu = Grammar.Entry.of_parser Pcaml.gram "mu" mu
+
+let all strm =
+    match Stream.peek strm with
+    |Some(_,"all") -> Stream.junk strm; "all"
+    |_ -> raise Stream.Failure
+let all = Grammar.Entry.of_parser Pcaml.gram "all" all
+
+let last strm =
+    match Stream.peek strm with
+    |Some(_,"last") -> Stream.junk strm; "last"
+    |_ -> raise Stream.Failure
+let last = Grammar.Entry.of_parser Pcaml.gram "last" last
+
 EXTEND
-GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
+GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr ExtGramm.num ExtGramm.denlist
+ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
 
   Pcaml.expr: LEVEL "simple" [
           [ "tactic"; "("; t = tactic; ")" -> expand_tactic t
@@ -13,11 +38,15 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
 
   Pcaml.str_item: [
       ["HISTORIES"; l = LIST1 history SEP ";"; "END" ->
-              expand_histories (Ast.History l)
+          expand_histories (Ast.History l)
       |"VARIABLES"; l = LIST1 variable SEP ";"; "END" ->
-              expand_histories (Ast.Variable l)
-      |"TABLEAU"; l = LIST1 rule; "END" -> expand_tableau (Ast.Tableau l)
-      |"SEQUENT"; l = LIST1 rule; "END" -> expand_tableau (Ast.Tableau l)
+          expand_histories (Ast.Variable l)
+      |"TABLEAU"; l = LIST1 rule; "END" ->
+              SyntaxChecker.check_tableau l;
+              expand_tableau (Ast.Tableau l)
+      |"SEQUENT"; l = LIST1 rule; "END" ->
+              SyntaxChecker.check_tableau l;
+              expand_tableau (Ast.Tableau l)
       |"STRATEGY"; OPT ":="; t = Pcaml.expr -> expand_strategy t
       |"MAIN" -> expand_main ()
       
@@ -26,7 +55,7 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       |"NEG"; OPT ":="; e = Pcaml.expr -> expand_negation e
       |"EXIT"; OPT ":="; f = userfunction -> expand_exit f 
       |"OPTIONS"; l = LIST1 options SEP ";"; "END" -> expand_options l
-      |"source"; m = UIDENT -> expand_source m
+      |source; m = UIDENT -> expand_source m
   ]];
 
   history:  [[ name = UIDENT; (t,e) = def -> (name,t,e)]];
@@ -51,7 +80,7 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       | "!"; t = tactic -> Ast.TaCut(t)
       | "Skip" -> Ast.TaSkip
       | "Fail" -> Ast.TaFail
-      | "mu"; OPT "("; var = muvar; OPT ")"; "."; t = tactic -> Ast.TaMu(var,t)
+      | mu; OPT "("; var = muvar; OPT ")"; "."; t = tactic -> Ast.TaMu(var,t)
       | "("; t = tactic; ")"; "*" ->
               let id = new_id "muvar" in
               Ast.TaMu(id,Ast.TaCut(Ast.TaAlt(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip)))
@@ -59,7 +88,6 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       | id = test_muvar -> id
       ]
   ];
-
 
   rule: [[
       "RULE";
@@ -107,7 +135,7 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
   ]];
   
   useract: [
-      [s = assign; ":="; f = userfunction -> Ast.Assign (s, f)
+      [s = assign; ":="; f = assignfun -> Ast.Assign (s, f)
       |f = userfunction -> Ast.Function(f)
   ]];
   
@@ -116,20 +144,81 @@ GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr;
       |s = test_variable -> Ast.ExVari(s, Ast.Null)
   ]];
 
-  userfunction: [
-      [x = test_variable; e = varindex -> Ast.ExTerm(Ast.ExVari(x, e))
-      |s = test_history  -> Ast.ExTerm(Ast.ExHist s)
-      |f = LIDENT; "("; args = LIST0 userfunction SEP ","; ")" ->
-              Ast.ExAppl(f, Ast.ExTupl(args))
-      |t  = ExtGramm.formula_expr_schema -> Ast.ExTerm(t)
-      |ex = ExtGramm.expr_expr_schema -> ex
-      |ex = Pcaml.expr -> Ast.ExExpr(ex)
+  assignfun: [
+      [f = funargs -> f
+      |f = userfunction -> f
   ]];
 
+  funargs: [
+      [x = test_variable; e = varindex -> Ast.ExTerm(_loc,Ast.ExVari(x, e))
+      |s = test_history  -> Ast.ExTerm(_loc,Ast.ExHist s)
+   ]];
+
+  userfunction: [
+      [f  = LIDENT; "("; args = LIST0 assignfun SEP ","; ")" ->
+              Ast.ExAppl(_loc,f, Ast.ExTupl(_loc,args))
+      |t  = ExtGramm.formula_expr_schema -> Ast.ExTerm(_loc,t)
+      |ex = ExtGramm.expr_expr_schema -> ex
+      |ex = Pcaml.expr -> Ast.ExExpr(_loc,ex)
+    ]];
+
   varindex: [[
-       "@"; "all" -> Ast.All
-      |"@"; "last" -> Ast.Last
+       "@"; all -> Ast.All
+      |"@"; last -> Ast.Last
       |"@"; i = INT -> Ast.Int(int_of_string i)
+  ]];
+
+
+  ExtGramm.denlist: [[
+       d = den; "|";  dl = den_forall -> ((d::dl),Ast.ForAll)
+      |d = den; "||"; dl = den_exists -> ((d::dl),Ast.Exists)
+      |d = den; "|||"; dl = den_exists -> ((d::dl),Ast.User)
+      |d = den -> ([d],Ast.Linear)
+  ]];
+
+  den_forall: [[ dl = LIST1 den SEP "|" -> dl ]];
+  den_exists: [[ dl = LIST1 den SEP "||" -> dl ]];
+
+  den: [
+      [d = ExtGramm.bladenseq -> Ast.Denominator d
+      |s = "Close" -> Ast.Status(s)
+      |s = "Open"  -> Ast.Status(s)
+      |s = "Stop"  -> Ast.Status(s)
+      ]
+  ];
+  ExtGramm.num: [[ d = ExtGramm.blanumseq -> Ast.Numerator d ]];
+
+  ExtGramm.denseq: [[ d = LIST0 denformula SEP ";" -> d ]];
+  ExtGramm.numseq: [[ d = LIST0 numformula SEP ";" -> d ]];
+  
+  numformula: [
+      [ "{"; t = ExtGramm.expr_patt_schema; "}" -> (Ast.Single,t)
+      | "("; t = ExtGramm.expr_patt_schema; ")" -> (Ast.Empty,t)
+      | t = ExtGramm.expr_patt_schema -> (Ast.Set,t)
+      ]
+  ];
+  
+  denformula: [
+      [v = test_variable; "@"; i = INT ->
+          Ast.ExTerm (_loc, Ast.ExVari (v, Ast.Int (int_of_string i)))
+      |v = test_history -> Ast.ExTerm(_loc, Ast.ExHist(v))
+      |f = LIDENT; "("; l = LIST0 args SEP ","; ")" ->
+              Ast.ExAppl(_loc, f,Ast.ExTupl(_loc,l))
+      |t = ExtGramm.expr_expr_schema; sl = LIST0 simplification ->
+              if sl = [] then t
+              else Ast.ExAppl(_loc, "__simpl",Ast.ExTupl(_loc,t::sl))
+      ]
+  ];
+
+  args: [
+      [f = denformula -> f
+      |"["; l = LIST0 denformula SEP ";"; "]" -> Ast.ExTupl(_loc,l)
+      |e = Pcaml.expr -> Ast.ExExpr(_loc, e)
+      ]
+  ];
+
+  simplification: [[
+       "["; t = denformula; "]" -> Ast.ExAppl(_loc,"__simplarg",t)
   ]];
 
 END

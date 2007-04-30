@@ -104,14 +104,14 @@ SEQUENT
              { (C v D) -> B } => 
   END
 
-  RULE ImpImp
-                G ; # (C -> D) -> B => E  || G => E
-              ====================================
+  RULE Hash
+                   G ; # (C -> D) -> B => E
+              ---------------------------------
                   G ; { (C -> D) -> B } => E
   END
 
-  RULE RajOr
-               G;  D -> B ; C => D  || B ; G => E
+  RULE ImpImp
+               G;  D -> B ; C => D  | B ; G => E
               =====================================
                   G ; { # (C -> D) -> B } => E       
   END
@@ -127,7 +127,8 @@ STRATEGY :=
  let saturate = tactic (
      NegR|NegL|Id|False|True|AndL|ImpNeg|ImpVerum|
      ImpOr|ImpAnd|OrR|OrL|AndR|ImpMP|ImpR)
- in tactic ( ( (saturate)* ;  (ImpImp ; RajOr) )* )
+ in let hashimp = tactic ( Hash ; ImpImp )
+ in tactic ( ( (saturate)* ; hashimp )* )
 
 MAIN
 

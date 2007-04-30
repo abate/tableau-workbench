@@ -1,15 +1,7 @@
 
-define PROJ_tableau
-  USE_CAMLP4 = yes
-  SOURCES := ast.ml entrylib.ml parselib.ml extGramm.ml tablib.ml extCommon.ml extTab.ml
-  RESULT := pa_tableau
-  export PACKS := str twb.types
-endef
-export PROJ_tableau
-
 define PROJ_sequent
   USE_CAMLP4 = yes
-  SOURCES := ast.ml entrylib.ml parselib.ml extGramm.ml tablib.ml extCommon.ml extSeq.ml
+  SOURCES := ast.ml entrylib.ml parselib.ml syntaxChecker.ml extGramm.ml tablib.ml extCommon.ml
   RESULT := pa_sequent
   export PACKS := str unix twb.types
 endef

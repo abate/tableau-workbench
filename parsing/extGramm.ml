@@ -275,7 +275,7 @@ let extend_schema =
             [pa = Pcaml.patt; $sep$; sc = formula_patt -> <:patt< ($pa$,$sc$) >>]];
 
         expr_expr_schema: [[ex = Pcaml.expr; $sep$; sc = formula_expr_schema ->
-                    Ast.ExLabt((s,ex),sc)]];
+                    Ast.ExLabt(_loc,(s,ex),sc)]];
         expr_patt_schema: [[pa = Pcaml.patt; $sep$; sc = formula_patt_schema ->
                     Ast.PaLabt((s,pa),sc)]];
         END
@@ -285,7 +285,7 @@ let extend_schema =
         expr_expr: [[sc = formula_expr -> sc]];
         expr_patt: [[sc = formula_patt -> sc]];
 
-        expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(sc)]];
+        expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(_loc,sc)]];
         expr_patt_schema: [[sc = formula_patt_schema -> Ast.PaTerm(sc)]];
         END
     in function

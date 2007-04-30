@@ -507,12 +507,12 @@ let expand_ex_patt ex =
     )
 
 let rec expand_ex_expr use = function
-    |Ast.ExAppl(f,ex_expr) ->
+    |Ast.ExAppl(_,f,ex_expr) ->
             let (pa,ex) = expand_ex_expr use ex_expr in
             (new_id "ex_expr",
             <:expr< let $lid:pa$ = $ex$ in
             fun sbl hist varl -> $lid:f$ ( $lid:pa$ sbl hist varl ) >>)
-    |Ast.ExLabt((_,deco),ex_term) ->
+    |Ast.ExLabt(_,(_,deco),ex_term) ->
             let (pa1,ex1) = expand_ex_term use ex_term in
             let (pa2,ex2) = expand_ex_patt deco in
             (new_id "ex_expr",
@@ -522,12 +522,12 @@ let rec expand_ex_expr use = function
             fun sbl hist varl ->
                 ExtList.map2 (fun l e -> (l,e))
                 ($lid:pa2$ sbl hist varl, $lid:pa1$ sbl hist varl) >>)
-    |Ast.ExTerm(ex_term) -> 
+    |Ast.ExTerm(_,ex_term) -> 
             let (pa,ex) = expand_ex_term use ex_term in
                 (new_id "ex_expr",
                 <:expr< let $lid:pa$ = fun sbl hist varl -> $ex$ in $lid:pa$ >>)
-    |Ast.ExTupl([]) -> (new_id "ex_expr", <:expr< fun sbl hist varl -> () >>)
-    |Ast.ExTupl(l) ->
+    |Ast.ExTupl(_,[]) -> (new_id "ex_expr", <:expr< fun sbl hist varl -> () >>)
+    |Ast.ExTupl(_,l) ->
             let (exl,pel) =
                 List.split (
                     List.map (fun (pa,ex) ->
@@ -538,7 +538,7 @@ let rec expand_ex_expr use = function
             in 
             (new_id "ex_expr",
             <:expr< let $list:pel$ in fun sbl hist varl -> ( $list:exl$ ) >>)
-    |Ast.ExExpr(ex) -> (new_id "ex_expr",ex)
+    |Ast.ExExpr(_,ex) -> (new_id "ex_expr",ex)
 
 let expand_condition name condlist =
         List.map (fun Ast.Condition ex_expr ->
@@ -986,7 +986,7 @@ let expand_tableau (Ast.Tableau rulelist) =
     let sd = expand_status_defaults () in
     let l = List.map expand_rule rulelist in
     <:str_item< declare 
-    $list: expand_matchpatt rulelist:: pa::sd:: l@[expand_init]$
+    $list: expand_matchpatt rulelist:: pa:: sd:: l@[expand_init]$
     end >>
 
 let rec expand_tactic = function

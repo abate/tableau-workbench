@@ -100,7 +100,7 @@ module Make(T:S) = struct
 
     let extend_schema () =  
         EXTEND
-            expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(sc)]];
+            expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(_loc,sc)]];
         END
 
     let extend_entry label entrylist =

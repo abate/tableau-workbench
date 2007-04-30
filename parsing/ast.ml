@@ -48,12 +48,11 @@ and pa_expr =
     |PaPatt of MLast.patt
 
 and ex_expr =
-    |ExAppl of string * ex_expr
-    |ExLabt of (label * MLast.expr) * ex_term
-    |ExTerm of ex_term
-    |ExTupl of ex_expr list
-    |ExExpr of MLast.expr
-(*    |ExLet  of pa_term * ex_expr *)
+    |ExAppl of Token.flocation * string * ex_expr
+    |ExLabt of Token.flocation * (label * MLast.expr) * ex_term
+    |ExTerm of Token.flocation * ex_term
+    |ExTupl of Token.flocation * ex_expr list
+    |ExExpr of Token.flocation * MLast.expr
 
 and ex_term =
     |ExConn  of label * string * ex_term list
