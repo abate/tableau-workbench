@@ -4,9 +4,9 @@ sig
     type node
     class cache : bool ->
           object('cache)
-              method add  : node -> node Tree.tree Llist.llist -> unit
+              method add  : node -> node Tree.result Llist.llist -> unit
               method mem  : node -> bool
-              method find : node -> node Tree.tree Llist.llist
+              method find : node -> node Tree.result Llist.llist
               method clear : 'cache
               method to_string : string
               method stats : string
@@ -29,7 +29,7 @@ module Make (N:Node.S) =
         
         class cache enabled =
             object(self)
-                val data : node Tree.tree Llist.llist Hash.t = Hash.create 2879
+                val data : node Tree.result Llist.llist Hash.t = Hash.create 2879
                 val enabled = enabled
                 
                 val mutable hits = 0

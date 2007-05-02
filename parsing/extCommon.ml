@@ -73,17 +73,22 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
   [ "One" LEFTA
       [ id = LIDENT -> Ast.TaVar(id)
       | t1 = tactic; ";"; t2 = tactic -> Ast.TaSeq(t1,t2)
-      | t1 = tactic; "|"; t2 = tactic -> Ast.TaAlt(t1,t2)
+      | t1 = tactic; "!"; t2 = tactic -> Ast.TaAltCut(t1,t2)
+      | t1 = tactic; "|" ; t2 = tactic ->
+              Ast.TaAlt(t1,t2,<:expr< tcond "Close" >>)
+      | t1 = tactic; "||"; t2 = tactic ->
+              Ast.TaAlt(t1,t2,<:expr< tcond "Open" >>)
       ]
   |
       [ "("; t = tactic; ")" -> t
-      | "!"; t = tactic -> Ast.TaCut(t)
+(*      | "!"; t = tactic -> Ast.TaCut(t) *)
       | "Skip" -> Ast.TaSkip
       | "Fail" -> Ast.TaFail
       | mu; OPT "("; var = muvar; OPT ")"; "."; t = tactic -> Ast.TaMu(var,t)
       | "("; t = tactic; ")"; "*" ->
               let id = new_id "muvar" in
-              Ast.TaMu(id,Ast.TaCut(Ast.TaAlt(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip)))
+              Ast.TaMu(id,Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))
+(* Ast.TaMu(id,Ast.TaCut(Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))) *)
       | m = UIDENT; "."; r = UIDENT -> Ast.TaModule(m,r)
       | id = test_muvar -> id
       ]

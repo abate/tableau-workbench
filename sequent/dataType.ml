@@ -76,28 +76,16 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         type t = RuleContext.t
         type node = Node.node
         type tree = node Tree.tree
+        type result = node Tree.result
         type context_type = RuleContext.ct
         type context = RuleContext.context
         class virtual rule =
             object
                 method virtual check : node -> context
                 method virtual down  : context -> tree
-                method virtual up    : context -> tree Llist.llist -> tree
+                method virtual up    : context -> result Llist.llist -> result
                 method virtual use_cache : bool
             end
-        let skip : rule = object
-            method check node =
-                RuleContext.newcontext (
-                    Enum.empty (),
-                    new Substitution.sbl,
-                    node
-                    )
-            method down context =
-                let (_,_,node) = context#get in Tree.Tree(Llist.return node)
-            method up _ tl = Llist.hd tl
-            method use_cache = false
-        end
-        
     end
 
     module Visit = Visit.Make(Node)(Rule)

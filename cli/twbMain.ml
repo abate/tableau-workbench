@@ -140,7 +140,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                         let lr = Visit.visit cache strategy node in
                         if Llist.is_empty lr then begin
                             Printf.printf "Tactic Error\n";
-                            Tree.Leaf(node)
+                            Tree.TacticError
                         end else
                             Llist.hd lr
                     in

@@ -69,7 +69,7 @@ let rec extract_pa_expr_vars = function
 let pa_expr_to_string =
     let rec pa_term_to_string = function
         |Ast.PaAtom(_,s) -> "__atom"
-        |Ast.PaCons(_,s) -> "__const"
+        |Ast.PaCons(_,s) -> "__"^s
         |Ast.PaConn(_,id,l) -> List.fold_left (fun s e -> s^(pa_term_to_string e)) id l
         |_ -> ""
     in function
@@ -662,6 +662,21 @@ let expand_status_defaults () =
         with [ Not_found -> failwith "custom status: not found" ]
     >>
 
+let expand_tcond_defaults () =
+    let (var,_,_) =
+        try Hashtbl.find vars_table "status"
+        with Not_found -> assert(false)
+    in
+    <:str_item<
+    value tcond s node =
+        let (_, _, varhist) = (UserRule.unbox_result node)#get in
+        try match varhist#find "status" with
+            [`$uid:var$ t when s = t -> False
+            |`$uid:var$ _ -> True
+            |_ -> assert(False) ]
+        with [ Not_found -> assert(False) ]
+    >>
+
 let expand_ruleup ruletype bcond denlist branchcond_args backtrack_args =
     let bt_arg = list_to_exprlist backtrack_args in
     let opencond = <:expr< status "Open" >> in
@@ -984,9 +999,10 @@ let expand_matchpatt rulelist =
 let expand_tableau (Ast.Tableau rulelist) =
     let pa = expand_preamble () in
     let sd = expand_status_defaults () in
+    let st = expand_tcond_defaults () in
     let l = List.map expand_rule rulelist in
     <:str_item< declare 
-    $list: expand_matchpatt rulelist:: pa:: sd:: l@[expand_init]$
+    $list: expand_matchpatt rulelist:: pa:: sd:: st:: l@[expand_init]$
     end >>
 
 let rec expand_tactic = function
@@ -1003,10 +1019,14 @@ let rec expand_tactic = function
             let ext1 = expand_tactic t1 in
             let ext2 = expand_tactic t2 in
             <:expr< Seq( $list:[ext1;ext2]$ ) >>
-    |Ast.TaAlt(t1,t2) ->
+    |Ast.TaAltCut(t1,t2) ->
             let ext1 = expand_tactic t1 in
             let ext2 = expand_tactic t2 in
-            <:expr< Alt( $list:[ext1;ext2]$ ) >>
+            <:expr< AltCut( $list:[ext1;ext2]$ ) >>
+    |Ast.TaAlt(t1,t2,cond) ->
+            let ext1 = expand_tactic t1 in
+            let ext2 = expand_tactic t2 in
+            <:expr< Alt( $list:[ext1;ext2;cond]$ ) >>
     |Ast.TaCut(t) ->
             let ext = expand_tactic t in
             <:expr< Cut( $ext$ ) >>
@@ -1069,7 +1089,7 @@ let expand_main () =
 let expand_exit ex_expr =
     let (id,ex) = expand_ex_expr `Obj ex_expr in
     let e = <:expr< fun node ->
-        let (_,_,varhist) =  (UserRule.unbox_tree node)#get in
+        let (_,_,varhist) =  (UserRule.unbox_result node)#get in
         let s = new Substitution.sbl in
         let h = new Hmap.map in
         let $lid:id$ = $ex$ in $lid:id$ s h [varhist] >> in

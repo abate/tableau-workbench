@@ -26,7 +26,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                 let (_, hist, _) = node#get in
                 let varlist = 
                     List.map ( function
-                        |Leaf(n) -> let (_,_,v) = n#get in v 
+                        |Node(n) -> let (_,_,v) = n#get in v 
                         |_ -> assert(false)
                     ) (List.rev tl)
                     (* I've to revert the list as this is the result of
@@ -186,12 +186,12 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         let _ = OutputBroker.print_down name sbl newnode !OutputBroker.rulecounter in 
         Leaf(newnode)
 
-    let unbox_tree = function
-        Leaf (n) -> n
+    let unbox_result = function
+        |Node (n) -> n
         |_ -> assert(false)
 
     let status node =
-        let (_, _, varhist) = (unbox_tree node)#get in
+        let (_, _, varhist) = (unbox_result node)#get in
         try varhist#find "status"
         with Not_found -> assert(false)
 
@@ -210,7 +210,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         in
         let varlist = 
             List.map ( function
-                |Leaf(n) -> let (_,_,v) = n#get in v 
+                |Node(n) -> let (_,_,v) = n#get in v 
                 |_ -> assert(false)
             ) tl
         in
@@ -222,12 +222,12 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                     let (k,v) = f sbl hist varlist in
                     let (m,h,var) = n#get in
                     n#set (m,h,var#add k v)
-            ) (unbox_tree t) synthlist
+            ) (unbox_result t) synthlist
             (* XXX: hackish .... is it always the case the the last node has
              * the correct status ? *)
         in
         let _ = OutputBroker.print_up name newnode in
-        Leaf (newnode)
+        Node(newnode)
 
     let up_explore_implicit name context treelist synthlist branchll =
         up_explore_aux ~implicit:true name context treelist synthlist branchll
@@ -243,7 +243,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
             |h::_ -> h
         in
         let varhist =
-            let n = unbox_tree t in
+            let n = unbox_result t in
             let (_,_,v) = n#get in v
         in
         let newnode =
@@ -252,10 +252,10 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                     let (k,v) = f sbl hist [varhist] in
                     let (m,h,var) = n#get in
                     n#set (m,h,var#add k v)
-            ) (unbox_tree t) synthlist
+            ) (unbox_result t) synthlist
         in 
         let _ = OutputBroker.print_up name newnode in
-        Leaf (newnode)
+        Node (newnode)
 
     module ExtList = struct
 
