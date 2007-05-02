@@ -41,7 +41,7 @@ TABLEAU
 END
 
 STRATEGY := 
-    let sat = tactic ( (False|Id|And|T|Or) )
+    let sat = tactic ( (False ! Id ! And ! T ! Or) )
     in tactic ( ( (sat)* ; S4 )* )
 
 PP := List.map nnf

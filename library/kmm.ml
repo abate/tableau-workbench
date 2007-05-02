@@ -17,24 +17,21 @@ formula :=
 expr := formula ;;
 END
 
-
 open Twblib
 open Kmlib
 
 TABLEAU
 
   RULE K1
-  { < I > A } ; [ I ] X ; < I > Y ; Z
-  ===========================
-      A ; X || < I > Y ; [ I ] X
-
-  BRANCH [ not_emptylist(< I > Y) ]
+  { < One > A } ; [ One ] X ;  Z
+  ------------------------------
+             A ; X
   END 
-   
-  RULE K
-  { < I > A } ; [ I ] X ;  Z
-  ----------------------
-          A ; X
+
+  RULE K2
+  { < Two > A } ; [ Two ] X ;  Z
+  ------------------------------
+             A ; X
   END 
 
   RULE Id { a } ; { ~ a } === Close END
@@ -46,7 +43,7 @@ END
 
 STRATEGY := 
     let sat = tactic ( (Id ! False ! And ! Or) ) in
-    tactic ( ((sat)* ; K )* )
+    tactic ( ((sat)* ; (K1 || K2)  )* )
 
 PP := List.map nnf
 NEG := List.map neg

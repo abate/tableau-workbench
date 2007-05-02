@@ -97,8 +97,8 @@ END
 END
 
 STRATEGY := 
-    let sat = tactic ( (False|Id|And|Or|StarD|StarB|UnionD|UnionB|SeqB|SeqD) )
-    in tactic ( ( (sat)* ; (K | Loop) )* )
+    let sat = tactic ( (False ! Id ! And ! Or ! StarD ! StarB ! UnionD ! UnionB ! SeqB ! SeqD) )
+    in tactic ( ( (sat)* ; (K  !  Loop) )* )
 
 let exit (uev) = match uev#elements with
     |[] -> "Open"

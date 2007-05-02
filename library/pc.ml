@@ -24,7 +24,7 @@ TABLEAU
 
 END
 
-STRATEGY := tactic ( (False|Id|And|Or)* )
+STRATEGY := tactic ( (False ! Id ! And ! Or)* )
 
 PP := List.map nnf
 NEG := List.map neg

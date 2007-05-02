@@ -151,8 +151,8 @@ PP := nnf
 NEG := neg
 EXIT := exit (uev@1)
 
-let sat = tactic ( (Id | False | And | Before | Ge | Or | Until) )
+let sat = tactic ( (Id ! False ! And ! Before ! Ge ! Or ! Until) )
 
-STRATEGY := tactic (((sat)* ; (Next | Loop))* )
+STRATEGY := tactic (((sat)* ; (Next ! Loop))* )
 
 MAIN

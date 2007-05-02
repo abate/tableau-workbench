@@ -1,35 +1,44 @@
 
-CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
-  Imp, "_->_", One;
-  DImp, "_<->_", One;
-  Not, "~_",   Zero;
-  Dia1, "Dia1_", Zero;
-  Box1, "Box1_", Zero;
-  Dia2, "Dia2_", Zero;
-  Box2, "Box2_", Zero;
-  CDia, "dC_", Zero;
-  CBox, "C_", Zero;
-  EDia, "dE_", Zero;
-  EBox, "E_", Zero;
-  Falsum, Const;
-  Verum, Const
+CONNECTIVES [
+"~";"&";"v";"->";"<->";
+"[";"]";"<";">";
+"<E>";"[E]";
+"<C>";"[C]" ]
+GRAMMAR
+idx := One | Two ;;
+formula :=
+     Atom | Verum | Falsum
+    | idx
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | [ idx ] formula
+    | < idx > formula
+    | <E> formula
+    | [E] formula
+    | <C> formula
+    | [C] formula
+    | ~ formula
+;;
+
+expr := formula ;;
 END
 
 HISTORIES
-  (Fev : Set of Formula := new Set.set) ;
-  (Br  : List of ( Set of Formula * Set of Formula ) := new Listoftupleset.listobj) ;
-  (uev : Set of ( Formula * Int ) := new Setoftermint.set) ;
-  (fev : Set of ( Formula * Int ) := new Setoftermint.set) ;
-  (status : String := new Set.set)
+  Fev : FormulaSet.set := new FormulaSet.set;
+  Br  : ListFormulaSet.olist := new ListFormulaSet.olist
+END
+
+VARIABLES
+  uev : FormulaIntSet.set := new FormulaIntSet.set;
+  fev : FormulaIntSet.set := new FormulaIntSet.set;
+  status : string := "Undef"
 END
 
 open Twblib
 open LckRewrite
 open LckFunctions
-
-let notemptylist (d1,d2) = not(List.length (d1@d2) = 0)
 
 TABLEAU
 
@@ -38,94 +47,68 @@ TABLEAU
   BACKTRACK [ uev := setclose (Br) ]
   END
   
-  RULE False
-  Falsum ; z == Stop
+  RULE False { Falsum } ; Z == Stop
   BACKTRACK [ uev := setclose (Br) ]
   END
 
   RULE CDia
-      { dC p }
+      { <C> P }
   ===================
-   dE p ||| dE dC p
+   <E> P ||| <E> <C> P
 
-  ACTION [ [ Fev := add(dC P,Fev) ] ; [] ]
+  ACTION [ [ Fev := add(<C> P,Fev) ] ; [] ]
   BRANCH [ [ not_empty(uev@1) ] ] 
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
   END
 
   RULE EDia
-      {  dE p }
+      {  <E> P }
   ===================
-   Dia1 p ||| Dia2 p
+   <One> P ||| <Two> P
 
   BRANCH [ [ not_empty(uev@1) ] ] 
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
   END
 
-  RULE Diaone
-  { Dia1 p } ; Box1 x ; Dia1 q1 ; Dia2 q2 ; z
-  =============================
-      p ; x ||| Box1 x ; Dia1 q1 ; Dia2 q2 ; z
-      
-  COND [ loop_check(p, x, Br) ]
-  ACTION [ [
-      Fev := emptyset(Fev);
-      Br  := push(p, x, Fev, Br)
-  ] ; [] ]
-  BRANCH [ [ not_false(uev@1) ; notemptylist(Dia1 q1, Dia2 q2) ] ]
-  BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
-  END (cache)
+  RULE K
+  { < I > P } ; [ I ] X ;  Z
+  ----------------------
+          P ; X
 
-  RULE Diatwo
-  { Dia2 p } ; Box2 x ; Dia1 q1 ; Dia2 q2 ; z
-  ==================================
-      p ; x ||| Box2 x ; Dia1 q1 ; Dia2 q2 ; z
-      
-  COND [ loop_check(p, x, Br) ]
-  ACTION [ [
+  COND [ loop_check(P, X, Br) ]
+  ACTION [
       Fev := emptyset(Fev);
-      Br  := push(p,x, Fev, Br)
-  ] ; [] ]
-  BRANCH [ [ not_false(uev@1) ; notemptylist(Dia1 q1, Dia2 q2) ] ]
+      Br  := push(P, X, Fev, Br)
+  ]
+  BRANCH [ [ not_false(uev@1) ]
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
-  END (cache)
-  
-  RULE Loop Dia1 x1 ; Dia2 x2 ; Box1 y1 ; Box2 y2 == Stop
-  BACKTRACK [ uev := setuev_loop(x1, y1, x2, y2, Fev, Br) ]
   END
 
-  RULE Or
-  { a v b }
-  =========
-   a ||| b
+  RULE Loop <One> X1 ; <Two> X2 ; [One] Y1 ; [Two] Y2 == Stop
+  BACKTRACK [ uev := setuev_loop(X1, Y1, X2, Y2, Fev, Br) ]
+  END
 
+  RULE Or { A v B } == A ||| B
   BRANCH [ [ not_empty(uev@1) ] ] 
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
   END
 
-  RULE And a & b == a ; b END
-  RULE EBox E p == Box1 p ; Box2 p END
-  RULE CBox C p == E p ; E C p END
+  RULE And A & B == A ; B END
+  RULE EBox [E] P == [One] P ; [Two] P END
+  RULE CBox [C] P == [E] P ; [E] [C] P END
   
 END
 
-let exit (uev) =
-    match uev#elements with
-    |[] -> "Open"
-    |(termfalse,_)::[] -> "Closed"
+let exit (uev) = match uev#elements with
+    |[] -> "Open" 
+    |[formula ( Falsum ),_] -> "Closed"
     |_ -> "Closed"
-;;
-
-PP := nnf_term
-NEG := neg_term
+  
+PP := nnf 
+NEG := List.map neg
 EXIT := exit (uev@1)
 
-OPTIONS
-    ("-D", (Arg.Set debug), "Enable debug")
-END
+let saturation = tactic ( (Id! And! Or! Edia! Cbox! Ebox! Cdia! False) )
+let modal = tactic ( (saturation)* ; ( K ! Loop) )
 
-let saturation = tactic ( (Id| And| Or| Edia| Cbox| Ebox| Cdia| False) )
-
-let modal = tactic ( (saturation)* ; (Diaone | Diatwo | Loop) )
-
-STRATEGY ( (modal)* )
+STRATEGY tactic ( (modal)* )

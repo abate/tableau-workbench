@@ -120,13 +120,15 @@ END
 
 let exit = function 
     |"Open" -> "Not Derivable"
-    |"Closed" -> "Derivable"
-    |_ -> assert(false)
+    |"Close" -> "Derivable"
+    |s -> assert(false)
+
+EXIT := exit(status@1)
 
 STRATEGY := 
  let saturate = tactic (
-     NegR|NegL|Id|False|True|AndL|ImpNeg|ImpVerum|
-     ImpOr|ImpAnd|OrR|OrL|AndR|ImpMP|ImpR)
+     NegR ! NegL ! Id ! False ! True ! AndL ! ImpNeg ! ImpVerum ! 
+     ImpOr ! ImpAnd ! OrR ! OrL ! AndR ! ImpMP ! ImpR)
  in let hashimp = tactic ( Hash ; ImpImp )
  in tactic ( ( (saturate)* ; hashimp )* )
 

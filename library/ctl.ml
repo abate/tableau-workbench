@@ -141,8 +141,8 @@ PP := nnf
 NEG := neg
 EXIT := exit (uev@1)
   
-let saturation = tactic ( (Id | False | And | Or | Axu | Exu | Exb | Axb ) )
-let modal = tactic ( ( (saturation)* ; (D | Exx | Loop) ) )
+let saturation = tactic ( (Id ! False ! And ! Or ! Axu ! Exu ! Exb ! Axb ) )
+let modal = tactic ( ( (saturation)* ; (D ! Exx ! Loop) ) )
 STRATEGY := tactic ( (modal)* )
 
 MAIN
