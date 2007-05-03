@@ -45,7 +45,10 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
                             |Tree(l),[] -> (* but no more rules applicable *)
                                     Llist.return (up (Llist.map (fun n -> Node(n)) l))
                             |Tree(l),h::t -> (* and keep going *)
-                                    let f = memo_visit env ~cache:rule#use_cache t h 
+                                    let f n = 
+                                        let r = memo_visit env ~cache:rule#use_cache t h n
+                                        in if Llist.is_empty r then Llist.return (Node(n))
+                                        else r
                                     in Llist.map up (Llist.xmerge (Llist.map f l))
                             end
                     |false -> Llist.mzero

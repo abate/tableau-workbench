@@ -136,12 +136,9 @@ module Make (T : ValType) : sig class set : [T.t] ct end = struct
                 if modified then begin
                     let s = Set.fold (
                         fun e s ->
-                            if s = "" then Printf.sprintf "%s" (T.to_string e)
-                            else Printf.sprintf "%s,%s" s (T.to_string e)
+                            if s = "" then Format.sprintf "%s" (T.to_string e)
+                            else Format.sprintf "%s ; %s" s (T.to_string e)
                         ) data ""
-                    in
-                    let s =
-                        if s = "" then "" else Printf.sprintf "(%s)" s
                     in
                     modified <- false;
                     to_string_cache <- s;

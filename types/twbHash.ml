@@ -8,7 +8,7 @@ class type ['t] ct =
     method mem : string -> bool
     method copy : 'a
     method empty : 'a
-    method to_string : bool -> string
+    method to_string : string
   end
 
 module Make(T: TwbSet.ValType) : sig class map : [T.t] ct end = struct
@@ -34,19 +34,12 @@ module Make(T: TwbSet.ValType) : sig class map : [T.t] ct end = struct
             method mem key = Hashtbl.mem data key
             method copy = {< data = copy data >}
             method empty = {< data = Hashtbl.create 7 >}
-            method to_string label =
-                if label then
-                    Hashtbl.fold ( fun k v s ->
-                            let str = (T.to_string v) in
-                            if str = "" then s
-                            else Printf.sprintf "%s\n%s:%s" s k str
-                    ) data ""
-                else
-                    Hashtbl.fold (fun k v s ->
+            method to_string =
+                Hashtbl.fold ( fun k v s ->
                         let str = (T.to_string v) in
                         if str = "" then s
-                        else Printf.sprintf "%s\n%s" s str
-                    ) data ""
+                        else Printf.sprintf "%s\n%s:%s" s k str
+                ) data ""
 
  
         end

@@ -57,8 +57,7 @@ module Make(T: sig type t class set : [t] TwbSet.ct end) :
 
                 method mem key e = (data#find key)#mem e
 
-                (* XXX *)
-                method copy = {< >}
+                method copy = {< data = data#copy >}
 
                 method empty =
                     let newdata =
@@ -67,7 +66,7 @@ module Make(T: sig type t class set : [t] TwbSet.ct end) :
                         ) (new Map.map)
                     in {< data = newdata >}
 
-                method to_string = data#to_string true
+                method to_string = data#to_string
 
             end
     end

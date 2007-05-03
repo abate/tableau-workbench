@@ -682,12 +682,12 @@ let expand_ruleup ruletype bcond denlist branchcond_args backtrack_args =
     let opencond = <:expr< status "Open" >> in
     let closedcond = <:expr< status "Close" >> in
     let add_rule rule ll =
-        let n = List.length ll in
+        let n = (List.length ll) + 1 in
         let rec def acc = function
             |0 -> acc
             |i -> def ([]::acc) (i-1)
         in
-        let defll = ll@(def [] ((List.length denlist)-n)) in
+        let defll = ll@(def [] ((List.length denlist) - n)) in
         match defll with
         |[] -> <:expr< [ [ $rule$ ] ] >>
         |ll -> list_to_exprlist (
@@ -993,7 +993,7 @@ let expand_matchpatt rulelist =
         )))
     in
     let def = <:patt< f >>, None,
-    <:expr< failwith ("no rule match this formula"^(expr_printer f)) >> in
+    <:expr< failwith ("no rule matches this formula"^(expr_printer f)) >> in
     <:str_item< value match_schema = fun [ $list:pel@[def]$ ] >>
 
 let expand_tableau (Ast.Tableau rulelist) =

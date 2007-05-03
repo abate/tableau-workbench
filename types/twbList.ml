@@ -89,11 +89,10 @@ module Make (T : TwbSet.ValType) : sig class olist : [T.t] TwbSet.ct end =
                     let l = List.fold_left (
                         fun s e ->
                             incr i;
-                            if s = "" then Printf.sprintf "\n%d:%s" !i (T.to_string e)
-                            else Printf.sprintf "%s\n%d:%s" s !i (T.to_string e)
+                            if s = "" then Format.sprintf "%d :@ @[%s@]" !i (T.to_string e)
+                            else Format.sprintf "%s@\n%d :@ @[%s@]" s !i (T.to_string e)
                         ) "" (self#elements) 
                     in
-                    let l = if l = "" then "" else Printf.sprintf "[%s]" l in
                     modified <- false;
                     to_string_cache <- l;
                     to_string_cache

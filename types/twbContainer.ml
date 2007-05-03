@@ -32,7 +32,12 @@ module Make(T : sig type t type map = (t, t TwbSet.ct) ct end) =
                 {< data = newdata >}
             method copy = {< data = self#arrcopy data >}
             method to_string = 
-                Array.fold_left (fun acc m -> acc^(m#to_string)) "" data
+                if Array.length data = 1 then data.(0)#to_string
+                else
+                    Array.fold_left (fun s m ->
+                        let ss = m#to_string in
+                        if s = "" then (ss^" =>") else (s^" "^ss)
+                    ) "" data
             method empty = {< data = init >}
         end
         

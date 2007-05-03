@@ -637,8 +637,9 @@ let expand_printer gramm =
                      <:expr< $lid:id^"_printer"$ f >>)
             |tl ->
                     let f =
-                        List.fold_left (fun s i -> s^i) ""
-                        (List.map (function |Symbol(s) -> " "^s |_ -> " %s") tl) 
+                        List.fold_left (fun s i ->
+                            if s = "" then i else Printf.sprintf "%s %s" s i
+                        ) "" (List.map (function |Symbol(s) -> s |_ -> "%s") tl) 
                     in
                     let (l,_) =
                         List.fold_left (fun (acc,i) s -> 
@@ -662,7 +663,7 @@ let expand_printer gramm =
                         <:patt< `$uid:id$($list:pal$) >>,None,
                         List.fold_left (fun a e ->
                             <:expr< $a$ $e$ >>
-                        ) <:expr< Printf.sprintf $str:f$  >> exl
+                        ) <:expr< Printf.sprintf $str:"("^f^")"$  >> exl
                         )
         in
         <:str_item<

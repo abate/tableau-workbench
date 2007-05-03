@@ -14,7 +14,16 @@ module Make(T: sig type t class set : [t] TwbSet.ct end) = struct
     class map pattern =
         object(self : 'a)
 
-            val data = new Map.map
+            val data = object
+                inherit Map.map as super
+                method to_string =
+                    super#fold (fun k v s ->
+                            let str = (Ft.to_string v) in
+                            if s = "" && str = "" then ""
+                            else if s = "" then Format.sprintf "%s" str
+                            else Format.sprintf "%s ; %s" s str
+                    ) ""
+            end
 
             method private addel map el =
                 let key = pattern el in
@@ -61,7 +70,7 @@ module Make(T: sig type t class set : [t] TwbSet.ct end) = struct
 
             method empty = {< data = new Map.map >}
 
-            method to_string = data#to_string false
+            method to_string = data#to_string
         end
 
 end

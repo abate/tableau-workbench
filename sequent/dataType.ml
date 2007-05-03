@@ -26,7 +26,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         struct
             type store = Hmap.map
             let copy s = s#copy
-            let to_string s = s#to_string true
+            let to_string s = s#to_string
             let make () = new Hmap.map
         end
 
@@ -34,7 +34,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         struct
             type store = Vmap.map
             let copy s = s#copy
-            let to_string s = s#to_string true
+            let to_string s = s#to_string
             let make () = new Vmap.map
         end
 
