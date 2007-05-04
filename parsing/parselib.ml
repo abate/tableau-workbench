@@ -2,6 +2,14 @@
 
 let _loc = Token.dummy_loc
 
+module DebugOptions =
+    struct
+        let debug = ref false
+        let print s = if !debug then Printf.eprintf "%s" s else ()
+    end
+;;
+Pcaml.add_option "--debug" (Arg.Set DebugOptions.debug) "Enable Pre-Processor debug"
+
 let hist_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
 let vars_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
 let const_table : (string, string) Hashtbl.t = Hashtbl.create 50
@@ -102,7 +110,7 @@ let test_variable = Grammar.Entry.of_parser Pcaml.gram "test_variable" test_vari
 
 (* FIXME: to be moved *)
 module Option = struct
-    let get = function Some x -> x | None -> failwith "Option.get"
+    let get = function Some x -> x | None -> assert(false)
     let optlist = function Some l -> l | None -> []
     let optarray = function Some l -> l | None -> [||]
     let is_none = function Some _ -> false | None -> true

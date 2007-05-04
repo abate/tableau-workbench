@@ -37,7 +37,7 @@ let denlist = create_gramm "denlist"
 
 let conn_table = Hashtbl.create 17
 let new_conn = function
-    |[] -> failwith "new_conn empty list"
+    |[] -> assert(false)
     |l ->
         try Hashtbl.find conn_table l
         with Not_found ->
@@ -87,7 +87,7 @@ let make_token ttype self = function
             end
     |Symbol(s) when Hashtbl.mem symbol_table s ->
             if forbidden_symbol s self then failwith (Printf.sprintf
-            "The symbol \"%s\" is not allowed in %s" s self)
+            "The symbol \"%s\" is not allowed in the entry %s" s self)
             else Gramext.Stoken ("", s)
     |Symbol(s) -> Gramext.Stoken ("", s)
     |Const(s) ->  Gramext.Stoken ("", s) 
@@ -426,15 +426,17 @@ let readgramm m =
         let str = "/tmp/twb" ^ Unix.getlogin () in
         let _ =
             try ignore(Unix.stat str) with
-            |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
+            |Unix.Unix_error(_) -> 
+                    begin Printf.eprintf "Notice: create directory %s\n" str;
+                    ignore(Unix.mkdir str 0o755) end
         in str ^ "/"
     in
     let ch =
         try open_in (tmp_dir^String.lowercase m^".gramm")
         with Sys_error _ -> 
             failwith (Printf.sprintf
-            "Dependency error: compile the file %s.ml first" 
-            (String.lowercase m))
+            "Dependency error: The current file depends on the file %s.ml. Compile the file %s.ml first" 
+            (String.lowercase m) (String.lowercase m))
     in
     let (symbollist,gramms) = Marshal.from_channel ch in
     let _ = close_in ch in
@@ -449,7 +451,16 @@ let extgramm gramms =
                 ExprSchemaEntry.add_entry id; 
                 PattSchemaEntry.add_entry id; 
                 extend_entry id rules;
-    ) gramms 
+    ) gramms;
+    (* DEBUG stuff *)
+    List.iter (fun (id,rules) ->
+        DebugOptions.print (Printf.sprintf "%s_expr_schema:\n" id);
+        List.iter (fun tl ->
+            DebugOptions.print (PcamlGramm.stype_list_to_string tl)
+        ) rules;
+        DebugOptions.print (Printf.sprintf "\n");
+    ) gramms;
+    DebugOptions.print (ExprSchemaEntry.entries_to_string ())
 
 let lid strm =
     match Stream.peek strm with
@@ -704,7 +715,7 @@ let expand_ast2input gramm =
             else acc
             ) const_table []
         in
-        let def = <:patt< _ >>, None, <:expr< failwith "ast2input" >> in
+        let def = <:patt< _ >>, None, <:expr< assert(False) >> in
         <:str_item<
         value rec $lid:name^"_ast2input"$ = 
             fun [ $list:(filter_map gen_pel rules)@const@[def]$ ]

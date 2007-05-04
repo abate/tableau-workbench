@@ -40,10 +40,6 @@ let file f =
                 input_filelist := !input_filelist @ l
     with _ -> () 
 
-let get = function
-    |None -> failwith "no input file"
-    |Some v -> v
-
 let print_verbose fmt_etc =
     let print s = 
         if (!Options.verbose) then (
@@ -75,7 +71,9 @@ let tmp_dir =
             let str = "/tmp/twb" ^ Unix.getlogin () in
             let _ = 
                 try ignore(Unix.stat str) with
-                |Unix.Unix_error(_) -> ignore(Unix.mkdir str 0o755)
+                |Unix.Unix_error(_) -> 
+                        begin Printf.printf "Notice: create directory %s" str;
+                        ignore(Unix.mkdir str 0o755) end
             in str ^ "/"
     |s -> s ^ "/"
 
@@ -94,7 +92,7 @@ let read_lines fc =
 
 (* pre-processing *)
 let pp filename = 
-   print_verbose "pre-processing: %s\n" filename;
+   print_verbose "Pre-processing: %s\n" filename;
    let cmd = 
        "camlp4o "^
        str_lib_loc ^ "/str.cma "^
@@ -105,8 +103,9 @@ let pp filename =
        " > "^
        tmp_dir ^ filename
    in
+   print_verbose "%s\n" cmd;
    ignore(system cmd);
-   print_verbose "%s\n" cmd
+   print_verbose "Done.\n"
  
 let rec get_line ch () =
     let aux s =
@@ -154,7 +153,8 @@ let compile elem =
         ocaml tmp_dir tmp_dir elem
     in
     print_verbose "Compiling: %s\n" cmd;
-    ignore(system cmd)
+    ignore(system cmd);
+    print_verbose "Done.\n"
 
 let link l filename =
     let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
@@ -166,18 +166,21 @@ let link l filename =
     let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ext) c l in
     if !Options.custom = "" then begin
         print_verbose "Linking: %s\n" cmd;
-        ignore(system cmd)
+        ignore(system cmd);
+        print_verbose "Done.\n"
         end
     else
         begin
             print_verbose "Linking: %s\n" (cmd ^ !Options.custom);
-            ignore(system (cmd ^ " " ^ !Options.custom))
+            ignore(system (cmd ^ " " ^ !Options.custom));
+            print_verbose "Done.\n"
         end
 
 let remove_files () =
     let cmd = "rm -f "^tmp_dir^"*.cm*" in
+    print_verbose "Cleaning: %s\n" cmd;
     ignore(system cmd);
-    print_verbose "Cleaning: %s\n" cmd
+    print_verbose "Done.\n"
 
 let main () =
     let _ =

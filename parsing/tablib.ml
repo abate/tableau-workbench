@@ -346,7 +346,7 @@ let rec expand_ex_term use = function
             <:expr< let $list:pel$ in
             ExtList.$lid:"map"^string_of_int(List.length pel)$ (fun
                 [( $list:idlist$ ) -> $aux ex_term$
-                |_ -> failwith ("__build")
+                |_ -> assert(False)
                 ]
             ) ( $list:exl$ ) >>
             )
@@ -358,10 +358,10 @@ let rec expand_ex_term use = function
                 <:expr<
                 ExtList.map1 (fun
                     [`$uid:String.capitalize label$ e -> e
-                    |_ -> failwith ("__build")
+                    |_ -> assert(False) 
                     ]
                 ) ( try (sbl#find $str:id$)#elements
-                    with [Not_found -> failwith ("__find: " ^ $str:id$)]) >>
+                    with [Not_found -> assert(False)]) >>
                 )
             |`Term -> (new_id "ex_term",
             <:expr< [`$uid:String.capitalize label$ ( `Atom $str:id$ ) ] >>)
@@ -374,10 +374,10 @@ let rec expand_ex_term use = function
                 <:expr<
                 ExtList.map1 (fun
                     [`$uid:String.capitalize label$ e -> e
-                    |_ -> failwith ("__build")
+                    |_ -> assert(False) 
                     ]
                 ) ( try (sbl#find $str:id$)#elements
-                    with [Not_found -> failwith ("__find: " ^ $str:id$)]) >>
+                    with [Not_found -> assert(False)]) >>
                 )
             |`Term -> (new_id "ex_term",
             <:expr< [`$uid:String.capitalize label$ `$uid:id$] >>)
@@ -389,22 +389,22 @@ let rec expand_ex_term use = function
                 <:expr<
                 ExtList.map1 (fun
                     [`$uid:String.capitalize label$ e -> e
-                    |_ -> failwith ("__build")
+                    |_ -> assert(False)
                     ]
                 ) ( try (sbl#find $str:id$)#elements
-                    with [Not_found -> failwith ("__find: " ^ $str:id$)]) >>
+                    with [Not_found -> assert(False)]) >>
                 )
              |`Term ->
                 (new_id "ex_term",
                 <:expr<
                 try (sbl#find $str:id$)#elements
-                with [Not_found -> failwith ("__find: " ^ $str:id$)] >>
+                with [Not_found -> assert(False)] >>
                 )
             end
     |Ast.ExVari(id,Ast.Int i) ->
             let (var,ctyp,def) =
                 try Hashtbl.find vars_table id
-                with Not_found -> failwith ("Variable "^id^ " not declared")
+                with Not_found -> assert(false)
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -414,7 +414,7 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
-                    | _ -> failwith "varhist"]
+                    | _ -> assert(False)]
                     (varhist#find $str:id$)#elements
                 with [Failure "nth" -> [] ] >>
                 )
@@ -425,14 +425,14 @@ let rec expand_ex_term use = function
                     let varhist = List.nth varl ($int:string_of_int i$ - 1) in
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
-                    | _ -> failwith "varhist"]
+                    | _ -> assert(False)]
                 with [Failure "nth" -> $def$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.Last) ->
             let (var,ctyp,def) =
                 try Hashtbl.find vars_table id
-                with Not_found -> failwith ("Variable "^id^ " not declared")
+                with Not_found -> assert(false) 
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -442,7 +442,7 @@ let rec expand_ex_term use = function
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
-                    | _ -> failwith "varhist"]
+                    | _ -> assert(False)]
                 with [Failure "nth" -> [] ] >>
                 )
             |`Obj |`Term ->
@@ -452,7 +452,7 @@ let rec expand_ex_term use = function
                     let varhist = List.nth varl (List.length varl) in
                     match varhist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
-                    | _ -> failwith "varhist"]
+                    | _ -> assert(False)]
                 with [Failure "nth" -> $def$ ] >>
                 )
             end
@@ -463,14 +463,14 @@ let rec expand_ex_term use = function
                 (new_id "ex_term",
                 <:expr<
                 try List.map (fun v -> v#find $str:id$) varl
-                with [Failure "nth" -> failwith $str:id^ " index out of bound"$ ] >>
+                with [Failure "nth" -> failwith $str:id^ ": index out of bound"$ ] >>
                 )
             end
     |Ast.ExVari(id,Ast.Null) -> assert(false)
     |Ast.ExHist(id) ->
             let (var,ctyp,def) =
                 try Hashtbl.find hist_table id
-                with Not_found -> failwith ("History "^id^ " not declared")
+                with Not_found -> assert(false)
             in begin match use with
             |`List ->
                 (new_id "ex_term",
@@ -478,16 +478,16 @@ let rec expand_ex_term use = function
                 try match hist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
-                    | _ -> failwith "varhist"]
-                with [Not_found -> failwith ("__find: " ^ $str:id$)] >>
+                    | _ -> assert(False)]
+                with [Not_found -> assert(False)] >>
                 )
             |`Obj |`Term -> 
                 (new_id "ex_term",
                 <:expr< 
                 try match hist#find $str:id$ with
                     [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
-                    | _ -> failwith "varhist"]
-                with [Not_found -> failwith ("__find: " ^ $str:id$)] >>
+                    | _ -> assert(False)]
+                with [Not_found -> assert(False)] >>
                 )
             end
 
@@ -500,10 +500,10 @@ let expand_ex_patt ex =
     try
        ExtList.$lid:"map"^string_of_int(List.length idlist)$ (fun
            [( $list:idlist$ ) -> $ex$
-           |_ -> failwith ("__build")
+           |_ -> assert(False)
            ]
        ) ( $list:exl$ ) 
-    with [Not_found -> failwith ("__find: ")] >>
+    with [Not_found -> assert(False)] >>
     )
 
 let rec expand_ex_expr use = function
@@ -560,14 +560,14 @@ let expand_status s =
     let ex =
         let (var,ctyp,def) =
             try Hashtbl.find vars_table "status"
-            with Not_found -> failwith ("History status not declared")
+            with Not_found -> assert(false) 
         in
         <:expr<
         fun varhist ->
             match varhist#find "status" with
             [`$uid:var$ $ctyp_to_patt ctyp$ ->
                 varhist#add "status" (`$uid:var$ $str:s$)
-            | _ -> failwith "down_axiom"]
+            | _ -> assert(False)]
         >>
     in (new_id "status", ex)
 
@@ -630,7 +630,7 @@ let expand_action name actionlist =
                     |Ast.ExVari(id,Ast.Null) -> (Hashtbl.find vars_table id,id)
                     |Ast.ExHist(id) -> (Hashtbl.find hist_table id,id)
                     |_ -> assert(false)
-                    with Not_found -> failwith ("History or Variable not declared")
+                    with Not_found -> assert(false)
                 in
                 (new_id "action",
                 <:expr< let $lid:pa$ = $ex$ in
@@ -653,13 +653,13 @@ let expand_status_defaults () =
     value status s sbl hist varlist =
         let varhist = 
             try List.nth varlist ((List.length varlist) - 1)
-            with [ Failure "nth" -> failwith "status: nth" ]
+            with [ Failure "nth" -> failwith "status: index out of bound" ]
         in
         try match varhist#find "status" with
             [`$uid:var$ t when s = t -> True
             |`$uid:var$ _ -> False
-            |_ -> failwith "status"]
-        with [ Not_found -> failwith "custom status: not found" ]
+            |_ -> assert(False)]
+        with [ Not_found -> assert(False) ]
     >>
 
 let expand_tcond_defaults () =
@@ -682,7 +682,7 @@ let expand_ruleup ruletype bcond denlist branchcond_args backtrack_args =
     let opencond = <:expr< status "Open" >> in
     let closedcond = <:expr< status "Close" >> in
     let add_rule rule ll =
-        let n = (List.length ll) + 1 in
+        let n = (List.length ll) in
         let rec def acc = function
             |0 -> acc
             |i -> def ([]::acc) (i-1)
@@ -1067,12 +1067,12 @@ let expand_main () =
         with Not_found ->
             let (var,_,_) =
                 try Hashtbl.find vars_table "status"
-                with Not_found -> failwith ("status not declared")
+                with Not_found -> assert(false)
             in
             let pel = 
                 let e = <:patt< `$uid:var$ s >>,None,<:expr< s >> in
                 if Hashtbl.length vars_table > 1 then
-                    [e;(<:patt< _ >>, None, <:expr< failwith "exitfun" >>)]
+                    [e;(<:patt< _ >>, None, <:expr< assert(False) >>)]
                 else [e]
             in
             let ex = <:expr< fun [node -> 

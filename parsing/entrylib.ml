@@ -16,7 +16,7 @@ module Make(T : sig val gram : Grammar.g end) = struct
         | Patt
         | Expr
 
-    let print_stype l =
+    let stype_list_to_string l =
         let rec aux = function
             |Atom -> "Atom"
             |Const(s) -> "Const("^s^")"
@@ -27,10 +27,8 @@ module Make(T : sig val gram : Grammar.g end) = struct
             |Expr -> "Expr"
             |Patt -> "Patt"
         in
-        print_string "[";
-        List.iter (fun x -> print_string ((aux x) ^ ";") ) l ;
-        print_string "]";
-        print_newline ()
+        Printf.sprintf "[%s]\n"
+        (List.fold_left (fun s x -> (s ^ (aux x) ^ ";")) "" l)
 
     module EntryMake(T : sig type t val ttype : ttype end) =
         struct
@@ -51,12 +49,15 @@ module Make(T : sig val gram : Grammar.g end) = struct
                 end
             let get_entry s =
                 try Hashtbl.find entrytab (label s)
-                with Not_found -> failwith ("get_entry: "^(label s))
+                with Not_found ->
+                    failwith (Printf.sprintf "The Grammar Entry '%s' is used but not declared" s)
                 
-            let print_entry s =
-                Grammar.print_entry Format.std_formatter (create_obj (get_entry s))
+            let entries_to_string () =
+                Hashtbl.fold (fun k v s ->
+                    Grammar.print_entry Format.str_formatter (create_obj v);
+                    Format.sprintf "%s%s: @\n@[%s@]@\n@\n" s k (Format.flush_str_formatter ())
+                ) entrytab ""
 
-            let print_ids = Hashtbl.iter (fun k _ -> print_endline k) entrytab
         end
 
 end
