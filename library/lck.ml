@@ -13,18 +13,18 @@ formula :=
     | formula v formula
     | formula -> formula
     | formula <-> formula
-    | [ idx ] formula
-    | < idx > formula
     | <E> formula
     | [E] formula
     | <C> formula
     | [C] formula
+    | [ idx ] formula
+    | < idx > formula
     | ~ formula
 ;;
 
 expr := formula ;;
 END
-(*
+
 HISTORIES
   Fev : FormulaSet.set := new FormulaSet.set;
   Br  : ListFormulaSet.olist := new ListFormulaSet.olist
@@ -112,4 +112,4 @@ let saturation = tactic ( (Id! And! Or! Edia! Cbox! Ebox! Cdia! False) )
 let modal = tactic ( (saturation)* ; ( K ! Loop) )
 
 STRATEGY tactic ( (modal)* )
-*)
+

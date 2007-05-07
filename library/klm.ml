@@ -8,52 +8,51 @@
 
 CONNECTIVES [
     "~" ; "&" ; "v" ; "->" ; "<->"
-  ; "Dia" ; "Box"
+    ; "<>" ; "[]"
   ; "=>"  (* Conditional Implication *)
 ]
 
 GRAMMAR 
-atm := Atom | Verum | Falsum
-;;
 
-propfml := propfml & propfml
-         | propfml v propfml
-         | propfml -> propfml
-         | propfml <-> propfml
-         | ~ propfml
-         | atm 
-;;
-
-formula := formula & formula
+formula :=
+           formula => formula 
+         | formula & formula
          | formula v formula
          | formula -> formula
          | formula <-> formula
-         | propfml => propfml
+         | [] formula
+         | <> formula
          | ~ formula
-         | Box formula
-         | Dia formula
-         | propfml
-
+         |  Atom | Verum | Falsum
 ;;
 
 expr := formula ;;
 END
+
+
+module FormulaSet = TwbSet.Make(
+    struct
+        type t = formula
+        let to_string = formula_printer
+        let copy s = s
+    end
+)
 
 HISTORIES
   CIMPS : FormulaSet.set := new FormulaSet.set
 END
 
 open Twblib
-open Klmlib
+let nnfl = List.map Klmlib.nnf 
 
 TABLEAU
 
-  RULE CImpp { A => B }       == nnf( ~ A ) | Dia A  | nnf( B )  
+  RULE CImpp { A => B }       == nnfl( ~ A ) | <> A  | nnfl( B )  
        ACTION [ CIMPS  := add(A => B, CIMPS) ]
   END
 
   RULE False { Falsum }       == Close  END
-  RULE ID    { A } ; { ~ A }  == Close  END     (* formulae not atoms! *)
+  RULE Id    { A } ; { ~ A }  == Close  END     (* formulae not atoms! *)
   RULE And     X & Y          == X ; Y  END
   RULE Or    { A v B }        == A | B  END
 
@@ -63,27 +62,29 @@ TABLEAU
 (* under the current TWB                                      *)
 
 (* 
-   It is imperative to never jump on the same Dia A twice to
+   It is imperative to never jump on the same <> A twice to
    maintain the well-foundedness of the underlying transitive
-   relation. We achieve this by storing Box ~ Dia A in the 
-   denominator. From now on, every Dia jump will bring out the 
-   ~ Dia A. So if Dia A ever turns up again (ID) will close the
-   branch before jumping on Dia A again.
+   relation. We achieve this by storing [] ~ <> A in the 
+   denominator. From now on, every <> jump will bring out the 
+   ~ <> A. So if <> A ever turns up again (ID) will close the
+   branch before jumping on <> A again.
 *)
 
   RULE CImpm { ~ ( A => B ) } ; ~ ( X => Y ) ; Z
              ----------------------------------------------------
-             nnf(A) ; Box ~ Dia A ; nnf(~ B) ; ~ (X => Y) ; CIMPS
+             nnfl(A) ; [] ~ <> A ; nnfl(~ B) ; ~ (X => Y) ; CIMPS
   END
 
-  RULE Dia   { Dia A } ; ~ (X => Y) ; Box W ; Z
+  RULE K     { <> A } ; ~ (X => Y) ; [] W ; Z
              ------------------------------------------------------
-             nnf(A) ; Box ~ Dia  A ; ~ (X => Y) ; W ; Box W ; CIMPS 
+             nnfl(A) ; [] ~ <>  A ; ~ (X => Y) ; W ; [] W ; CIMPS 
   END
 END
 
-PP := List.map nnf
-NEG := List.map neg
+PP := nnfl
+NEG := List.map Klmlib.neg
 
-let saturate = tactic (False | Id | And | Or | CImpp)
-STRATEGY tactic ( ( (saturate)* ; (CImpm | Dia) )* )
+let saturate = tactic (False ! Id ! And ! Or ! CImpp)
+STRATEGY tactic ( ( (saturate)* ; (CImpm || K) )* )
+
+MAIN

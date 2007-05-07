@@ -1,5 +1,5 @@
 
-CONNECTIVES [ "~";"&";"v";"->";"<->";"[";"]";"<>";"<";">" ]
+CONNECTIVES [ "~";"&";"v";"->";"<->";"<>";"[]" ]
 GRAMMAR
 formula :=
      Atom | Verum | Falsum

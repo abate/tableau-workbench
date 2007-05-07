@@ -1,10 +1,11 @@
+
 (* This is a version of G4ip for Bi-Intuitionistic Logic BiInt     *)
 
 (* A prover for bi-intuitionistic propositional logic where        *)
 (* backward proof search terminates using histories and variables  *) 
 
 
-CONNECTIVES [ "~";"&";"v";"->";"-<";"<->";">-<";"=>";"-"]
+CONNECTIVES [ "~";"&";"v";"->";"-<";"<->";">-<";"===>";"!"]
 GRAMMAR
 formula :=
      Atom | Verum | Falsum
@@ -15,11 +16,11 @@ formula :=
     | formula -< formula     (* A -< is A excludes B *)
     | formula >-< formula
     | ~ formula              (* ~ A is intuitionistic negation *)
-    | - formula              (* - A is dual intuitionistic negation *)
+    | ! formula              (* ! A is dual intuitionistic negation *)
 ;;
 
 expr := formula ;;
-node := set => set ;;
+node := set ===> set ;;
 END
 
 module FormulaSet = TwbSet.Make(
@@ -53,9 +54,8 @@ let rec disjoin delta =
       []   -> formula (Verum)
     | h::t -> formula ( h v {disjoin delta} )
 
-let bigand ss =
-    let ll = ss#elements in
-    conjoin (List.map (fun s -> disjoin s#elements) ll)
+let bigand ll =
+    [conjoin (List.map (fun s -> disjoin s#elements) ll)]
 
 let bigor ss =
     let ll = ss#elements in
@@ -67,6 +67,8 @@ let setset d =
     ss#add s
 
 let emptysetset () = new FormulaSetSet.set 
+
+let notin(a,b) = not(List.mem (List.hd a) b)
 
 let conjnotin(a,b,d,g) = 
     not(List.mem (List.hd a) d) &&
@@ -92,136 +94,125 @@ let rec compute (vars,ab,d) =
 let setofsetsunion (x,y) = x#union y
 
 let isnotemptyandallsubsnotsub (p,ab,d) =
-    not(p#is_empty) && allsubsnotsub (p#elements,ab,d)
+    not(p#is_empty) (* && allsubsnotsub (p#elements,ab,d) *)
 
 SEQUENT
 
   RULE Ret
            Open
          ========= 
-          G => D
-       ACTION [  s := setset(D)
-               ; p := setset(G)
-       ]
+          G ===> D
+       BACKTRACK [  s := setset(D)
+                 ; p := setset(G) ]
   END
 
   RULE Id
                Close
-         ============== 
-          { A } => { A }
+         ==================
+          { A } ===> { A }
        
-       ACTION [ s := emptysetset() 
-              ; p := emptysetset()
-       ]
+       BACKTRACK [ s := emptysetset() 
+                 ; p := emptysetset() ]
   END
 
   RULE False
                Close
-         ============== 
-          { Falsum } =>
+         ==================
+          { Falsum } ===>
 
-       ACTION [ s := emptysetset()
-              ; p := emptysetset()
-
-       ]
+       BACKTRACK [ s := emptysetset()
+                 ; p := emptysetset() ]
   END
 
   RULE True
                Close
-         ============== 
-          => { Verum }
+         =================
+          ===> { Verum }
 
-       ACTION [s := emptysetset()
-              ;p := emptysetset()
-       ]
+       BACKTRACK [s := emptysetset()
+                 ;p := emptysetset() ]
   END
 
   RULE AndL
-            A & B ; A ; B =>
-           ====================
-            G; { A & B } => 
+            G ; A & B ; A ; B ===>
+           =========================
+            G ; { A & B } ===> 
 
        COND [ disjnotin(A,B,G,G) ]
-       ACTION [s := s@1 ; p := p@1]
+       BACKTRACK [s := s@1 ; p := p@1]
   END
 
   RULE AndR
-            => A ; A & B ; D      |    => B ;  A & B ; D
-            =============================================
-                => { A & B } ; D
+            ===> A ; A & B ; D      |    ===> B ;  A & B ; D
+            =================================================
+                ===> { A & B } ; D
 
        COND [ conjnotin(A,B,D,D) ]
-       ACTION [  s := setofsetsunion(s@1, s@2) 
-               ; p := setofsetsunion(p@1, p@2) 
+       BACKTRACK [ s := setofsetsunion(s@1, s@2) 
+                 ; p := setofsetsunion(p@1, p@2) 
        ]
   END
 
   RULE OrL
-            A ; A v B ; G => | B ; A v B ; G => 
-           =====================================
-                   { A v B } ; G => 
+            A ; A v B ; G ===> | B ; A v B ; G ===> 
+           ==========================================
+                   { A v B } ; G ===> 
        COND [ conjnotin(A,B,G,G) ]
-       ACTION [  s := setofsetsunion(s@1, s@2) 
-               ; p := setofsetsunion(p@1, p@2) 
+       BACKTRACK [ s := setofsetsunion(s@1, s@2) 
+                 ; p := setofsetsunion(p@1, p@2) 
        ]
   END
 
   RULE OrR
-                 => A ;  B ; A v B ; D
-            ============================
-              => { A v B } ; D
+             ===> A ;  B ; A v B ; D
+            =========================
+             ===> { A v B } ; D
        COND [ disjnotin(A,B,D,D) ]
-       ACTION [  s := s@1 
-               ; p := p@1
-       ]
+       BACKTRACK [ s := s@1 ; p := p@1 ]
   END
 
   RULE ImpL
-             A -> B ; G =>  A ; D |   B ; A -> B ; G =>  D 
-             =============================================
-                        { A -> B } ; G =>  D 
+             A -> B ; G ===>  A ; D |   B ; A -> B ; G ===>  D 
+             ==================================================
+                        { A -> B } ; G ===>  D 
        COND [ conjnotin(A,B,D,G) ]
-       ACTION [  s := setofsetsunion(s@1, s@2) 
-               ; p := setofsetsunion(p@1, p@2) 
+       BACKTRACK [ s := setofsetsunion(s@1, s@2) 
+                 ; p := setofsetsunion(p@1, p@2) 
        ]
   END
 
 
   RULE ImpR1
-             => B ; A -> B ; D
+             ===> B ; A -> B ; D
             =====================
-            => { A -> B } ; D 
-       COND [ notin(B, D) ]
-       ACTION [  s := s@1
-               ; p := p@1
-       ]
+             ===> { A -> B } ; D 
+       COND [ notin(B,D) ]
+       BACKTRACK [ s := s@1 ; p := p@1 ]
   END
 
   RULE ImpR2
-             A ; G => B  |||   G  => A -> B ; D ; bigand(p@1)
-            ===================================================
-                      G => { A -> B } ; D ; B
+             A ; G ===> B  |||   G  ===> A -> B ; D ; bigand(p@1)
+            =====================================================
+                      G ===> { A -> B } ; D ; B
        COND   [ notin(A,G) ]
-       ACTION [ s := compute(s@all, G, [])
-              ; p := compute(p@all, A -> B, D)
-       ]
        BRANCH [ isnotemptyandallsubsnotsub(p@1,A -> B, D) ]
+       BACKTRACK [ s := compute(s@all, G, [])
+                 ; p := compute(p@all, A -> B, D) ]
   END
 
   RULE BigAndR
-                => A ; D       |          => B ; D
+                ===> A ; D       |          ===> B ; D
             =============================================
-                         => { A & B } ; D
+                         ===> { A & B } ; D
        COND [ conjnotin(A,B,D,D) ]
-       ACTION [  s := setofsetsunion(s@1, s@2) 
-               ; p := setofsetsunion(p@1, p@2) 
-       ]
+       BACKTRACK [ s := setofsetsunion(s@1, s@2) 
+                 ; p := setofsetsunion(p@1, p@2) ]
   END
 
 END
 
 STRATEGY := 
- let saturate = tactic (Id|False|True|AndL|OrR|ImpR1|OrL|AndR)
+ let saturate = tactic (Id!False!True!AndL!OrR!ImpR1!OrL!AndR)
  in tactic ( (((saturate)* ; ImpR2 )* ; Ret)* )
 
 MAIN

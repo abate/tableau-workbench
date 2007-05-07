@@ -13,10 +13,10 @@ formula :=
     | formula v formula
     | formula -> formula
     | formula <-> formula
-    | E formula U formula
     | E formula B formula
-    | A formula U formula
+    | E formula U formula
     | A formula B formula
+    | A formula U formula
     | AF formula
     | EF formula
     | AG formula
