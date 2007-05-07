@@ -25,6 +25,7 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
 
     module Cache = Cache.Make(N)   
     let table = ref (new Cache.cache true)
+    let _ = Random.self_init ()
 
     let rec visit_aux env acc = function
         |Skip -> fun n ->
@@ -57,9 +58,12 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         |Cut(t1)    -> fun n -> Llist.determ (visit_aux env acc t1 n)
         |AltCut(t1,t2) -> fun n -> 
                 Llist.mplus (visit_aux env acc t1 n) (visit_aux env acc t2 n)
-        |Alt(t1,t2,cond) -> fun n ->
+        |Alt(t1,t2,cond) when (Random.int 2) = 0 -> fun n ->
                 Llist.filter cond
                 (Llist.mplus (visit_aux env acc t1 n) (visit_aux env acc t2 n))
+        |Alt(t1,t2,cond) -> fun n ->
+                Llist.filter cond
+                (Llist.mplus (visit_aux env acc t2 n) (visit_aux env acc t1 n))
         |Mu(x,t) -> visit_aux ((x,t)::env) acc t
         |Var(x)  ->
                 try visit_aux env acc (List.assoc x env)
