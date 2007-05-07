@@ -103,13 +103,21 @@ module Make(T:S) = struct
             expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(_loc,sc)]];
         END
 
+    let rec create_levels label (l1,l2,l3) = function
+        |(Symbol(_)::_ as h ) :: tl -> create_levels label (h::l1,l2,l3) tl
+        |(Lid(s)::_ as h) :: tl when s = label -> create_levels label (l1,h::l2,l3) tl
+        |h :: tl -> create_levels label (l1,l2,h::l3) tl
+        |[] -> (l1,l2,l3)
+
     let extend_entry label entrylist =
         let el =
             List.filter (function [Lid("")] -> false | _ -> true ) entrylist
         in
-        Grammar.extend
-        [ (create_obj (ExprEntry.get_entry label),
-            None, [None, None, (List.map (make_entry_input label) el) ])
+        let (symlev,selflev,otherlev) = create_levels label ([],[],[]) el in
+        Grammar.extend [ create_obj (ExprEntry.get_entry label), None,
+        [None, None, List.map (make_entry_input label) selflev;
+         None, Some Gramext.RightA, List.map (make_entry_input label) symlev;
+         None, None, List.map (make_entry_input label) otherlev]
         ]
 
     let make_expr_node token_list =

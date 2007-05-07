@@ -127,7 +127,7 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
   ]];
 
   backtracklist: [[
-      "BACKTRACK"; OPT "["; l = LIST1 useract SEP ";"; OPT "]" -> l
+      "BACKTRACK"; OPT "["; l = LIST1 userback SEP ";"; OPT "]" -> l
   ]];
 
   branch: [[
@@ -139,14 +139,15 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
       OPT "["; l = LIST0 useract SEP ";"; OPT "]" -> l
   ]];
   
-  useract: [
-      [s = assign; ":="; f = assignfun -> Ast.Assign (s, f)
+  userback: [
+      [s = test_variable; ":="; f = assignfun ->
+          Ast.Assign (Ast.ExVari(s, Ast.Null), f)
       |f = userfunction -> Ast.Function(f)
   ]];
   
-  assign: [
-      [s = test_history  -> Ast.ExHist s
-      |s = test_variable -> Ast.ExVari(s, Ast.Null)
+  useract: [
+      [s = test_history; ":="; f = assignfun -> Ast.Assign (Ast.ExHist s, f)
+      |f = userfunction -> Ast.Function(f)
   ]];
 
   assignfun: [

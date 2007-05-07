@@ -415,7 +415,6 @@ let rec expand_ex_term use = function
                     [`$uid:var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> assert(False)]
-                    (varhist#find $str:id$)#elements
                 with [Failure "nth" -> [] ] >>
                 )
             |`Obj | `Term ->
@@ -457,12 +456,20 @@ let rec expand_ex_term use = function
                 )
             end
     |Ast.ExVari(id,Ast.All) ->
+            let (var,ctyp,def) =
+                try Hashtbl.find vars_table id
+                with Not_found -> assert(false) 
+            in
             begin match use with
             |`List -> assert(false)
             |`Obj |`Term ->
                 (new_id "ex_term",
                 <:expr<
-                try List.map (fun v -> v#find $str:id$) varl
+                try List.map (fun varhist -> 
+                    match varhist#find $str:id$ with
+                    [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
+                    | _ -> assert(False)]
+                    ) varl
                 with [Failure "nth" -> failwith $str:id^ ": index out of bound"$ ] >>
                 )
             end
@@ -538,7 +545,7 @@ let rec expand_ex_expr use = function
             in 
             (new_id "ex_expr",
             <:expr< let $list:pel$ in fun sbl hist varl -> ( $list:exl$ ) >>)
-    |Ast.ExExpr(_,ex) -> (new_id "ex_expr",ex)
+    |Ast.ExExpr(_,ex) -> (new_id "ex_expr",<:expr< fun _ _ _ -> $ex$ >>)
 
 let expand_condition name condlist =
         List.map (fun Ast.Condition ex_expr ->
@@ -1106,7 +1113,7 @@ let expand_source m =
     let (symbollist,gramms) = ExtGramm.readgramm m in
     ExtGramm.writegramm gramms;
     ExtGramm.update_gramm_table gramms;
-    List.iter (fun c -> Hashtbl.add symbol_table c ()) symbollist;
+    symbol_table := symbollist;
     ExtGramm.extgramm (ExtGramm.remove_node_entry gramms);
     ExtGramm.extend_node_type (ExtGramm.select_node_entry gramms);
     let ty = ExtGramm.expand_grammar_type_list gramms in

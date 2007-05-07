@@ -85,10 +85,11 @@ let make_token ttype self = function
                         Gramext.Snterm (create_obj (PattSchemaEntry.get_entry s)),
                         Gramext.Stoken ("", ";"))
             end
-    |Symbol(s) when Hashtbl.mem symbol_table s ->
+(*    |Symbol(s) when Hashtbl.mem symbol_table s ->
             if forbidden_symbol s self then failwith (Printf.sprintf
             "The symbol \"%s\" is not allowed in the entry %s" s self)
             else Gramext.Stoken ("", s)
+*)
     |Symbol(s) -> Gramext.Stoken ("", s)
     |Const(s) ->  Gramext.Stoken ("", s) 
     |Expr -> 
@@ -356,18 +357,45 @@ let extend_node_type = function
     |[l] -> extend_sequent_node l ; expand_mapcont l
     |_ -> assert(false)
 
+let rec create_levels label (l1,l2,l3) = function
+    |(Symbol(_)::_ as h ) :: tl -> create_levels label (h::l1,l2,l3) tl
+    |(Lid(s)::_ as h) :: tl when s = label -> create_levels label (l1,h::l2,l3) tl
+    |h :: tl -> create_levels label (l1,l2,h::l3) tl
+    |[] -> (l1,l2,l3) 
+
 let extend_entry label entrylist =
+    let (symlev,selflev,otherlev) = create_levels label ([],[],[]) entrylist in
+
+    Grammar.extend [ create_obj (ExprEntry.get_entry label), None,
+    [None, None, List.map (make_entry_expr label) selflev;
+     None, Some Gramext.RightA, List.map (make_entry_expr label) symlev;
+     None, None, List.map (make_entry_expr label) otherlev]
+    ];
+
+    Grammar.extend [ create_obj (PattEntry.get_entry label), None,
+    [None, None, List.map (make_entry_patt label) selflev;
+     None, Some Gramext.RightA, List.map (make_entry_patt label) symlev;
+     None, None, List.map (make_entry_patt label) otherlev]
+    ];
+
+    Grammar.extend [ create_obj (ExprSchemaEntry.get_entry label), None,
+    [None, None, List.map (make_entry_expr_schema label) selflev;
+     None, Some Gramext.RightA, List.map (make_entry_expr_schema label) symlev;
+     None, None, List.map (make_entry_expr_schema label) otherlev]
+    ];
+
+    Grammar.extend [ create_obj (PattSchemaEntry.get_entry label), None,
+    [None, None, List.map (make_entry_patt_schema label) selflev;
+     None, Some Gramext.RightA, List.map (make_entry_patt_schema label) symlev;
+     None, None, List.map (make_entry_patt_schema label) otherlev]
+    ];
+
     Grammar.extend
     [
         (create_obj (ExprEntry.get_entry label), 
-        None, [None, None, (List.map (make_entry_expr label)
-        (entrylist@[[Symbol("{");Expr;Symbol("}")]])) ]);
+        None, [None, None, [make_entry_expr label [Symbol("{");Expr;Symbol("}")]] ]);
         (create_obj (PattEntry.get_entry label), 
-        None, [None, None, (List.map (make_entry_patt label) (entrylist@[[Patt]])) ]);
-        (create_obj (ExprSchemaEntry.get_entry label), 
-        None, [None, None, (List.map (make_entry_expr_schema label) entrylist) ]);
-        (create_obj (PattSchemaEntry.get_entry label), 
-        None, [None, None, (List.map (make_entry_patt_schema label) entrylist) ]);
+        None, [None, None, [make_entry_patt label [Patt]] ]);
     ]
 
 let writegramm gramms =
@@ -389,8 +417,7 @@ let writegramm gramms =
     in
     (* write the grammar definition to a file *)
     let ch = open_out (tmp_dir^str^".gramm") in
-    let symbollist = Hashtbl.fold (fun k _ acc -> k :: acc) symbol_table [] in
-    Marshal.to_channel ch (symbollist,gramms) [];
+    Marshal.to_channel ch (!symbol_table,gramms) [];
     close_out ch
 
 (*
@@ -453,14 +480,15 @@ let extgramm gramms =
                 extend_entry id rules;
     ) gramms;
     (* DEBUG stuff *)
-    List.iter (fun (id,rules) ->
+(*    List.iter (fun (id,rules) ->
         DebugOptions.print (Printf.sprintf "%s_expr_schema:\n" id);
         List.iter (fun tl ->
             DebugOptions.print (PcamlGramm.stype_list_to_string tl)
         ) rules;
         DebugOptions.print (Printf.sprintf "\n");
     ) gramms;
-    DebugOptions.print (ExprSchemaEntry.entries_to_string ())
+*)
+    DebugOptions.print (PattSchemaEntry.entries_to_string ())
 
 let lid strm =
     match Stream.peek strm with
@@ -512,54 +540,62 @@ let listid strm =
 let listid = Grammar.Entry.of_parser Pcaml.gram "listid" listid 
 
 let connective strm =
+    let get_stream s =
+        let lexer = Grammar.glexer Pcaml.gram in
+        let (t,_) = lexer.Token.tok_func (Stream.of_string s) in
+        let l = Stream.npeek (String.length s) t in
+        let (r,_) = List.partition (fun (k,_) -> not(k = "EOI")) l in r
+    in
     let s =
         match Stream.peek strm with
         |Some("STRING",s) -> s 
         |_ -> raise Stream.Failure
     in
-    try Stream.junk strm; Hashtbl.add symbol_table s () ; Symbol(s)
+    try
+        Stream.junk strm;
+        add_symbol (get_stream s)
     with Stream.Failure -> raise Stream.Failure
-
 let connective = Grammar.Entry.of_parser Pcaml.gram "connective" connective 
 
 let symbol strm =
-    let s = match Stream.peek strm with
-        |Some("",s) when (Hashtbl.mem symbol_table s) -> s
-        |Some("LIDENT",s)
-        |Some("UIDENT",s) when (Hashtbl.mem symbol_table s) -> s 
-        |_ -> raise Stream.Failure
-    in
-    try Stream.junk strm; Symbol(s)
+    let test strm ll =
+        try
+            let (_,m) = List.find (fun (n,l) ->
+                (Stream.npeek n strm) = l) ll
+            in List.map (fun (_,s) -> Symbol(s)) m
+        with Not_found -> raise Stream.Failure
+    in try
+        let l = test strm !symbol_table in
+        for i = 0 to (List.length l) - 1 do Stream.junk strm done;
+        l
     with Stream.Failure -> raise Stream.Failure
-
 let symbol = Grammar.Entry.of_parser Pcaml.gram "symbol" symbol 
 
 let expand_grammar_type (id,rules) =
     let typevars = ref [(id,(true,true))] in
     let exptype = function
-        |Lid(s) when s = id -> <:ctyp< '$lid:s$ >>
-        |List(s) when s = id ->  <:ctyp< list '$lid:s$ >>
-        |Lid(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ >>
+        |Lid(s)  when s = id -> <:ctyp< '$lid:s$ >>
+        |List(s) when s = id -> <:ctyp< list '$lid:s$ >>
+        |Lid(s)  -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ >>
         |List(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< list '$lid:s$ >>
-        |Atom ->     <:ctyp< string >>
+        |Atom -> <:ctyp< string >>
         |Const(s) -> <:ctyp< [= `$uid:s$ ] >>
         |_ -> assert(false)
     in
     let aux = function
         |[Lid("")] -> None
-        |[Lid(s)] -> Some("",[<:ctyp< $lid:s^"_open"$ '$lid:s$ >>]) 
+        |[Lid(s)] -> typevars := (s,(true,true))::!typevars ; (* XXX  don't like this *)
+                     Some("",[<:ctyp< $lid:s^"_open"$ '$lid:s$ >>])
         |[Type(t);Symbol(":");Lid(s)]  -> Some("",[<:ctyp< ($exptype t$ * '$lid:s$) >>])
         |[Atom] -> Some("Atom",[<:ctyp< string >>])
         |[Const(s)] -> Some(s,[])
         |Symbol("(") :: _ -> None
         |l ->
                 let args = filter_map (function
-                    |Symbol(_) -> None
-                    |Type(_) -> None
+                    |Symbol(_) |Type(_) -> None
                     |t -> Some(exptype t)
                     ) l
-                in
-                Some(new_conn l,List.rev args)
+                in Some(new_conn l,List.rev args)
     in
     let fields = 
         match List.rev (filter_map aux rules) with
@@ -778,11 +814,13 @@ gramm: [
           |Some(l) -> ("expr",[Type(t)::[Symbol(":");Lid(l)]])
           end
   
-    | nodeid ; ":="; c = cont ; l = LIST0 [ s = symbol; c = cont -> [s;c] ] ; ";;" ->
+    | nodeid ; ":="; c = cont ; l = LIST0 [ s = symbol; c = cont -> s@[c] ] ; ";;" ->
             ("node",[c::(List.flatten l)])
         
     | p = lid; ":="; rules = LIST1 rule SEP "|" ; ";;" ->
-        (p,rules@[[Lid("")]]@[[Symbol("(");Lid(p);Symbol(")")]]) 
+            let var = [[Lid("")]] in
+            let par = [[Symbol("(");Lid(p);Symbol(")")]] in
+            (p,rules@var@par) 
 ]];
 
 cont: [
@@ -791,14 +829,20 @@ cont: [
     | singletonid -> Type(Lid "singleton") 
 ]];
 
-rule: [[ psl = LIST1 psymbol -> psl ]];
+rule: [[ psl = LIST1 psymbol; OPT assoc -> List.flatten psl ]];
+
+assoc: [
+    [ "LEFT"  -> Gramext.LeftA
+    | "RIGHT" -> Gramext.RightA
+    | "NONE"  -> Gramext.NonA ]
+];
 
 psymbol: [
-    [ "Atom"  -> Atom
+    [ "Atom"  -> [Atom]
     (* | "extend"; m = UIDENT -> Extend(m) *)
     | e = symbol -> e
-    | e = ptype -> e
-    | e = const -> e
+    | e = ptype -> [e]
+    | e = const -> [e]
 ]];
 
 const: [[ u = UIDENT -> Const(u) ]];
