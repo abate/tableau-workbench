@@ -6,6 +6,7 @@ open Findlib
 
 module Options = struct
     let verbose = ref false
+    let debug = ref false
     let compileonly = ref false
     let output = ref ""
     let bytecode = ref false
@@ -19,9 +20,10 @@ end
 let options = [
     ("-v",  Arg.Set Options.verbose, "verbose");
     ("-c",  Arg.Set Options.compileonly, "compile only (do not link)");
-    ("-b",  Arg.Set Options.bytecode, "bytecode");
+(*    ("-b",  Arg.Set Options.bytecode, "bytecode"); *)
     ("-o",  Arg.Set_string Options.output,  "<file> Set output file name to <file>");
-    ("--custom", Arg.Set_string Options.custom, "<obj> custom init");
+(*    ("--custom", Arg.Set_string Options.custom, "<obj> custom init"); *)
+    ("-d", Arg.Set Options.debug, "print the generated grammar");
     
     ("-t",  Arg.Set_string Options.tmp,  "temporary directory");
     
@@ -91,7 +93,8 @@ let read_lines fc =
         Stream.from read_new_line
 
 (* pre-processing *)
-let pp filename = 
+let pp filename =
+   let debug = if !Options.debug then " --debug " else "" in
    print_verbose "Pre-processing: %s\n" filename;
    let cmd = 
        "camlp4o "^
@@ -100,6 +103,7 @@ let pp filename =
        twb_lib_loc ^ "/pa_sequent.cma "^
        "pr_o.cmo "^ 
        filename ^ 
+       debug ^
        " > "^
        tmp_dir ^ filename
    in
