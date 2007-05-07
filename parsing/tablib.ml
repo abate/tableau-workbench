@@ -614,18 +614,19 @@ let expand_ruledown ruletype bcond den_args action_args =
                  <:expr< UserRule.down_axiom name context $List.hd den_args$ >>
         |_ ->
             begin match ruletype,bcond with
-            |Ast.Explicit, _ ->
+            |Ast.NoChoice, _ ->
                 <:expr< UserRule.down_explicit 
                 name context (fun n ->
                     $list_to_exprlist (aux den_args action_args)$ ) >>
-            |Ast.Implicit, Ast.Linear ->
+            |(Ast.ExChoice|Ast.UnChoice|Ast.Choice), Ast.Linear ->
                     let aa =
                         if action_args = [] then <:expr< [] >>
                         else List.hd action_args
                     in
                     <:expr< UserRule.down_implicit
                     name context $List.hd den_args$ $aa$ >>
-            |Ast.Implicit,_ -> failwith "Rule type not allowed"
+            |(Ast.ExChoice|Ast.UnChoice|Ast.Choice),_ -> 
+                    failwith "Rule type not allowed"
             end
 
 let expand_action name actionlist =
@@ -709,29 +710,29 @@ let expand_ruleup ruletype bcond denlist branchcond_args backtrack_args =
         )
     in
     match ruletype,bcond with
-    |Ast.Explicit,Ast.Linear ->
+    |Ast.NoChoice,Ast.Linear ->
             <:expr< UserRule.up_explore_linear name context treelist $bt_arg$ >>
-    |Ast.Implicit,Ast.Linear ->
+
+    |Ast.ExChoice,Ast.Linear ->
             let br_arg = add_rule opencond branchcond_args in
             <:expr< UserRule.up_explore_implicit name context treelist $bt_arg$ $br_arg$ >>
+    |Ast.UnChoice,Ast.Linear ->
+            let br_arg = add_rule closedcond branchcond_args in
+            <:expr< UserRule.up_explore_implicit name context treelist $bt_arg$ $br_arg$ >>
+    |Ast.Choice,Ast.Linear ->
+            let br_arg = ll_to_exprll branchcond_args in
+            <:expr< UserRule.up_explore_implicit name context treelist $bt_arg$ $br_arg$ >>
 
-    |Ast.Explicit,Ast.ForAll ->
+    |Ast.NoChoice,Ast.ForAll ->
             let br_arg = add_rule closedcond branchcond_args in
             <:expr< UserRule.up_explore_simple name context treelist $bt_arg$ $br_arg$ >>
-    |Ast.Implicit,Ast.ForAll ->
+    |Ast.NoChoice,Ast.Exists ->
             let br_arg = add_rule opencond branchcond_args in
             <:expr< UserRule.up_explore_simple name context treelist $bt_arg$ $br_arg$ >>
-
-    |Ast.Explicit,Ast.Exists ->
-            let br_arg = add_rule opencond branchcond_args in
-            <:expr< UserRule.up_explore_simple name context treelist $bt_arg$ $br_arg$ >>
-    |Ast.Implicit,Ast.Exists ->
-            let br_arg = add_rule closedcond branchcond_args in
-            <:expr< UserRule.up_explore_simple name context treelist $bt_arg$ $br_arg$ >>
-
-    |Ast.Explicit,Ast.User |Ast.Implicit,Ast.User ->
+    |Ast.NoChoice,Ast.User ->
             let br_arg = ll_to_exprll branchcond_args in
             <:expr< UserRule.up_explore_simple name context treelist $bt_arg$ $br_arg$ >>
+    |_,_ -> assert(false)
 
 let expand_rule (Ast.Rule rule) =
     let ( name,

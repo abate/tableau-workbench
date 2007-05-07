@@ -78,8 +78,9 @@ let muvar = Grammar.Entry.of_parser Pcaml.gram "muvar" muvar ;;
 
 let test_sep strm =
     match Stream.peek strm with
-    | Some(_,s) when s =~ "==+" -> Stream.junk strm; Ast.Explicit
-    | Some(_,s) when s =~ "--+" -> Stream.junk strm; Ast.Implicit
+    | Some(_,s) when s =~ "~~+" -> Stream.junk strm; Ast.UnChoice
+    | Some(_,s) when s =~ "==+" -> Stream.junk strm; Ast.NoChoice
+    | Some(_,s) when s =~ "--+" -> Stream.junk strm; Ast.ExChoice
     | _ -> raise Stream.Failure
 ;;
 let test_sep = Grammar.Entry.of_parser Pcaml.gram "test_sep" test_sep ;;

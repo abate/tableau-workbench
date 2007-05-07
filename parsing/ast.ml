@@ -8,13 +8,13 @@ type history =
 
 type strategy = Strategy of tactic
 and tactic =
-    |TaBasic of string
+    |TaBasic  of string
     |TaModule of string * string
     |TaSkip
     |TaFail
-    |TaSeq  of tactic * tactic
-    |TaAlt     of tactic * tactic * MLast.expr
-    |TaAltCut  of tactic * tactic
+    |TaSeq    of tactic * tactic
+    |TaAlt    of tactic * tactic * MLast.expr
+    |TaAltCut of tactic * tactic
     |TaCut  of tactic
     |TaMu   of string * tactic
     |TaVar  of string
@@ -33,7 +33,7 @@ and rule = Rule of
     cache option *
     heuristic option )
 
-and ruletype    = Implicit | Explicit
+and ruletype    = ExChoice | UnChoice | Choice | NoChoice
 and numerator   = Numerator   of numcont array
 and denominator = Denominator of dencont array | Status of string
 
