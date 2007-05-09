@@ -4,7 +4,6 @@ GRAMMAR
 idx := One | Two ;;
 formula :=
      Atom | Verum | Falsum
-    | idx
     | formula & formula
     | formula v formula
     | formula -> formula

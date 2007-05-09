@@ -7,7 +7,7 @@ formula :=
     | formula v formula
     | formula -> formula
     | formula <-> formula
-    | ~ formula
+    | ~ formula 
     ;;
 
 expr := formula ;;

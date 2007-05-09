@@ -192,7 +192,7 @@ SEQUENT
   END
 
   RULE ImpR2b
-             A ; G => B  ||   G  => A -> B ; D ; B ; bigand(p@1)
+             A ; G => B  ||   G  => A -> B ; D ; bigand(p@1)
             ===========================================================
                       G => { #( A -> B) } ; D 
 
@@ -226,12 +226,12 @@ SEQUENT
   END
 
   RULE ExcL2a
-                    A ; #( A -< B ) ; G => D
+                      #( A -< B ) ; G => D
                   ---------------------------
-                         { A -< B } ; G => D
+                      { A -< B } ; G => D
 
        COND   [ notin(B,D) ]
-       BRANCH [ parentisspecial(s@1, p@1) ]       
+       BRANCH [ parentisspecial(s@1, p@1) ] 
        BACKTRACK [ s := compute(s@all, A -< B, G)
               ; p := compute(p@all, D, [])
        ]
@@ -281,6 +281,6 @@ STRATEGY :=
  in
  let impjump     = tactic (ImpR2a ; ImpR2b) in
  let excjump     = tactic (ExcL2a ; ExcL2b) in 
- tactic ( ( (saturate)* ; (impjump || excjump) )* ; Ret ) 
+ tactic ( ( (saturate)* ; ( impjump ||  excjump ) )* ; Ret ) 
 
 MAIN

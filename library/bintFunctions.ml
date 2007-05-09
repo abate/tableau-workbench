@@ -122,10 +122,7 @@ let disjnotin(a,b,d,g) =
 let rec allsubsnotsub (ps,ab,d) =
     match ps with
       []   -> failwith "Error: allsubsnotsub called with empty PS"
-    | [h]  -> 
-    if not(h#subset ((new FormulaSet.set)#addlist (ab@d))) then 
-        (print_endline "ffffffff"; true)
-    else ( print_endline "ggggggggggg"; false)
+    | [h]  -> not(h#subset ((new FormulaSet.set)#addlist (ab@d))) 
     | h::t -> 
             if h#subset ((new FormulaSet.set)#addlist (ab@d)) 
             then false else (allsubsnotsub (t,ab,d))
@@ -155,7 +152,5 @@ let parentisspecial (s,p) =
 let union (x,y) = x#union y ;;
 
 let isnotemptyandallsubsnotsub (p,ab,d) =
-    if not(p#is_empty) && allsubsnotsub (p#elements,ab,d) then
-        (print_endline "stttt" ; true)
-    else (print_endline "hhhh" ; false)
+    not(p#is_empty) && allsubsnotsub (p#elements,ab,d) 
 

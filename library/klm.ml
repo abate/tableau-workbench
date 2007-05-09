@@ -48,7 +48,11 @@ let nnfl = List.map Klmlib.nnf
 TABLEAU
 
   RULE CImpp { A => B }       == nnfl( ~ A ) | <> A  | nnfl( B )  
-       ACTION [ CIMPS  := add(A => B, CIMPS) ]
+       ACTION [ 
+           [ CIMPS  := add(A => B, CIMPS)];
+        [ CIMPS  := add(A => B, CIMPS)];
+       [  CIMPS  := add(A => B, CIMPS)];
+       ]
   END
 
   RULE False { Falsum }       == Close  END
@@ -72,12 +76,12 @@ TABLEAU
 
   RULE CImpm { ~ ( A => B ) } ; ~ ( X => Y ) ; Z
              ----------------------------------------------------
-             nnfl(A) ; [] ~ <> A ; nnfl(~ B) ; ~ (X => Y) ; CIMPS
+             nnfl(A) ; ~ <> A ; [] ~ <> A ; nnfl(~ B) ; ~ (X => Y) ; CIMPS
   END
 
   RULE K     { <> A } ; ~ (X => Y) ; [] W ; Z
              ------------------------------------------------------
-             nnfl(A) ; [] ~ <>  A ; ~ (X => Y) ; W ; [] W ; CIMPS 
+             nnfl(A) ; ~ <> A ; [] ~ <>  A ; ~ (X => Y) ; W ; [] W ; CIMPS 
   END
 END
 
