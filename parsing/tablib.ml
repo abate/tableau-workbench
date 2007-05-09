@@ -1115,11 +1115,12 @@ let expand_source m =
     ExtGramm.writegramm gramms;
     ExtGramm.update_gramm_table gramms;
     symbol_table := symbollist;
-    ExtGramm.extgramm (ExtGramm.remove_node_entry gramms);
+    let withoutnode = (ExtGramm.remove_node_entry gramms) in
+    ExtGramm.extgramm withoutnode;
     ExtGramm.extend_node_type (ExtGramm.select_node_entry gramms);
-    let ty = ExtGramm.expand_grammar_type_list gramms in
-    let pr = ExtGramm.expand_printer gramms in
-    let ast = ExtGramm.expand_ast2input gramms in
+    let ty = ExtGramm.expand_grammar_type_list withoutnode in
+    let pr = ExtGramm.expand_printer withoutnode in
+    let ast = ExtGramm.expand_ast2input withoutnode in
     let sl  = ExtGramm.expand_grammar_syntax_list gramms in
     let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
     <:str_item< declare $list:sty@[pr;ast;sl]$ end >>

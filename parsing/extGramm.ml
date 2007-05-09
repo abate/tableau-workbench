@@ -480,14 +480,13 @@ let extgramm gramms =
                 extend_entry id rules;
     ) gramms;
     (* DEBUG stuff *)
-(*    List.iter (fun (id,rules) ->
+    List.iter (fun (id,rules) ->
         DebugOptions.print (Printf.sprintf "%s_expr_schema:\n" id);
         List.iter (fun tl ->
             DebugOptions.print (PcamlGramm.stype_list_to_string tl)
         ) rules;
         DebugOptions.print (Printf.sprintf "\n");
     ) gramms;
-*)
     DebugOptions.print (PattSchemaEntry.entries_to_string ())
 
 let lid strm =
@@ -795,14 +794,15 @@ Pcaml.str_item: [[
     "CONNECTIVES"; "["; l = LIST1 connective SEP ";"; "]" -> <:str_item< "" >>
 
     |"GRAMMAR"; gramms = LIST1 gramm; "END" ->
+            let withoutnode = remove_node_entry gramms in
             let _   = writegramm gramms in
             let _   = update_gramm_table gramms in
-            let _   = extgramm (remove_node_entry gramms) in
+            let _   = extgramm withoutnode in
             let _   = extend_node_type (select_node_entry gramms) in 
             let sl  = expand_grammar_syntax_list gramms in
-            let ty  = expand_grammar_type_list (remove_node_entry gramms) in
-            let pr  = expand_printer (remove_node_entry gramms) in
-            let ast = expand_ast2input (remove_node_entry gramms) in
+            let ty  = expand_grammar_type_list withoutnode in
+            let pr  = expand_printer withoutnode in
+            let ast = expand_ast2input withoutnode in
             let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
             <:str_item< declare $list:sty@[pr;ast;sl]$ end >>
 ]];
