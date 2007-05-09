@@ -79,6 +79,20 @@ module Make (T : TwbSet.ValType) : sig class olist : [T.t] TwbSet.ct end =
                 to_string_cache = "";
                 data = (l#elements)@data
             >}
+
+            method subset (l :'a) =
+                let module Set =
+                    Set.Make (struct type t = T.t let compare = compare end)
+                in
+                Set.subset
+                    (List.fold_left
+                        (fun e s -> Set.add s e)
+                        Set.empty data
+                    )
+                    (List.fold_left
+                        (fun e s -> Set.add s e)
+                        Set.empty l#elements
+                    )
                 
             method is_equal (l : 'a) =
                 List.for_all2 (fun a b -> a = b) data l#elements

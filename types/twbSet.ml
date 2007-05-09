@@ -14,6 +14,7 @@ class type ['t] ct =
         method cardinal : int
         method intersect : 'a -> 'a
         method union: 'a -> 'a
+        method subset: 'a -> bool
         method is_equal : 'a -> bool
         method copy : 'a
         method empty : 'a
@@ -109,6 +110,13 @@ module Make (T : ValType) : sig class set : [T.t] ct end = struct
                         Set.empty set#elements
                     )
             >}
+
+            method subset (set :'a) =
+                Set.subset data 
+                    (List.fold_left
+                        (fun e s -> Set.add s e)
+                        Set.empty set#elements
+                    )
 
             method union (set : 'a) = {<
                 modified = true;
