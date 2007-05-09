@@ -74,10 +74,10 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
       [ id = LIDENT -> Ast.TaVar(id)
       | t1 = tactic; ";"; t2 = tactic -> Ast.TaSeq(t1,t2)
       | t1 = tactic; "!"; t2 = tactic -> Ast.TaAltCut(t1,t2)
-      | t1 = tactic; "|" ; t2 = tactic ->
-              Ast.TaAlt(t1,t2,<:expr< tcond "Close" >>)
       | t1 = tactic; "||"; t2 = tactic ->
               Ast.TaAlt(t1,t2,<:expr< tcond "Open" >>)
+      | t1 = tactic; "|" ; t2 = tactic ->
+              Ast.TaAlt(t1,t2,<:expr< tcond "Close" >>)
       ]
   |
       [ "("; t = tactic; ")" -> t
@@ -87,8 +87,9 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
       | mu; OPT "("; var = muvar; OPT ")"; "."; t = tactic -> Ast.TaMu(var,t)
       | "("; t = tactic; ")"; "*" ->
               let id = new_id "muvar" in
-              Ast.TaMu(id,Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))
-(* Ast.TaMu(id,Ast.TaCut(Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))) *)
+(*              Ast.TaMu(id,Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))
+ *              *)
+                Ast.TaMu(id,Ast.TaCut(Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip)))
       | m = UIDENT; "."; r = UIDENT -> Ast.TaModule(m,r)
       | id = test_muvar -> id
       ]
@@ -176,14 +177,15 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
 
 
   ExtGramm.denlist: [[
-       d = den; "|";  dl = den_forall -> ((d::dl),Ast.ForAll)
-      |d = den; "||"; dl = den_exists -> ((d::dl),Ast.Exists)
-      |d = den; "|||"; dl = den_exists -> ((d::dl),Ast.User)
+       d = den; "|||"; dl = den_user   -> ((d::dl),Ast.User)
+      |d = den; "||";  dl = den_exists -> ((d::dl),Ast.Exists)
+      |d = den; "|";   dl = den_forall -> ((d::dl),Ast.ForAll)
       |d = den -> ([d],Ast.Linear)
   ]];
 
-  den_forall: [[ dl = LIST1 den SEP "|" -> dl ]];
+  den_user:   [[ dl = LIST1 den SEP "|||" -> dl ]];
   den_exists: [[ dl = LIST1 den SEP "||" -> dl ]];
+  den_forall: [[ dl = LIST1 den SEP "|" -> dl ]];
 
   den: [
       [d = ExtGramm.bladenseq -> Ast.Denominator d

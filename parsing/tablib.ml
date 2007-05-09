@@ -710,8 +710,6 @@ let expand_ruleup ruletype bcond denlist branchcond_args backtrack_args =
         )
     in
     match ruletype,bcond with
-    |Ast.NoChoice,Ast.Linear ->
-            <:expr< UserRule.up_explore_linear name context treelist $bt_arg$ >>
 
     |Ast.ExChoice,Ast.Linear ->
             let br_arg = add_rule opencond branchcond_args in
@@ -723,6 +721,8 @@ let expand_ruleup ruletype bcond denlist branchcond_args backtrack_args =
             let br_arg = ll_to_exprll branchcond_args in
             <:expr< UserRule.up_explore_implicit name context treelist $bt_arg$ $br_arg$ >>
 
+    |Ast.NoChoice,Ast.Linear ->
+            <:expr< UserRule.up_explore_linear name context treelist $bt_arg$ >>
     |Ast.NoChoice,Ast.ForAll ->
             let br_arg = add_rule closedcond branchcond_args in
             <:expr< UserRule.up_explore_simple name context treelist $bt_arg$ $br_arg$ >>
