@@ -70,7 +70,7 @@ let twb_lib_loc =
 let tmp_dir =
     match !Options.tmp with
     |"" ->
-            let str = "/tmp/twb" ^ Unix.getlogin () in
+            let str = "/tmp/twb" ^ Sys.getenv("LOGNAME") in
             let _ = 
                 try ignore(Unix.stat str) with
                 |Unix.Unix_error(_) -> 

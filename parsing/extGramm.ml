@@ -450,7 +450,7 @@ let readgramm extmodule gramms =
 
 let readgramm m = 
     let tmp_dir =
-        let str = "/tmp/twb" ^ Unix.getlogin () in
+        let str = "/tmp/twb" ^ Sys.getenv("LOGNAME") in
         let _ =
             try ignore(Unix.stat str) with
             |Unix.Unix_error(_) -> 
