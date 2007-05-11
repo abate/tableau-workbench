@@ -9,6 +9,8 @@ let _loc = Token.dummy_loc
 let create_gramm = PcamlGramm.create_gramm
 let create_obj = PcamlGramm.create_obj
 
+module ExprLidEntry = EntryMake(struct type t = MLast.expr let ttype = TExprLid end) 
+module PattLidEntry = EntryMake(struct type t = MLast.patt let ttype = TPattLid end) 
 module ExprEntry = EntryMake(struct type t = MLast.expr let ttype = TExpr end) 
 module PattEntry = EntryMake(struct type t = MLast.patt let ttype = TPatt end) 
 module ExprSchemaEntry = EntryMake(struct type t = Ast.ex_term let ttype = TExprSchema end) 
@@ -56,6 +58,7 @@ let make_token ttype self = function
             begin match ttype with
             |TExpr | TPatt -> Gramext.Stoken ("LIDENT", "")
             |TExprSchema | TPattSchema -> Gramext.Snterm (create_obj test_uid)
+            | _ -> assert(false)
             end
     |Lid(s) when self = s -> Gramext.Sself 
     |Lid(s) -> 
@@ -64,11 +67,13 @@ let make_token ttype self = function
             |TPatt -> Gramext.Snterm (create_obj (PattEntry.get_entry s))
             |TExprSchema -> Gramext.Snterm (create_obj (ExprSchemaEntry.get_entry s))
             |TPattSchema -> Gramext.Snterm (create_obj (PattSchemaEntry.get_entry s))
+            | _ -> assert(false)
             end
     |Type(_) ->
             begin match ttype with
             |TExpr | TExprSchema -> Gramext.Snterm (create_obj Pcaml.expr)
             |TPatt | TPattSchema -> Gramext.Snterm (create_obj Pcaml.patt)
+            | _ -> assert(false)
             end
     |List(s) ->
             begin match ttype with
@@ -84,6 +89,7 @@ let make_token ttype self = function
             |TPattSchema -> Gramext.Slist1sep (
                         Gramext.Snterm (create_obj (PattSchemaEntry.get_entry s)),
                         Gramext.Stoken ("", ";"))
+            | _ -> assert(false)
             end
 (*    |Symbol(s) when Hashtbl.mem symbol_table s ->
             if forbidden_symbol s self then failwith (Printf.sprintf
@@ -106,6 +112,7 @@ let make_token ttype self = function
             begin match ttype with
             |TExpr | TPatt -> Gramext.Snterm (create_obj test_uid)
             |TExprSchema | TPattSchema -> Gramext.Stoken ("LIDENT", "")
+            | _ -> assert(false)
             end
 
 let make_entry_patt self token_list =
@@ -398,6 +405,40 @@ let extend_entry label entrylist =
         None, [None, None, [make_entry_patt label [Patt]] ]);
     ]
 
+let add_expr_lid lid = 
+    let strlid lid strm =
+        match Stream.peek strm with
+        |Some(_,str) when str = lid -> Stream.junk strm; <:expr< $lid:str$ >>
+        |_ -> raise Stream.Failure
+in
+ExprLidEntry.add_entry_of_parser (strlid lid) lid ;
+ExprLidEntry.get_entry lid
+
+let add_patt_lid lid = 
+    let strlid lid strm =
+        match Stream.peek strm with
+        |Some(_,str) when str = lid -> Stream.junk strm; <:patt< $lid:str$ >>
+        |_ -> raise Stream.Failure
+in
+PattLidEntry.add_entry_of_parser (strlid lid) lid ;
+PattLidEntry.get_entry lid
+
+let expand_expr_constructor label =
+    let ex = (ExprEntry.get_entry label) in
+    let px = (PattEntry.get_entry label) in
+    let elid = add_expr_lid label in
+    let plid = add_patt_lid label in
+    EXTEND
+        Pcaml.expr: LEVEL "simple" [
+            [ elid; "("; e = ex; ")" -> <:expr< ( $e$ : $lid:label$ ) >>
+        ]];
+
+        Pcaml.patt: [
+            [ plid; "("; "_"; ")" -> <:patt< #$lid:label$ >>
+            | plid; "("; p = px; ")" -> <:patt< $p$ >>
+        ]];
+    END
+
 let writegramm gramms =
     (* we write a file with the marshalled representation of the grammar
      * to be then reused in other modules.
@@ -470,7 +511,8 @@ let readgramm m =
 
 let extgramm gramms =
     List.iter (function
-        |("expr",rules) -> extend_schema rules
+        |("expr",rules) ->
+                extend_schema rules;
         |(id,rules) ->
                 PattEntry.add_entry id;
                 ExprEntry.add_entry id;
@@ -487,6 +529,9 @@ let extgramm gramms =
         DebugOptions.print (Printf.sprintf "\n");
     ) gramms;
     DebugOptions.print (PattSchemaEntry.entries_to_string ())
+
+let expand_constructors = 
+    List.iter (fun (id,_) -> expand_expr_constructor id )
 
 let lid strm =
     match Stream.peek strm with
@@ -797,6 +842,7 @@ Pcaml.str_item: [[
             let _   = writegramm gramms in
             let _   = update_gramm_table gramms in
             let _   = extgramm withoutnode in
+            let _   = expand_constructors withoutnode in
             let _   = extend_node_type (select_node_entry gramms) in 
             let sl  = expand_grammar_syntax_list gramms in
             let ty  = expand_grammar_type_list withoutnode in
@@ -858,6 +904,7 @@ plid: [
     i = LIDENT -> i 
 ]];
 
+(*
 Pcaml.expr: LEVEL "simple" [
     [ formulaid; "("; e = formula_expr; ")" -> <:expr< ( $e$ : formula ) >>
     | exprid;    "("; e = expr_expr; ")"    -> <:expr< ( $e$ : expr ) >>
@@ -869,7 +916,7 @@ Pcaml.patt: [
     | formulaid; "("; e = formula_patt; ")" -> <:patt< $e$ >>
     | exprid;    "("; e = expr_patt;    ")" -> <:patt< $e$ >>
 ]];
-
+*)
 (*
 (* A{s/t} is the formula A with all occurrences of t substituted by s *) 
 (* FIXME: the substitution should be possible inside a term... this require

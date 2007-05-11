@@ -1117,6 +1117,7 @@ let expand_source m =
     symbol_table := symbollist;
     let withoutnode = (ExtGramm.remove_node_entry gramms) in
     ExtGramm.extgramm withoutnode;
+    ExtGramm.expand_constructors withoutnode;
     ExtGramm.extend_node_type (ExtGramm.select_node_entry gramms);
     let ty = ExtGramm.expand_grammar_type_list withoutnode in
     let pr = ExtGramm.expand_printer withoutnode in

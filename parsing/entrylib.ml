@@ -1,10 +1,12 @@
 
 module Make(T : sig val gram : Grammar.g end) = struct
 
-    type ttype = TExpr | TPatt | TExprSchema | TPattSchema
+    type ttype = TExpr | TPatt | TExprSchema | TPattSchema | TExprLid | TPattLid
 
-    let create_gramm l = Grammar.Entry.create T.gram l
-    let create_obj l = Grammar.Entry.obj l
+    let create_gramm label = Grammar.Entry.create T.gram label
+    let create_gramm_of_parser stream_parser label =
+        Grammar.Entry.of_parser T.gram label stream_parser
+    let create_obj label = Grammar.Entry.obj label
 
     type stype =
         | Atom
@@ -39,14 +41,19 @@ module Make(T : sig val gram : Grammar.g end) = struct
                 |TPatt -> s^"_patt"
                 |TExpr  -> s^"_expr"
                 |TExprSchema -> s^"_expr_schema" 
-                |TPattSchema -> s^"_patt_schema" 
+                |TPattSchema -> s^"_patt_schema"
+                |TExprLid -> s^"_lid_expr"
+                |TPattLid -> s^"_lid_patt"
                 
             let mem_entry s = Hashtbl.mem entrytab (label s)
-            let add_entry s =
+            let add_entry_gen f s =
                 if mem_entry s then ()
                 else begin
-                    Hashtbl.add entrytab (label s) (create_gramm (label s))
+                    Hashtbl.add entrytab (label s) (f (label s))
                 end
+            let add_entry_of_parser stream_parser s = 
+                add_entry_gen (create_gramm_of_parser stream_parser) s
+            let add_entry s = add_entry_gen create_gramm s
             let get_entry s =
                 try Hashtbl.find entrytab (label s)
                 with Not_found ->
