@@ -105,13 +105,13 @@ let rec xmerge ll =
     lazy begin match Lazy.force ll with
         |Empty -> Empty 
         |LList(h,t) -> 
-                let tl = filter_map (fun l ->
-                    try Some(tl l) with LListEmpty _ -> None) ll
-                in 
                 let hd () =
                     let tl = filter_map (fun l ->
                         try Some(hd l) with LListEmpty _ -> None ) t
                     in if is_empty h then Lazy.force(tl) else LList(hd h,tl)
+                in 
+                let tl = filter_map (fun l ->
+                    try Some(tl l) with LListEmpty _ -> None) ll
                 in 
                 Lazy.force(
                     filter_map (fun n ->

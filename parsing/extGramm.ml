@@ -402,7 +402,6 @@ let writegramm gramms =
     (* we write a file with the marshalled representation of the grammar
      * to be then reused in other modules.
      * see the directive : source Modulename *)
-    (* XXX: 4 is not fool proof !! *)
     let tmp_dir =
         let str = "/tmp/twb" ^ Sys.getenv("LOGNAME") in
         let _ =
@@ -411,7 +410,7 @@ let writegramm gramms =
         in str ^ "/"
     in
     let str =
-        let s = (String.lowercase Sys.argv.(5)) in
+        let s = (String.lowercase !Pcaml.input_file) in
         let re = Str.regexp "\\([a-zA-z0-9]+\\)\\.ml" in
         Str.replace_first re "\\1" s
     in

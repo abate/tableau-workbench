@@ -32,7 +32,6 @@ module Make(P: NodePattern.S) =
                 let s = pmatch sbl [f] in
                 Some(s,store#set pcid ((store#get pcid)#del f))
             with FailedMatch -> None
-    ;;
         
     let init (sbl,store) = (sbl#copy, store#copy)
     
@@ -55,7 +54,6 @@ module Make(P: NodePattern.S) =
                         ) (List.enum el)
                     )
         in enum_aux store patternlist
-    ;;
 
     (* we get all formulae associated with a patter minus the
      * formulae that have been selected to be principal formulae.
@@ -74,7 +72,6 @@ module Make(P: NodePattern.S) =
                     List.fold_left (fun st e -> st#del e) (ns#get patt.P.pcid) l
                 in (sbl',ns#set patt.P.pcid m)
         ) store pattlist
-    ;;
     
     let removepl store pattlist =
         List.fold_left (
@@ -89,13 +86,11 @@ module Make(P: NodePattern.S) =
                         |None -> (in_s,in_m)
                     ) (subl,ns) l
         ) (init store) pattlist
-    ;;
 
     (* Return an enumeration with all possible nodes *)
     let match_node_one map (pl,sl) = 
             try (Enum.map (fun s -> getset s sl) (enum map pl))
             with FailedMatch -> Enum.empty ()
-    ;;
 
     (* Return an enumeration with all possible nodes *)
     let match_node_zero map (pl,sl) = 
@@ -109,14 +104,12 @@ module Make(P: NodePattern.S) =
                         )
                 else (Enum.map (fun s -> getset s sl) he)
             with FailedMatch -> Enum.empty ()
-    ;;
 
     (* Return an enumeration that contains only the
      * set of the side/set pattern *)
     let match_node_set map sl =
         try (Enum.init 1 (fun _ -> getset map sl ))
         with FailedMatch -> Enum.empty ()
-    ;;
     
     (* Return an enumeration with all possible nodes 
      * but also attach one enumeration of the set of
@@ -143,6 +136,5 @@ module Make(P: NodePattern.S) =
                     (if sl = [] then all_enum
                      else Enum.append all_enum trail_enum)
             with FailedMatch -> Enum.empty ()
-    ;;
 
 end

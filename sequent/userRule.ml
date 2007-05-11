@@ -75,24 +75,19 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
             in
             let (enum, sbl, newmap) =
                 let rec check_hist e =
-                    (* here I filter the enum wrt the side conditions 
-                     * and I discard enum that have empty sbl *)
-                    let filtered_enum =
+                    let filtered_enum_cond =
                         Enum.filter (function (sbl,ns) ->
-                            if not(sbl#is_empty) then
-                                not(List.exists (
-                                    fun c -> not (c sbl hist [varhist])
-                                    ) hl
-                                )
-                            else false
+                            not(sbl#is_empty) &&
+                            List.for_all (fun cond ->
+                                cond sbl hist [varhist] ) hl
                         ) e
                     in
                     (* now filtered_enum contains only the enum that
                      * respect the side conditions and I can build with
                      * it the new context for the rule *)
                     try begin
-                        match Enum.get filtered_enum with
-                        |Some (sbl, ns) -> (filtered_enum, sbl, ns)
+                        match Enum.get filtered_enum_cond with
+                        |Some (sbl, ns) -> (filtered_enum_cond, sbl, ns)
                         |None -> raise Partition.FailedMatch (* no more choices *)
                     end with Partition.FailedMatch ->
                         (Enum.empty (), build_sbl (), map)
@@ -217,14 +212,12 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         let newnode =
             List.fold_left (
                 fun n f ->
-                    (* here the function f return the variable
+                    (* the function f returns the variable
                      * history (sythethized histories) *)
                     let (k,v) = f sbl hist varlist in
                     let (m,h,var) = n#get in
                     n#set (m,h,var#add k v)
             ) (unbox_result t) synthlist
-            (* XXX: hackish .... is it always the case the the last node has
-             * the correct status ? *)
         in
         let _ = OutputBroker.print_up name newnode in
         Node(newnode)

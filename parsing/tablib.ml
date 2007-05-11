@@ -1124,4 +1124,7 @@ let expand_source m =
     let sl  = ExtGramm.expand_grammar_syntax_list gramms in
     let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
     <:str_item< declare $list:sty@[pr;ast;sl]$ end >>
+    (* XXX Idea: type definitions could be dumped in a different compilation
+     * module. then expand_source will basically only extend the grammar and
+     * open the type def module *)
 
