@@ -1,7 +1,7 @@
 (*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
 
-module PcamlGramm = Entrylib.Make(struct let gram = Pcaml.gram end)
 open Parselib
+open Keywords
 open Genlex 
 open PcamlGramm
 
@@ -9,8 +9,6 @@ let _loc = Token.dummy_loc
 let create_gramm = PcamlGramm.create_gramm
 let create_obj = PcamlGramm.create_obj
 
-module ExprLidEntry = EntryMake(struct type t = MLast.expr let ttype = TExprLid end) 
-module PattLidEntry = EntryMake(struct type t = MLast.patt let ttype = TPattLid end) 
 module ExprEntry = EntryMake(struct type t = MLast.expr let ttype = TExpr end) 
 module PattEntry = EntryMake(struct type t = MLast.patt let ttype = TPatt end) 
 module ExprSchemaEntry = EntryMake(struct type t = Ast.ex_term let ttype = TExprSchema end) 
@@ -405,29 +403,11 @@ let extend_entry label entrylist =
         None, [None, None, [make_entry_patt label [Patt]] ]);
     ]
 
-let add_expr_lid lid = 
-    let strlid lid strm =
-        match Stream.peek strm with
-        |Some(_,str) when str = lid -> Stream.junk strm; <:expr< $lid:str$ >>
-        |_ -> raise Stream.Failure
-in
-ExprLidEntry.add_entry_of_parser (strlid lid) lid ;
-ExprLidEntry.get_entry lid
-
-let add_patt_lid lid = 
-    let strlid lid strm =
-        match Stream.peek strm with
-        |Some(_,str) when str = lid -> Stream.junk strm; <:patt< $lid:str$ >>
-        |_ -> raise Stream.Failure
-in
-PattLidEntry.add_entry_of_parser (strlid lid) lid ;
-PattLidEntry.get_entry lid
-
 let expand_expr_constructor label =
     let ex = (ExprEntry.get_entry label) in
     let px = (PattEntry.get_entry label) in
-    let elid = add_expr_lid label in
-    let plid = add_patt_lid label in
+    let elid = add_lid label in
+    let plid = add_lid label in
     EXTEND
         Pcaml.expr: LEVEL "simple" [
             [ elid; "("; e = ex; ")" -> <:expr< ( $e$ : $lid:label$ ) >>
@@ -439,10 +419,10 @@ let expand_expr_constructor label =
         ]];
     END
 
+(* we write a file with the marshalled representation of the grammar
+ * to be then reused in other modules.
+ * see the directive : source Modulename *)
 let writegramm gramms =
-    (* we write a file with the marshalled representation of the grammar
-     * to be then reused in other modules.
-     * see the directive : source Modulename *)
     let tmp_dir =
         let str = "/tmp/twb" ^ Sys.getenv("LOGNAME") in
         let _ =
@@ -532,87 +512,6 @@ let extgramm gramms =
 
 let expand_constructors = 
     List.iter (fun (id,_) -> expand_expr_constructor id )
-
-let lid strm =
-    match Stream.peek strm with
-    |Some(_,"formula") -> Stream.junk strm; "formula"
-    |Some("LIDENT",s) when not(s = "expr") -> Stream.junk strm; s
-    |_ -> raise Stream.Failure
-let lid = Grammar.Entry.of_parser Pcaml.gram "lid" lid
-
-let exprid strm =
-    match Stream.peek strm with
-    |Some(_,"expr") -> Stream.junk strm; "expr"
-    |_ -> raise Stream.Failure
-let exprid = Grammar.Entry.of_parser Pcaml.gram "exprid" exprid 
-
-let nodeid strm =
-    match Stream.peek strm with
-    |Some(_,"node") -> Stream.junk strm; "node"
-    |_ -> raise Stream.Failure
-let nodeid = Grammar.Entry.of_parser Pcaml.gram "nodeid" nodeid 
-
-let formulaid strm =
-    match Stream.peek strm with
-    |Some(_,"formula") -> Stream.junk strm; "formula"
-    |_ -> raise Stream.Failure
-let formulaid = Grammar.Entry.of_parser Pcaml.gram "formulaid" formulaid 
-
-let setid strm =
-    match Stream.peek strm with
-    |Some(_,"set") -> Stream.junk strm; "set"
-    |_ -> raise Stream.Failure
-let setid = Grammar.Entry.of_parser Pcaml.gram "setid" setid 
-
-let msetid strm =
-    match Stream.peek strm with
-    |Some(_,"mset") -> Stream.junk strm; "mset"
-    |_ -> raise Stream.Failure
-let msetid = Grammar.Entry.of_parser Pcaml.gram "msetid" msetid 
-
-let singletonid strm =
-    match Stream.peek strm with
-    |Some(_,"singleton") -> Stream.junk strm; "singleton"
-    |_ -> raise Stream.Failure
-let singletonid = Grammar.Entry.of_parser Pcaml.gram "singletonid" singletonid 
-
-let listid strm =
-    match Stream.peek strm with
-    |Some(_,"list") -> Stream.junk strm; "list"
-    |_ -> raise Stream.Failure
-let listid = Grammar.Entry.of_parser Pcaml.gram "listid" listid 
-
-let connective strm =
-    let get_stream s =
-        let lexer = Grammar.glexer Pcaml.gram in
-        let (t,_) = lexer.Token.tok_func (Stream.of_string s) in
-        let l = Stream.npeek (String.length s) t in
-        let (r,_) = List.partition (fun (k,_) -> not(k = "EOI")) l in r
-    in
-    let s =
-        match Stream.peek strm with
-        |Some("STRING",s) -> s 
-        |_ -> raise Stream.Failure
-    in
-    try
-        Stream.junk strm;
-        add_symbol (get_stream s)
-    with Stream.Failure -> raise Stream.Failure
-let connective = Grammar.Entry.of_parser Pcaml.gram "connective" connective 
-
-let symbol strm =
-    let test strm ll =
-        try
-            let (_,m) = List.find (fun (n,l) ->
-                (Stream.npeek n strm) = l) ll
-            in List.map (fun (_,s) -> Symbol(s)) m
-        with Not_found -> raise Stream.Failure
-    in try
-        let l = test strm !symbol_table in
-        for i = 0 to (List.length l) - 1 do Stream.junk strm done;
-        l
-    with Stream.Failure -> raise Stream.Failure
-let symbol = Grammar.Entry.of_parser Pcaml.gram "symbol" symbol 
 
 let expand_grammar_type (id,rules) =
     let typevars = ref [(id,(true,true))] in
@@ -862,7 +761,7 @@ gramm: [
     | nodeid ; ":="; c = cont ; l = LIST0 [ s = symbol; c = cont -> s@[c] ] ; ";;" ->
             ("node",[c::(List.flatten l)])
         
-    | p = lid; ":="; rules = LIST1 rule SEP "|" ; ";;" ->
+    | p = test_lid; ":="; rules = LIST1 rule SEP "|" ; ";;" ->
             let var = [[Lid("")]] in
             let par = [[Symbol("(");Lid(p);Symbol(")")]] in
             (p,rules@var@par) 

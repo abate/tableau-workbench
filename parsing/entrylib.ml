@@ -1,7 +1,7 @@
 
 module Make(T : sig val gram : Grammar.g end) = struct
 
-    type ttype = TExpr | TPatt | TExprSchema | TPattSchema | TExprLid | TPattLid
+    type ttype = TExpr | TPatt | TExprSchema | TPattSchema | TExprLid | TPattLid | TLid
 
     let create_gramm label = Grammar.Entry.create T.gram label
     let create_gramm_of_parser stream_parser label =
@@ -44,6 +44,7 @@ module Make(T : sig val gram : Grammar.g end) = struct
                 |TPattSchema -> s^"_patt_schema"
                 |TExprLid -> s^"_lid_expr"
                 |TPattLid -> s^"_lid_patt"
+                |TLid -> s^"_lid"
                 
             let mem_entry s = Hashtbl.mem entrytab (label s)
             let add_entry_gen f s =

@@ -1,6 +1,7 @@
 (*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
 
 open Parselib
+open Keywords
 
 let rec expand_pa_term = function
     |Ast.PaConn(_,id,l) -> <:patt< `$uid:id$($list:List.map expand_pa_term l$) >>

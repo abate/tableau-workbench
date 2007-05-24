@@ -30,8 +30,8 @@ let check_numerator arr =
 let rec check_ex_term _loc vl = function
     |Ast.ExConn(_,_,l) -> List.iter (check_ex_term _loc vl) l
     |Ast.ExCons(_,s) |Ast.ExAtom(_,s) |Ast.ExVar(_,s) ->
-            if List.mem s vl || Hashtbl.mem Parselib.const_table s ||
-               Hashtbl.mem Parselib.hist_table s then ()
+            if List.mem s vl || Hashtbl.mem Keywords.const_table s ||
+               Hashtbl.mem Keywords.hist_table s then ()
             else Stdpp.raise_with_loc _loc (SyntaxError (s^" : Unbounded Variable"))
     |Ast.ExHist(s) |Ast.ExVari(s,_) -> ()
 

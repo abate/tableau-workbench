@@ -1,7 +1,7 @@
 
 define PROJ_sequent
   USE_CAMLP4 = yes
-  SOURCES := ast.ml entrylib.ml parselib.ml syntaxChecker.ml extGramm.ml tablib.ml extCommon.ml
+  SOURCES := ast.ml entrylib.ml keywords.ml parselib.ml syntaxChecker.ml extGramm.ml tablib.ml extCommon.ml
   RESULT := pa_sequent
   export PACKS := str unix twb.types
 endef

@@ -2,31 +2,8 @@
 
 open Genlex
 open Parselib
+open Keywords
 open Tablib
-
-let source strm =
-    match Stream.peek strm with
-    |Some(_,"source") -> Stream.junk strm; "source"
-    |_ -> raise Stream.Failure
-let source = Grammar.Entry.of_parser Pcaml.gram "source" source
-
-let mu strm =
-    match Stream.peek strm with
-    |Some(_,"mu") -> Stream.junk strm; "mu"
-    |_ -> raise Stream.Failure
-let mu = Grammar.Entry.of_parser Pcaml.gram "mu" mu
-
-let all strm =
-    match Stream.peek strm with
-    |Some(_,"all") -> Stream.junk strm; "all"
-    |_ -> raise Stream.Failure
-let all = Grammar.Entry.of_parser Pcaml.gram "all" all
-
-let last strm =
-    match Stream.peek strm with
-    |Some(_,"last") -> Stream.junk strm; "last"
-    |_ -> raise Stream.Failure
-let last = Grammar.Entry.of_parser Pcaml.gram "last" last
 
 EXTEND
 GLOBAL : Pcaml.str_item Pcaml.patt Pcaml.expr ExtGramm.num ExtGramm.denlist
@@ -55,7 +32,7 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
       |"NEG"; OPT ":="; e = Pcaml.expr -> expand_negation e
       |"EXIT"; OPT ":="; f = userfunction -> expand_exit f 
       |"OPTIONS"; l = LIST1 options SEP ";"; "END" -> expand_options l
-      |source; m = UIDENT -> expand_source m
+      |sourceid; m = UIDENT -> expand_source m
   ]];
 
   history:  [[ name = UIDENT; (t,e) = def -> (name,t,e)]];
@@ -84,7 +61,7 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
 (*      | "!"; t = tactic -> Ast.TaCut(t) *)
       | "Skip" -> Ast.TaSkip
       | "Fail" -> Ast.TaFail
-      | mu; OPT "("; var = muvar; OPT ")"; "."; t = tactic -> Ast.TaMu(var,t)
+      | muid; OPT "("; var = muvar; OPT ")"; "."; t = tactic -> Ast.TaMu(var,t)
       | "("; t = tactic; ")"; "*" ->
               let id = new_id "muvar" in
 (*              Ast.TaMu(id,Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))
@@ -170,11 +147,10 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
     ]];
 
   varindex: [[
-       "@"; all -> Ast.All
-      |"@"; last -> Ast.Last
+       "@"; allid -> Ast.All
+      |"@"; lastid -> Ast.Last
       |"@"; i = INT -> Ast.Int(int_of_string i)
   ]];
-
 
   ExtGramm.denlist: [[
        d = den; "|||"; dl = den_user   -> ((d::dl),Ast.User)
