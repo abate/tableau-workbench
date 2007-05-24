@@ -11,7 +11,7 @@ let get_match i s = Str.matched_group i s
 
 let hist_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
 let vars_table  : (string, string * MLast.ctyp * MLast.expr) Hashtbl.t = Hashtbl.create 50
-let const_table : (string, string) Hashtbl.t = Hashtbl.create 50
+let const_table : (string, (string * string)) Hashtbl.t = Hashtbl.create 50
 let tactic_table : (string, unit) Hashtbl.t = Hashtbl.create 50
 let expr_table : (string, MLast.expr) Hashtbl.t = Hashtbl.create 50
 let gramm_table : (string, unit) Hashtbl.t = Hashtbl.create 17
@@ -55,41 +55,41 @@ let test_lid = Grammar.Entry.of_parser Pcaml.gram "lid" test_lid
 
 let test_uid strm =
     match Stream.peek strm with
-    | Some (("UIDENT", s)) when not(Hashtbl.mem const_table s) -> Stream.junk strm; s
-    | _ -> raise Stream.Failure
+    |Some (("UIDENT", s)) when not(Hashtbl.mem const_table s) -> Stream.junk strm; s
+    |_ -> raise Stream.Failure
 let test_uid = Grammar.Entry.of_parser Pcaml.gram "test_uid" test_uid 
 
 let test_history strm =
     match Stream.peek strm with
-    | Some (("UIDENT", s)) when Hashtbl.mem hist_table s -> Stream.junk strm; s
-    | _ -> raise Stream.Failure
+    |Some (("UIDENT", s)) when Hashtbl.mem hist_table s -> Stream.junk strm; s
+    |_ -> raise Stream.Failure
 let test_history = Grammar.Entry.of_parser Pcaml.gram "test_history" test_history 
 
 let test_variable strm =
     match Stream.peek strm with
-    | Some (("LIDENT", s)) when Hashtbl.mem vars_table s -> Stream.junk strm; s
-    | _ -> raise Stream.Failure
+    |Some (("LIDENT", s)) when Hashtbl.mem vars_table s -> Stream.junk strm; s
+    |_ -> raise Stream.Failure
 let test_variable = Grammar.Entry.of_parser Pcaml.gram "test_variable" test_variable 
 
 let test_muvar strm =
     match Stream.peek strm with
-    | Some("UIDENT",s) when Hashtbl.mem tactic_table s -> Stream.junk strm; Ast.TaMVar(s)
-    | Some("UIDENT",s) -> Stream.junk strm; Ast.TaBasic(s)
-    | _ -> raise Stream.Failure
+    |Some("UIDENT",s) when Hashtbl.mem tactic_table s -> Stream.junk strm; Ast.TaMVar(s)
+    |Some("UIDENT",s) -> Stream.junk strm; Ast.TaBasic(s)
+    |_ -> raise Stream.Failure
 let test_muvar = Grammar.Entry.of_parser Pcaml.gram "test_muvar" test_muvar 
 
 let muvar strm =
     match Stream.peek strm with
-    | Some("UIDENT",s) -> Stream.junk strm; Hashtbl.replace tactic_table s (); s
-    | _ -> raise Stream.Failure
+    |Some("UIDENT",s) -> Stream.junk strm; Hashtbl.replace tactic_table s (); s
+    |_ -> raise Stream.Failure
 let muvar = Grammar.Entry.of_parser Pcaml.gram "muvar" muvar 
 
 let test_sep strm =
     match Stream.peek strm with
-    | Some(_,s) when s =~ "~~+" -> Stream.junk strm; Ast.UnChoice
-    | Some(_,s) when s =~ "==+" -> Stream.junk strm; Ast.NoChoice
-    | Some(_,s) when s =~ "--+" -> Stream.junk strm; Ast.ExChoice
-    | _ -> raise Stream.Failure
+    |Some(_,s) when s =~ "~~+" -> Stream.junk strm; Ast.UnChoice
+    |Some(_,s) when s =~ "==+" -> Stream.junk strm; Ast.NoChoice
+    |Some(_,s) when s =~ "--+" -> Stream.junk strm; Ast.ExChoice
+    |_ -> raise Stream.Failure
 let test_sep = Grammar.Entry.of_parser Pcaml.gram "test_sep" test_sep 
 
 let connective strm =

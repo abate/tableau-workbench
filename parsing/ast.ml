@@ -56,10 +56,10 @@ and ex_expr =
     |ExExpr of Token.flocation * MLast.expr
 
 and ex_term =
-    |ExConn  of label * string * ex_term list
-    |ExCons  of label * string
-    |ExAtom  of label * string
-    |ExVar   of label * string
+    |ExConn  of string * ex_term list
+    |ExCons  of string
+    |ExAtom  of string
+    |ExVar   of string
     |ExHist  of string
     |ExVari  of string * varindex
 

@@ -205,7 +205,7 @@ let make_entry_expr_schema self token_list =
     let gen_action tl =
         match tl with
         |[Atom] |[Const(_)] |[Lid(_)] |Symbol("(")::_ -> fun l -> List.hd l
-        |_ -> let id = new_conn tl in fun l -> Ast.ExConn(self,id,l)
+        |_ -> let id = new_conn tl in fun l -> Ast.ExConn(id,l)
     in
     let actiontbl = Hashtbl.create 17 in
     let args : Ast.ex_term list ref = ref [] in
@@ -219,10 +219,10 @@ let make_entry_expr_schema self token_list =
         if Obj.tag x = Obj.string_tag then
             match t with
             |Symbol(_) -> ()
-            |Atom ->            args := Ast.ExAtom(self,x') :: !args
-            |Const(_) ->        args := Ast.ExCons(self,x') :: !args
-            |Lid("") ->         args := Ast.ExVar(self,x') :: !args 
-            |Lid(s) |List(s) -> args := Ast.ExVar(s,x') :: !args 
+            |Atom ->            args := Ast.ExAtom(x') :: !args
+            |Const(_) ->        args := Ast.ExCons(x') :: !args
+            |Lid("") ->         args := Ast.ExVar(x') :: !args 
+            |Lid(s) |List(s) -> args := Ast.ExVar(x') :: !args 
             |Type(_) | Expr | Patt -> assert(false) 
         else args := x' :: !args
     in
@@ -508,7 +508,7 @@ let extgramm gramms =
         ) rules;
         DebugOptions.print (Printf.sprintf "\n");
     ) gramms;
-    DebugOptions.print (PattSchemaEntry.entries_to_string ())
+    DebugOptions.print (ExprSchemaEntry.entries_to_string ())
 
 let expand_constructors = 
     List.iter (fun (id,_) -> expand_expr_constructor id )
@@ -663,7 +663,7 @@ let expand_printer gramm =
 let expand_ast2input gramm = 
     let rec aux (name,rules) =
         let gen_pel = function
-            |[Atom] -> Some(<:patt< Ast.ExAtom(_,a) >>,None,<:expr< `Atom a>>)
+            |[Atom] -> Some(<:patt< Ast.ExAtom(a) >>,None,<:expr< `Atom a>>)
             |[Const(s)] -> None
             |[Lid(_)] |[Type(_)] |[Patt] |[Expr] 
             |Type(_) :: Symbol(":") :: _
@@ -682,14 +682,14 @@ let expand_ast2input gramm =
                     in
                     let id = new_conn tl in
                     Some(
-                        <:patt< Ast.ExConn(_,$str:id$,l) >>,None,
+                        <:patt< Ast.ExConn($str:id$,l) >>,None,
                         <:expr< `$uid:id$($list:List.rev l$) >>
                         )
         in
-        let const = Hashtbl.fold( fun s k acc ->
-            if k = name then
-                (<:patt< Ast.ExCons(_,$str:s$) >>,
-                None,<:expr< `$uid:s$>>)::acc
+        let const = Hashtbl.fold( fun k (l,o) acc ->
+            if l = name && o = "formula" then
+                (<:patt< Ast.ExCons($str:k$) >>,
+                None,<:expr< `$uid:k$>>)::acc
             else acc
             ) const_table []
         in
@@ -705,13 +705,16 @@ let select_node_entry = List.filter (fun (l,_) -> l = "node")
 let update_gramm_table gramms =
     let tb = (Hashtbl.create 17) in
     let _ = List.iter (fun (k,v) -> Hashtbl.add tb k v) gramms in 
-    let rec aux n rules =
+    let rec aux orig label rules =
         List.iter(function
             |[Const(u)] -> 
-                    if Hashtbl.mem const_table u then ()
-                    else Hashtbl.add const_table u n
-            |[Lid(id)] when not(id = n) && not(id = "") ->
-                    aux id (Hashtbl.find tb id)
+                    if Hashtbl.mem const_table u && orig = "formula" then
+                        if orig = "formula" then
+                            Hashtbl.replace const_table u (label,orig)
+                        else ()
+                    else Hashtbl.add const_table u (label,orig)
+            |[Lid(id)] when not(id = label) && not(id = "") && (orig = "formula") ->
+                    aux orig label (Hashtbl.find tb id)
             |_ -> ()
         ) rules
     in
@@ -724,10 +727,7 @@ let update_gramm_table gramms =
                 |_ -> assert(false)
                 end
         |("expr",_) -> ()
-        |("formula",rules) ->
-                Hashtbl.add gramm_table "formula" ();
-                aux "formula" rules
-        |(n,rule) -> Hashtbl.add gramm_table n ()
+        |(n,rules) -> Hashtbl.add gramm_table n (); aux n n rules
     ) gramms
 
 EXTEND
