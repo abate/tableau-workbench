@@ -7,7 +7,7 @@
 CONNECTIVES [ "!";"&";"v";"->";"<->";"=>";"#"]
 GRAMMAR
 formula :=
-     Atom | Verum | Falsum
+     ATOM | Verum | Falsum
     | formula & formula
     | formula v formula
     | formula -> formula

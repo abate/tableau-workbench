@@ -14,7 +14,7 @@ CONNECTIVES [
 ">-<";"^";"+";"#";"^^";"++";"=>"] 
 GRAMMAR
   formula :=
-       Atom | Verum | Falsum | Special
+       ATOM | Verum | Falsum | Special
       | formula & formula
       | formula v formula
       | formula -> formula

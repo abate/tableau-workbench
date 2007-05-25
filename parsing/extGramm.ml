@@ -520,7 +520,7 @@ let expand_grammar_type (id,rules) =
         |List(s) when s = id -> <:ctyp< list '$lid:s$ >>
         |Lid(s)  -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ >>
         |List(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< list '$lid:s$ >>
-        |Atom -> <:ctyp< string >>
+        |Atom -> <:ctyp< [= `Atom of string ] >>
         |Const(s) -> <:ctyp< [= `$uid:s$ ] >>
         |_ -> assert(false)
     in
@@ -612,7 +612,7 @@ let expand_printer gramm =
         let gen_pel = function
             |[Atom] ->
                     Some(<:patt< `Atom( a ) >>,None,
-                    <:expr< Printf.sprintf $str:"%s"$ a >>)
+                    <:expr< Printf.sprintf "%s" a >>)
             |[Const(s)] -> 
                     Some(<:patt< `$uid:s$ >>,None,
                     <:expr< Printf.sprintf $str:s$  >>)
@@ -635,16 +635,19 @@ let expand_printer gramm =
                             match s with
                             |Symbol(_) -> (acc,i)
                             |Lid(id) -> (("c"^string_of_int i,id)::acc,i+1)
+                            |Atom -> (("c"^string_of_int i,"")::acc,i+1)
                             |_ -> assert(false)
                         ) ([],0) tl
                     in
                     let exl =
-                        List.map (fun (e,id) ->
-                            <:expr< $lid:id^"_printer"$ $lid:e$ >>
+                        List.map (function
+                            |(e,"") -> <:expr< Printf.sprintf "%s" $lid:e$ >>
+                            |(e,id) -> <:expr< $lid:id^"_printer"$ $lid:e$ >>
                         ) (List.rev l)
                     in 
-                    let pal = List.map (fun (e,_) -> 
-                            <:patt< $lid:e$ >>
+                    let pal = List.map (function
+                        |(e,"") -> <:patt< `Atom $lid:e$ >>
+                        |(e,_) -> <:patt< $lid:e$ >>
                         ) (List.rev l)
                     in 
                     let id = new_conn tl in
@@ -660,12 +663,11 @@ let expand_printer gramm =
         >>
     in <:str_item< declare $list:List.map aux gramm$ end >>
 
-let expand_ast2input gramm = 
-    let rec aux (name,rules) =
+let expand_ast2input gramm =
+    let aux (name,rules) = 
         let gen_pel = function
-            |[Atom] -> Some(<:patt< Ast.ExAtom(a) >>,None,<:expr< `Atom a>>)
-            |[Const(s)] -> None
-            |[Lid(_)] |[Type(_)] |[Patt] |[Expr] 
+            |[Atom] -> Some(<:patt< Ast.ExAtom a >>,None, <:expr< `Atom a >>)
+            |[Const(_)] |[Lid(_)] |[Type(_)] |[Patt] |[Expr] 
             |Type(_) :: Symbol(":") :: _
             |Symbol("("):: _ -> None
             |tl ->
@@ -673,17 +675,26 @@ let expand_ast2input gramm =
                         List.fold_left (fun (acc,i) s -> 
                             match s with
                             |Symbol(_) -> (acc,i)
-                            |Lid(id) -> (
-                                <:expr<
-                                $lid:id^"_ast2input"$ (List.nth l $int:string_of_int i$)
-                                >>::acc,i+1)
-                            |_ -> assert(false) 
+                            |Lid(id) -> (("c"^string_of_int i,id)::acc,i+1)
+                            |Atom -> (("c"^string_of_int i,"")::acc,i+1)
+                            |_ -> assert(false)
                         ) ([],0) tl
                     in
+                    let exl =
+                        List.map (function
+                            |(e,"") -> <:expr< `Atom $lid:e$ >>
+                            |(e,id) -> <:expr< $lid:id^"_ast2input"$ $lid:e$ >>
+                        ) (List.rev l)
+                    in 
+                    let pal = List.map (function
+                        |(e,"") -> <:patt< Ast.ExAtom $lid:e$ >>
+                        |(e,_) -> <:patt< $lid:e$ >>
+                        ) (List.rev l)
+                    in 
                     let id = new_conn tl in
                     Some(
-                        <:patt< Ast.ExConn($str:id$,l) >>,None,
-                        <:expr< `$uid:id$($list:List.rev l$) >>
+                        <:patt< Ast.ExConn($str:id$,$list_to_pattlist pal$) >>,None,
+                        <:expr< `$uid:id$($list:exl$) >>
                         )
         in
         let const = Hashtbl.fold( fun k (l,o) acc ->
@@ -782,7 +793,7 @@ assoc: [
 ];
 
 psymbol: [
-    [ "Atom"  -> [Atom]
+    [ "ATOM"  -> [Atom]
     (* | "extend"; m = UIDENT -> Extend(m) *)
     | e = symbol -> e
     | e = ptype -> [e]

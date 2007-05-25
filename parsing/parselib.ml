@@ -29,6 +29,11 @@ let list_to_exprlist l =
         fun x l -> <:expr< [ $x$ :: $l$ ] >>
     ) l <:expr< [] >>
 
+let list_to_pattlist l =
+    List.fold_right (
+        fun x l -> <:patt< [ $x$ :: $l$ ] >>
+    ) l <:patt< [] >>
+
 let pa_expr_is_var = function
     |Ast.PaTerm(Ast.PaVar(_)) -> true
     |Ast.PaLabt(_,Ast.PaVar(_)) -> true

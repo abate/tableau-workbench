@@ -23,7 +23,7 @@ formula :=
          | [] formula
          | <> formula
          | ~ formula
-         |  Atom | Verum | Falsum
+         |  ATOM | Verum | Falsum
 ;;
 
 expr := formula ;;

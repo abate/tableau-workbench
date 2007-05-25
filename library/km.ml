@@ -3,7 +3,7 @@ CONNECTIVES [ "~";"&";"v";"->";"<->";"[";"]";"<";">" ]
 GRAMMAR
 idx := One | Two ;;
 formula :=
-     Atom | Verum | Falsum
+     ATOM | Verum | Falsum
     | idx
     | formula & formula
     | formula v formula

@@ -6,11 +6,11 @@ program :=
       * program
     | program U program
     | program ; program
-    | Atom
+    | ATOM
 ;;
 
 formula :=
-     Atom | Verum | Falsum
+     ATOM | Verum | Falsum
     | formula & formula
     | formula v formula
     | formula -> formula
