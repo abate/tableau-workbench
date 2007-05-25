@@ -297,7 +297,8 @@ let get_labels (Ast.Numerator arr) =
         |Ast.PaTupl(l) -> List.flatten (List.map aux l)
         |Ast.PaPatt(pa) -> failwith "get labels..." (* (extract_patt_vars [] pa) *)
     in
-    let constlist = Hashtbl.fold (fun k _ acc -> (k,k)::acc
+    let constlist = Hashtbl.fold (fun k (l,o) acc ->
+        (k,String.capitalize o)::acc (* XXX: not sure about this one ... *)
         ) const_table []
     in
     unique (
@@ -371,8 +372,7 @@ let rec expand_ex_term labels use = function
             <:expr< let $list:pel$ in
             ExtList.$lid:"map"^string_of_int(List.length pel)$ (fun
                 [( $list:idlist$ ) -> $aux ex_term$
-                |_ -> assert(False)
-                ]
+                |_ -> assert(False) ]
             ) ( $list:exl$ ) >>
             )
     |Ast.ExAtom(id) ->
