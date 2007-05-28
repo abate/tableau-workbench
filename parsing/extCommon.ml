@@ -55,6 +55,10 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
               Ast.TaAlt(t1,t2,<:expr< tcond "Open" >>)
       | t1 = tactic; "|" ; t2 = tactic ->
               Ast.TaAlt(t1,t2,<:expr< tcond "Close" >>)
+      | t1 = tactic; "?||"; t2 = tactic ->
+              Ast.TaFairAlt(t1,t2,<:expr< tcond "Open" >>)
+      | t1 = tactic; "?|" ; t2 = tactic ->
+              Ast.TaFairAlt(t1,t2,<:expr< tcond "Close" >>)
       ]
   |
       [ "("; t = tactic; ")" -> t

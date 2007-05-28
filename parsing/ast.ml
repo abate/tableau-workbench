@@ -12,9 +12,10 @@ and tactic =
     |TaModule of string * string
     |TaSkip
     |TaFail
-    |TaSeq    of tactic * tactic
-    |TaAlt    of tactic * tactic * MLast.expr
-    |TaAltCut of tactic * tactic
+    |TaSeq     of tactic * tactic
+    |TaAlt     of tactic * tactic * MLast.expr
+    |TaFairAlt of tactic * tactic * MLast.expr
+    |TaAltCut  of tactic * tactic
     |TaCut  of tactic
     |TaMu   of string * tactic
     |TaVar  of string

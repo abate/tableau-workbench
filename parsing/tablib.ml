@@ -1063,6 +1063,10 @@ let rec expand_tactic = function
             let ext1 = expand_tactic t1 in
             let ext2 = expand_tactic t2 in
             <:expr< Alt( $list:[ext1;ext2;cond]$ ) >>
+    |Ast.TaFairAlt(t1,t2,cond) ->
+            let ext1 = expand_tactic t1 in
+            let ext2 = expand_tactic t2 in
+            <:expr< AltFair( $list:[ext1;ext2;cond]$ ) >>
     |Ast.TaCut(t) ->
             let ext = expand_tactic t in
             <:expr< Cut( $ext$ ) >>

@@ -19,6 +19,7 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         |Cut of tactic
         |Seq of tactic * tactic
         |Alt of tactic * tactic * (node result -> bool)
+        |FairAlt of tactic * tactic * (node result -> bool)
         |AltCut of tactic * tactic
         |Mu of (string * tactic)
         |Var of string
@@ -57,10 +58,13 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         |Seq(t1,t2) -> visit_aux env (t2::acc) t1 
         |Cut(t1)    -> fun n -> Llist.determ (visit_aux env acc t1 n)
         |AltCut(t1,t2) -> fun n -> 
-                Llist.mplus (visit_aux env acc t1 n) (visit_aux env acc t2 n)
-        |Alt(t1,t2,cond) when (Random.int 2) = 0 -> fun n ->
-                Llist.filter cond
-                (Llist.mplus (visit_aux env acc t1 n) (visit_aux env acc t2 n))
+                Llist.determ (
+                    Llist.mplus (visit_aux env acc t1 n) (visit_aux env acc t2 n)
+                )
+        |FairAlt(t1,t2,cond) -> 
+                if (Random.int 2) = 0
+                then visit_aux env acc (Alt(t1,t2,cond)) 
+                else visit_aux env acc (Alt(t2,t1,cond))
         |Alt(t1,t2,cond) -> fun n ->
                 Llist.filter cond
                 (Llist.mplus (visit_aux env acc t2 n) (visit_aux env acc t1 n))
