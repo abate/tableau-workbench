@@ -45,7 +45,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
          ("--outdir",Arg.String (fun l -> Options.outdir := l),  "set output directory");
          ("--out",   Arg.String (fun l -> Options.outtype := l),  "set output type");
 
-         ("--nocache", Arg.Clear  Options.cache, "disable caching");
+         ("--nocache", Arg.Clear  Options.cache, "disable function memoization");
         ]
     
     let input_file = ref None

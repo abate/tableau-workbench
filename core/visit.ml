@@ -83,6 +83,8 @@ module Make(N:Node.S)(R: Rule.S with type node = N.node)
         else
             visit_aux env acc str node
 
-    let visit cache t n = visit_aux [] [] t n
+    let visit cache t n =
+        table := cache ; 
+        visit_aux [] [] t n
 
 end

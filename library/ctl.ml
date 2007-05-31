@@ -90,6 +90,7 @@ TABLEAU
   ] ; [] ] 
   BRANCH [ [ not_false(uev@1) ; not_emptylist(EX S) ] ]
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
+  CACHE := true
   END
 
   RULE D
