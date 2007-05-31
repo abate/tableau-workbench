@@ -1,121 +1,129 @@
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  ExX, "ExX_", One;
-  AxX, "AxX_", One;
-  ExG, "ExG_", One;
-  ExF, "ExF_", One;
-  AxG, "AxG_", One;
-  AxF, "AxF_", One;
-  Not, "~_",   Zero;
-  Star, "*_",   Zero;
-  Falsum, Const;
-  Verum, Const
+CONNECTIVES [
+    "~";"&";"v";"->";"<->";
+    "AG";"EF";
+    "EG";"AF";
+    "AX";"EX"
+]
+GRAMMAR
+formula :=
+     ATOM | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | AF formula
+    | EF formula
+    | AG formula
+    | EG formula
+    | EX formula
+    | AX formula
+    | ~ formula
+;;
+
+expr := formula ;;
 END
 
-HISTORIES
-  (Fev : Set of Formula := new Set.set) ;
-  (Br  : List of ( Set of Formula * Set of Formula ) := new Listoftupleset.listobj) ;
-  (uev : Set of ( Formula * Int ) := new Setoftermint.set) ; 
-  (fev : Set of ( Formula * Int ) := new Setoftermint.set) ; 
-  (status : String := new Set.set)
-END
-
+open Twblib
 open UbFunctions
 open UbRewrite
+
+HISTORIES
+  Fev : FormulaSet.set := new FormulaSet.set;
+  Br  : ListFormulaSet.olist := new ListFormulaSet.olist
+END
+
+VARIABLES
+  uev : FormulaIntSet.set := new FormulaIntSet.set;
+  fev : FormulaIntSet.set := new FormulaIntSet.set;
+  status : string := "Undef"
+END
+
+let nnf = List.map nnf_term 
 
 TABLEAU
 
   RULE Id
-  { a } ; { ~ a } == Stop
+  { P } ; { ~ P } == Stop
   BACKTRACK [ uev := setclose (Br) ]
   END
   
   RULE False
-  Falsum == Stop
+  { Falsum } == Stop
   BACKTRACK [ uev := setclose (Br) ]
   END
 
   RULE Axf
-      { AxF p }
+      { AF P }
   ===================
-   p ||| AxX AxF p 
+   P ||| AX AF P 
 
-  ACTION [ [ Fev := add(AxF p, Fev) ]; [] ]
-  BRANCH [ [ not_empty(uev@1) ] ] 
+  ACTION [ [ Fev := add(AF P, Fev) ]; [] ]
+  BRANCH [ [ not_emptyset(uev@1) ] ] 
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
   END
 
   RULE Exf
-      { ExF p }
+      { EF P }
   ===================
-   p ||| ExX ExF p 
+   P ||| EX EF P 
 
-  ACTION [ [ Fev := add(ExF p, Fev) ] ; [] ]
-  BRANCH [ [ not_empty(uev@1) ] ] 
+  ACTION [ [ Fev := add(EF P, Fev) ] ; [] ]
+  BRANCH [ [ not_emptyset(uev@1) ] ] 
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
   END 
 
   RULE Exx
-  { ExX p } ; ExX s ; AxX y ; z
+  { EX P } ; EX S ; AX Y ; Z
   =============================
-      p ; y ||| ExX s ; AxX y
+      P ; Y ||| EX S ; AX Y
       
-  COND [ loop_check(p, y, Br) ]
+  COND [ loop_check(P, Y, Br) ]
   ACTION [ [
-      Br  := push(p, y, Fev, Br); 
+      Br  := push(P, Y, Fev, Br); 
       Fev := emptyset(Fev)
   ] ; [] ] 
-  BRANCH [ [ not_false(uev@1) ; not_empty_list(ExX s) ] ]
+  BRANCH [ [ not_false(uev@1) ; not_emptylist(EX S) ] ]
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
-  END (CACHE)
+  END
 
-  RULE Ref
-  ExX x ; {AxX p} == ExX Verum ; AxX p
-  COND [ is_empty_list(ExX x) ]
+  RULE D
+  EX Y ;  (AX P) == EX Verum ; AX P
+  COND [ is_emptylist(EX Y) ]
   END
 
   RULE Loop
-  ExX x ; AxX y == Stop
-  COND [ not_empty_list(ExX x) ]
-  BACKTRACK [ uev := setuev_loop(x, y, Fev, Br) ]
+  EX P ; AX Y == Stop
+  COND [ not_emptylist(EX P) ]
+  BACKTRACK [ uev := setuev_loop(P, Y, Fev, Br) ]
   END
 
   RULE Or
-  { a v b }
+  { P v Q }
   =========
-   a ||| b
+   P ||| Q
 
-  BRANCH [ [ not_empty(uev@1) ] ] 
-  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ] 
+  BRANCH [ [ not_emptyset(uev@1) ] ]
+  BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
   END
 
-  RULE And a & b == a ; b END
-  RULE Axg AxG p == p ; AxX AxG p END
-  RULE Exg ExG p == p ; ExX ExG p END
+  RULE And P & Q == P ; Q END
+  RULE Axg AG P == P ; AX AG P END
+  RULE Exg EG P == P ; EX EG P END
 
 END
 
-let exit (uev) =
-    match uev#elements with
-    |(termfalse,_)::[] -> "Closed"
+let exit (uev) = match uev#elements with
     |[] -> "Open"
+    |[formula ( Falsum ),_] -> "Closed"
     |_ -> "Closed"
-;;
 
-PP := nnf_term
-NEG := neg_term
+PP := nnf
+NEG := List.map neg_term
 EXIT := exit (uev@1)
 
-OPTIONS
-    ("-D", (Arg.Set debug), "Enable debug")
-END
+let saturation = tactic ( (Id ! False ! And ! Axg ! Exg ! Or ! Axf ! Exf ) )
+let modal = tactic ( ( (saturation)* ; (D ! Exx ! Loop) ) )
+STRATEGY := tactic ( (modal)* )
 
-let saturation = tactic ( (Id | False | And | Axg | Exg | Or | Axf | Exf )* )
-
-let modal = tactic ( ( saturation | Ref | Exx )* )
-
-STRATEGY ( (modal | Loop)* )
+MAIN

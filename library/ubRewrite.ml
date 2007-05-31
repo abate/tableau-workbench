@@ -1,118 +1,100 @@
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  ExX, "ExX_", One;
-  AxX, "AxX_", One;
-  ExG, "ExG_", One;
-  ExF, "ExF_", One;
-  AxG, "AxG_", One;
-  AxF, "AxF_", One;
-  Not, "~_",   Zero;
-  Falsum, Const;
-  Verum, Const
-END
 
-let rec nnf_term f = 
+source Ub
+
+let rec nnf_term f =
     match f with
-    |term ( a & b ) ->
+    |formula ( a & b ) ->
         let x = nnf_term a
         and y = nnf_term b
-        in term ( x & y )
+        in formula ( x & y )
 
-    |term ( ~ ( a & b ) ) ->
-        let x = nnf_term term ( ~ a )
-        and y = nnf_term term ( ~ b )
-        in term ( x v y )
+    |formula ( ~ ( a & b ) ) ->
+        let x = nnf_term formula ( ~ a )
+        and y = nnf_term formula ( ~ b )
+        in formula ( x v y )
 
-    |term ( a v b ) ->
+    |formula ( a v b ) ->
             let x = nnf_term a
             and y = nnf_term b
-            in term ( x v y )
+            in formula ( x v y )
 
-    |term ( ~ ( a v b ) ) ->
-            let x = nnf_term term ( ~ a )
-            and y = nnf_term term ( ~ b )
-            in term ( x & y )
+    |formula ( ~ ( a v b ) ) ->
+            let x = nnf_term formula ( ~ a )
+            and y = nnf_term formula ( ~ b )
+            in formula ( x & y )
 
-    |term ( a <-> b ) ->
-            let x = nnf_term term ( a -> b )
-            and y = nnf_term term ( b -> a )
-            in term ( x & y )
+    |formula ( a <-> b ) ->
+            let x = nnf_term formula ( a -> b )
+            and y = nnf_term formula ( b -> a )
+            in formula ( x & y )
 
-    |term ( ~ ( a <-> b ) ) ->
-            let x = nnf_term term ( ~ (a -> b) )
-            and y = nnf_term term ( ~ (b -> a) )
-            in term ( x v y )
+    |formula ( ~ ( a <-> b ) ) ->
+            let x = nnf_term formula ( ~ (a -> b) )
+            and y = nnf_term formula ( ~ (b -> a) )
+            in formula ( x v y )
 
-    |term ( a -> b ) ->
-            nnf_term term ( (~ a) v b )
+    |formula ( a -> b ) ->
+            nnf_term formula ( (~ a) v b )
 
-    |term ( ~ (a -> b) ) ->
-            nnf_term term ( a & (~ b) )
+    |formula ( ~ (a -> b) ) ->
+            nnf_term formula ( a & (~ b) )
 
-    |term ( ~ ~ a ) -> nnf_term a
+    |formula ( ~ ~ a ) -> nnf_term a
 
-    |term ( ~ Atom ) as f -> f
-    |term ( Atom ) as f -> f
+    |formula ( ~ P ) as f -> f
+    |formula ( P ) as f -> f
 
-    |term ( AxX a ) -> 
+    |formula ( AX a ) -> 
             let x = nnf_term a
-            in term ( AxX x )
+            in formula ( AX x )
             
-    |term ( ~ ( AxX a ) ) -> 
-            let x = nnf_term ( term ( ~ a ) )
-            in term ( ExX x )
+    |formula ( ~ ( AX a ) ) -> 
+            let x = nnf_term ( formula ( ~ a ) )
+            in formula ( EX x )
 
-    |term ( ExX a ) -> 
+    |formula ( EX a ) -> 
             let x = nnf_term a
-            in term ( ExX x )
+            in formula ( EX x )
             
-    |term ( ~ ( ExX a ) ) -> 
-            let x = nnf_term ( term ( ~ a ) )
-            in term ( AxX x )
+    |formula ( ~ ( EX a ) ) -> 
+            let x = nnf_term ( formula ( ~ a ) )
+            in formula ( AX x )
             
-    |term ( ~ AxG a ) ->
-            nnf_term term ( ExF ~ a )
+    |formula ( ~ AG a ) ->
+            nnf_term formula ( EF ~ a )
             
-    |term ( ~ ExG a ) ->
-            nnf_term term ( AxF ~ a )
+    |formula ( ~ EG a ) ->
+            nnf_term formula ( AF ~ a )
  
-    |term ( AxG a ) -> 
-            let x = nnf_term term ( a )
-            in term ( AxG x )
+    |formula ( AG a ) -> 
+            let x = nnf_term formula ( a )
+            in formula ( AG x )
 
-    |term ( ExG a ) -> 
-            let x = nnf_term term ( a )
-            in term ( ExG x )
+    |formula ( EG a ) -> 
+            let x = nnf_term formula ( a )
+            in formula ( EG x )
 
-    |term ( ~ ExF a ) -> 
-            let x = nnf_term term ( ~ a )
-            in term ( AxG x )
+    |formula ( ~ EF a ) -> 
+            let x = nnf_term formula ( ~ a )
+            in formula ( AG x )
 
-    |term ( ~ AxF a ) -> 
-            let x = nnf_term term ( ~ a )
-            in term ( ExG x )
+    |formula ( ~ AF a ) -> 
+            let x = nnf_term formula ( ~ a )
+            in formula ( EG x )
 
-    |term ( ExF a ) -> 
-            let x = nnf_term term ( a )
-            in term ( ExF x )
+    |formula ( EF a ) -> 
+            let x = nnf_term formula ( a )
+            in formula ( EF x )
 
-    |term ( AxF a ) -> 
-            let x = nnf_term term ( a )
-            in term ( AxF x )
+    |formula ( AF a ) -> 
+            let x = nnf_term formula ( a )
+            in formula ( AF x )
 
-    |term ( ~ Falsum ) -> term ( Verum )
-    |term ( ~ Verum ) -> term ( Falsum )
+    |formula ( ~ Falsum ) -> formula ( Verum )
+    |formula ( ~ Verum ) -> formula ( Falsum )
 
-    |term ( Constant ) -> f
-    |term ( ~ Constant ) -> f
-    
-    | _ -> failwith ("nnf_term "^(!Basictype.string_of_formula f))
-;;
+    |formula ( Falsum ) -> formula ( Falsum )
+    |formula ( Verum ) -> formula ( Verum )
 
-let neg_term = function term ( a ) -> term ( ~ a ) ;;
-(*let neg = Basictype.map neg_term ;;
-let nnf = Basictype.map nnf_term ;;
-*)
+
+let neg_term = function formula ( a ) -> formula ( ~ a ) 

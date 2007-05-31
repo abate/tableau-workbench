@@ -44,8 +44,7 @@ VARIABLES
   status : string := "Undef" 
 END
 
-let neg = List.map neg_term ;;
-let nnf = List.map nnf_term ;;
+let nnf = List.map nnf_term 
 
 TABLEAU
 
@@ -137,8 +136,8 @@ let exit (uev) = match uev#elements with
     |[formula ( Falsum ),_] -> "Closed"
     |_ -> "Closed"
  
-PP := nnf
-NEG := neg
+PP := List.map nnf_term
+NEG := List.map neg_term
 EXIT := exit (uev@1)
   
 let saturation = tactic ( (Id ! False ! And ! Or ! Axu ! Exu ! Exb ! Axb ) )

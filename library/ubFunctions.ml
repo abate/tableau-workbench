@@ -1,48 +1,54 @@
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  ExX, "ExX_", One;
-  AxX, "AxX_", One;
-  ExG, "ExG_", One;
-  ExF, "ExF_", One;
-  AxG, "AxG_", One;
-  AxF, "AxF_", One;
-  Not, "~_",   Zero;
-  Star, "*_",   Zero;
-  Falsum, Const;
-  Verum, Const
-END
 
+source Ub
+
+module FormulaSet = TwbSet.Make(
+    struct
+        type t = formula
+        let to_string = formula_printer
+        let copy s = s
+    end
+)
+
+module FormulaIntSet = TwbSet.Make(
+    struct
+        type t = formula * int
+        let to_string (f,i) = Printf.sprintf "(%i,%s)" i (formula_printer f)
+        let copy s = s
+    end
+)
+
+module ListFormulaSet = TwbList.Make(
+    struct
+        type t = (FormulaSet.set * FormulaSet.set)
+        let to_string (s1,s2) =
+            Printf.sprintf "(%s,%s)" s1#to_string s2#to_string
+        let copy (s1,s2) = (s1#copy,s2#copy)
+    end
+)
+
+let rec filter_map f = function
+    | [] -> []
+    | hd :: tl ->
+            begin match f hd with
+            |None -> filter_map f tl
+            |Some(a) -> a :: filter_map f tl
+            end
 
 (* debug flag *)
-let debug = ref false ;;
+let debug = ref false
 
-let add (l,h) = h#addlist l
-let notin (l,h) = not(h#mem (List.hd l))
-let isin (l,h) = h#mem (List.hd l)
-let not_empty l = not(l#is_empty)
-let is_empty l = l#is_empty
-let is_empty_list l = ( List.length l = 0 )
-let not_empty_list l = not ( List.length l = 0 )
-let emptyset h = h#empty
-let unstar l = Basictype.map (function Star x -> x |x -> x) l
-    
-let not_false l =
+let not_false uev =
     not(List.exists (function
-        |(`Formula ( term ( Falsum ) ),_) -> true
+        |formula ( Falsum ),_ -> true
         |_ -> false
-    ) l#elements)
-;;
+    ) uev#elements)
 
 let push (dia,box,fev,br) = 
-    let nodeset = (new Set.set)#addlist (dia@box) 
+    let nodeset = (new FormulaSet.set)#addlist (dia@box) 
     in br#add (nodeset,fev)
-;;
 
-let termfalse = `Formula ( term ( Falsum ) ) ;; 
-let setclose br = (new Setoftermint.set)#add (termfalse, br#length) ;;
+let termfalse = formula ( Falsum ) 
+let setclose br = (new FormulaIntSet.set)#add (termfalse, br#length)
 
 let setuev_beta (uev1, uev2, br) =
     let l = (br#length -1) in
@@ -53,33 +59,32 @@ let setuev_beta (uev1, uev2, br) =
         else ()
     in 
     if (List.exists (function
-        |(`Formula ( term ( Falsum ) ),_) -> true
+        |formula ( Falsum ),_ -> true
         | _ -> false) uev2#elements) 
     then uev1
 
     else if (List.exists (function
-        |(`Formula ( term ( Falsum ) ),_) -> true
+        |formula ( Falsum ),_ -> true
         | _ -> false) uev1#elements) 
     then uev2
     
     else 
         let a = 
-        (new Setoftermint.set)#addlist(
-            ExtList.filter_map (fun (x,nx) ->
+        (new FormulaIntSet.set)#addlist(
+            filter_map (fun (x,nx) ->
                 try
                     let (z,nz) = 
                         List.find (fun (y,_) -> y = x) uev1#elements
                     in
                     begin match x with
-                    |`LabeledFormula ([],term (ExF d)) -> Some(x,min nx nz)
-                    |`LabeledFormula ([],term (AxF d)) -> Some(x,max nx nz)
+                    |formula (AF d) -> Some(x,min nx nz)
+                    |formula (EF d) -> Some(x,max nx nz)
                     |_ -> failwith "dddddd"
                     end
                 with Not_found -> None
             ) uev2#elements
         )
         in if !debug then (Printf.printf "INTER %s\n" a#to_string ; a) else a
-;;
 
 let rec index n s l =
     if List.length l > 0 then
@@ -88,13 +93,12 @@ let rec index n s l =
             if n < ((List.length l) - 1) then index (n+1) s l
             else failwith "index: core not found"
     else failwith "index: list empty"
-;;
+
 
 (* true if there is not an element in the list equal to (dia@box) *)
 let loop_check (dia,box,br) =
-    let set = (new Set.set)#addlist (dia@box) in
+    let set = (new FormulaSet.set)#addlist (dia@box) in
     not(List.exists (fun (s,_) -> set#is_equal s) br#elements)
-;;
 
 exception Stop_exn of int ;;
 let procastinator idx ev (br1,br2) = 
@@ -113,25 +117,24 @@ let procastinator idx ev (br1,br2) =
         ) (Array.sub bra2 (idx + 1) ( len - (idx + 1) )) ;
         true
     with Stop_exn _ -> false
-;;
 
 let setuev_loop (diax,box,fev,brl) =
     let (br1, br2) = List.split brl#elements in
     let checkuev node fev br =
-        let set = (new Set.set)#addlist node in
+        let set = (new FormulaSet.set)#addlist node in
         if List.exists ( fun s -> set#is_equal s ) br then
             let i = index 0 set br in
             Some(
-                (new Setoftermint.set)#addlist (
-                    ExtList.filter_map (function
-                        |`LabeledFormula ([],term (ExF d)) as ev when
+                (new FormulaIntSet.set)#addlist (
+                    filter_map (function
+                        |formula (EF d) as ev when
                         procastinator i ev (br1,br2) && (* it's a procastinator *)
                         not(fev#mem ev) -> (* and is not in the fev of the last world *)
-                            Some(`LabeledFormula ([],term (ExF d)),i)
-                        |`LabeledFormula ([],term (AxF d)) as ev when
+                            Some(formula (EF d),i)
+                        |formula (AF d) as ev when
                         procastinator i ev (br1,br2) &&
                         not(fev#mem ev) -> 
-                            Some(`LabeledFormula ([], term (AxF d)),i)
+                            Some(formula (AF d),i)
                         |_ -> None
                     ) (node)
             )
@@ -143,18 +146,17 @@ let setuev_loop (diax,box,fev,brl) =
         end
     in
     let uevlist =
-                ExtList.filter_map(fun dia ->
+                filter_map(fun dia ->
                     checkuev (dia::box) fev br1
                 ) diax
     in
     let uev =
         List.fold_left (fun e s -> s#union e)
-        (new Setoftermint.set) uevlist
+        (new FormulaIntSet.set) uevlist
     in
     if !debug then Printf.printf "SetUevLoop: %s\n" (uev#to_string)
     else () ;
     uev
-;;
 
 let setuev_pi (uev1, uev2, br) = 
     let l = (br#length -1) in
@@ -165,13 +167,12 @@ let setuev_pi (uev1, uev2, br) =
         else ()
     in
     if List.exists ( fun (_,n) -> n > l ) uev#elements
-    then (new Setoftermint.set)#add (termfalse,l+1)
+    then (new FormulaIntSet.set)#add (termfalse,l+1)
     else if List.exists (function
-        |(`Formula ( term ( Falsum ) ),_) -> true
+        |formula ( Falsum ),_ -> true
         |_ -> false
         ) uev#elements
-    then (new Setoftermint.set)#add (termfalse,l+1)
+    then (new FormulaIntSet.set)#add (termfalse,l+1)
     else if List.for_all ( fun (_,n) -> n <= l ) uev#elements
     then uev
     else failwith ("pi: impossible")
-;;
