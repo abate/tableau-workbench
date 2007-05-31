@@ -502,13 +502,13 @@ let extgramm gramms =
     ) gramms;
     (* DEBUG stuff *)
     List.iter (fun (id,rules) ->
-        DebugOptions.print (Printf.sprintf "%s_expr_schema:\n" id);
+        DebugOptions.print (Printf.sprintf "%s_patt_schema:\n" id);
         List.iter (fun tl ->
             DebugOptions.print (PcamlGramm.stype_list_to_string tl)
         ) rules;
         DebugOptions.print (Printf.sprintf "\n");
     ) gramms;
-    DebugOptions.print (ExprSchemaEntry.entries_to_string ())
+    DebugOptions.print (PattSchemaEntry.entries_to_string ())
 
 let expand_constructors = 
     List.iter (fun (id,_) -> expand_expr_constructor id )
@@ -756,10 +756,10 @@ Pcaml.str_item: [[
             let _   = extend_node_type (select_node_entry gramms) in 
             let sl  = expand_grammar_syntax_list gramms in
             let ty  = expand_grammar_type_list withoutnode in
+            let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
             let pr  = expand_printer withoutnode in
             let ast = expand_ast2input withoutnode in
-            let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
-            <:str_item< declare $list:sty@[pr;ast;sl]$ end >>
+            <:str_item< module GrammTypes = struct $list:sty@[pr;ast;sl]$ end >>
 ]];
 
 gramm: [
@@ -814,19 +814,6 @@ plid: [
     i = LIDENT -> i 
 ]];
 
-(*
-Pcaml.expr: LEVEL "simple" [
-    [ formulaid; "("; e = formula_expr; ")" -> <:expr< ( $e$ : formula ) >>
-    | exprid;    "("; e = expr_expr; ")"    -> <:expr< ( $e$ : expr ) >>
-]];
-
-Pcaml.patt: [
-    [ formulaid; "("; "_"; ")" -> <:patt< #formula >>
-    | exprid;    "("; "_"; ")" -> <:patt< _ >>
-    | formulaid; "("; e = formula_patt; ")" -> <:patt< $e$ >>
-    | exprid;    "("; e = expr_patt;    ")" -> <:patt< $e$ >>
-]];
-*)
 (*
 (* A{s/t} is the formula A with all occurrences of t substituted by s *) 
 (* FIXME: the substitution should be possible inside a term... this require

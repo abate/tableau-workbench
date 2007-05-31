@@ -126,7 +126,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                         then begin 
                             Printf.printf "Proving: %s \n" line;
                             let (cont,_,_) = node#get in
-                            Printf.printf "Initial node: %s \n"
+                            Printf.printf "Start Node: %s \n"
                             (UserRule.DataType.Store.to_string cont)
                         end
                         else ()

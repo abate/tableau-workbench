@@ -970,18 +970,6 @@ let expand_preamble () =
     module TwbContSingleton = TwbSingleton.Make(BaseType);
     end >>
 
-let expand_init =
-    <:str_item< 
-    declare
-        module AstTrans = struct 
-            type t = formula;
-            value ast2input = formula_ast2input;
-            value gramms = __gramms;
-        end;
-        module TwbParser   = InputParser.Make(AstTrans);
-        TwbParser.initParser ();
-        TwbMain.init ();
-    end >>
 
 let expand_matchpatt rulelist =
     let get_schema (Ast.Rule rule) =
@@ -1033,13 +1021,26 @@ let expand_matchpatt rulelist =
     <:str_item< value match_schema = fun [ $list:pel@[def]$ ] >>
 
 let expand_tableau (Ast.Tableau rulelist) =
+    let init =
+        <:str_item< 
+        declare
+            module AstTrans = struct 
+                type t = formula;
+                value ast2input = formula_ast2input;
+                value gramms = __gramms;
+            end;
+            module TwbParser   = InputParser.Make(AstTrans);
+            TwbParser.initParser ();
+            TwbMain.init ();
+        end >>
+    in
+    let mp = expand_matchpatt rulelist in
     let pa = expand_preamble () in
     let sd = expand_status_defaults () in
     let st = expand_tcond_defaults () in
     let l = List.map expand_rule rulelist in
-    <:str_item< declare 
-    $list: expand_matchpatt rulelist:: pa:: sd:: st:: l@[expand_init]$
-    end >>
+    let g = <:str_item< open GrammTypes >> in
+    <:str_item< declare $list:[g;mp;pa;sd;st]@l@[init]$ end >>
 
 let rec expand_tactic = function
     |Ast.TaVar(id) -> <:expr< $lid:id$ >>
