@@ -759,7 +759,10 @@ Pcaml.str_item: [[
             let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
             let pr  = expand_printer withoutnode in
             let ast = expand_ast2input withoutnode in
-            <:str_item< module GrammTypes = struct $list:sty@[pr;ast;sl]$ end >>
+            <:str_item< declare
+            module GrammTypes = struct $list:sty@[pr;ast;sl]$ end;
+            open GrammTypes;
+            end >>
 ]];
 
 gramm: [

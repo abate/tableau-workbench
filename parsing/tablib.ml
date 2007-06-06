@@ -1039,8 +1039,7 @@ let expand_tableau (Ast.Tableau rulelist) =
     let sd = expand_status_defaults () in
     let st = expand_tcond_defaults () in
     let l = List.map expand_rule rulelist in
-    let g = <:str_item< open GrammTypes >> in
-    <:str_item< declare $list:[g;mp;pa;sd;st]@l@[init]$ end >>
+    <:str_item< declare $list:[mp;pa;sd;st]@l@[init]$ end >>
 
 let rec expand_tactic = function
     |Ast.TaVar(id) -> <:expr< $lid:id$ >>
@@ -1157,7 +1156,11 @@ let expand_source m =
     let ast = ExtGramm.expand_ast2input withoutnode in
     let sl  = ExtGramm.expand_grammar_syntax_list gramms in
     let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
-    <:str_item< declare $list:sty@[pr;ast;sl]$ end >>
+    <:str_item< declare
+    module GrammTypes = struct $list:sty@[pr;ast;sl]$ end ;
+    open GrammTypes;
+    end
+    >>
     (* XXX Idea: type definitions could be dumped in a different compilation
      * module. then expand_source will basically only extend the grammar and
      * open the type def module *)
