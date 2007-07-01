@@ -138,11 +138,7 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
                     let _ = Timer.trigger_alarm (!Options.timeout) in
                     let result = 
                         let lr = Visit.visit cache strategy node in
-                        if Llist.is_empty lr then begin
-                            Printf.printf "Tactic Error\n";
-                            Tree.TacticError
-                        end else
-                            Llist.hd lr
+                        Llist.hd lr
                     in
                     let time = Timer.stop_timing start in
 

@@ -16,7 +16,6 @@ and tactic =
     |TaAlt     of tactic * tactic * MLast.expr
     |TaFairAlt of tactic * tactic * MLast.expr
     |TaAltCut  of tactic * tactic
-    |TaCut  of tactic
     |TaMu   of string * tactic
     |TaVar  of string
     |TaMVar of string

@@ -4,9 +4,9 @@ sig
     type node
     class cache : bool ->
           object('cache)
-              method add  : node -> node Tree.result Llist.llist -> unit
+              method add  : node -> node Tree.result -> unit
               method mem  : node -> bool
-              method find : node -> node Tree.result Llist.llist
+              method find : node -> node Tree.result
               method clear : 'cache
               method to_string : string
               method stats : string
@@ -29,7 +29,7 @@ module Make (N:Node.S) =
         
         class cache enabled =
             object(self)
-                val data : node Tree.result Llist.llist Hash.t = Hash.create 2879
+                val data : node Tree.result Hash.t = Hash.create 2879
                 val enabled = enabled
                 
                 val mutable hits = 0
@@ -53,11 +53,7 @@ module Make (N:Node.S) =
 
                 (* I need to force the result of the computation to
                  * avoid Lazy.Undefined *)
-                method add k v =
-                    if enabled then
-                        try Hash.add data k (Llist.return (Llist.hd v))
-                        with Llist.LListEmpty _ -> assert(false)
-                    else ()
+                method add k v = if enabled then Hash.add data k v else ()
 
                 method to_string = ""
 (*                    Hash.fold (

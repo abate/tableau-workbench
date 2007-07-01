@@ -5,4 +5,5 @@ type 'a tree =
 
 type 'a result =
     |Node of 'a
-    |TacticError
+    |RuleFail
+    |SeqFail

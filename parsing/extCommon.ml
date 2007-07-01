@@ -70,7 +70,7 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
               let id = new_id "muvar" in
 (*              Ast.TaMu(id,Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))
  *              *)
-                Ast.TaMu(id,Ast.TaCut(Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip)))
+                Ast.TaMu(id,Ast.TaAltCut(Ast.TaSeq(t,Ast.TaMVar(id)),Ast.TaSkip))
       | m = UIDENT; "."; r = UIDENT -> Ast.TaModule(m,r)
       | id = test_muvar -> id
       ]

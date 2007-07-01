@@ -1067,9 +1067,6 @@ let rec expand_tactic = function
             let ext1 = expand_tactic t1 in
             let ext2 = expand_tactic t2 in
             <:expr< AltFair( $list:[ext1;ext2;cond]$ ) >>
-    |Ast.TaCut(t) ->
-            let ext = expand_tactic t in
-            <:expr< Cut( $ext$ ) >>
     |Ast.TaMu(x,t) ->
             let ext = expand_tactic t in
             <:expr< Mu( $str:x$ , $ext$ ) >>

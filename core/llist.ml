@@ -98,6 +98,16 @@ let is_empty s =
     |Empty -> true
     |_ -> false
 
+let rec for_all p l = 
+    match Lazy.force l with
+    | Empty -> true
+    | LList (hd, tl) -> p hd && for_all p tl
+
+let rec exists p l =
+    match Lazy.force l with
+    | Empty -> false
+    | LList (hd, tl) -> p hd || for_all p tl
+
 type 'a excp = Nothing | Just of ('a * 'a llist)
 
 (* XXX *)

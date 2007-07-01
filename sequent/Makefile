@@ -11,6 +11,7 @@ SOURCES := \
 
 RESULT := twbseq
 PACKS := twb.core twb.types extlib
+#THREADS := yes
 
 all: ncl
 

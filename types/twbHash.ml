@@ -29,7 +29,7 @@ module Make(T: TwbSet.ValType) : sig class map : [T.t] ct end = struct
                 {< data = h >}
                 
             method replace key e = self#add key e
-            method find key = Hashtbl.find data key
+            method find key = Hashtbl.find data key 
             method fold f s = Hashtbl.fold f data s
             method mem key = Hashtbl.mem data key
             method copy = {< data = copy data >}
