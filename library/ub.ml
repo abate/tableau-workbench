@@ -124,7 +124,7 @@ NEG := List.map neg_term
 EXIT := exit (uev@1)
 
 let saturation = tactic ( (Id ! False ! And ! Axg ! Exg ! Or ! Axf ! Exf ) )
-let modal = tactic ( ( (saturation)* ; (D ! Exx ! Loop) ) )
+let modal = tactic ( ( saturation ! (D ! Exx ! Loop) ) )
 STRATEGY := tactic ( (modal)* )
 
 MAIN

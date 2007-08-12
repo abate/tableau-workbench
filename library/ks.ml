@@ -1,62 +1,54 @@
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Not, "~_",   Zero;
-  Imp, "_->_", One;
-  Box, "Box_", Zero;
-  Dia, "Dia_", Zero;
-  Falsum, Const;
-  Verum, Const
-END
-
-SIMPLIFICATION := Kopt.simpl
-let nnf_term l = ([],Kopt.nnf (Basictype.unbox(List.hd l))) ;;
-let nnf = Kopt.nnf ;;
+source K
 
 open Twblib
 open Klib
+open Kopt
+
+let simpl(a,b) =
+    let b = nnf(List.hd b) in (* must be a single formula *)
+    List.map (fun x -> simpl nnf b x) a
+;;
 
 TABLEAU
 
   RULE K
-  { Dia a } ; Box x ; z
+  { <> A } ; [] X ; Z
   ----------------------
-    a ; x[a]
+    A ; simpl(X,A)
 
-  END (cache)
+  END
 
   RULE Id
   { a } ; { ~ a }
   ===============
     Close
-  END (cache)
+  END
 
   RULE False
-    Falsum
+  { Falsum }
   =========
     Close
   END
 
   RULE And
-  { a & b } ; x
-  =========
-    a[b] ; b[a] ; x[a][b]
+  { A & B } ; X
+  ==============
+      simpl(A,B) ; simpl(B,A) ; simpl(simpl(X,A),B)
   END
   
   RULE Or
-  { a v b } ; x
+  { A v B } ; X
  =================================
-     a ; x[a] | b[nnf_term(~ a)] ; x[b][nnf_term(~ a)]
+     A ; simpl(X,A) | simpl(B, ~ A) ; simpl(simpl(X,B),~ A)
   END
 
 END
 
-PP := Kopt.nnf
-NEG := neg
+PP := List.map nnf
+NEG := List.map neg
 
-let saturate = tactic ( (False|Id|And|Or)* )
+let saturate = tactic ( False!Id!And!Or )
 
-STRATEGY := ( ( saturate ; K )* )
-
+STRATEGY := tactic ( ( saturate ! K )* )
+MAIN

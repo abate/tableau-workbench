@@ -53,7 +53,9 @@ let bigand = function
    forms the bigor of these conjunctions.
 *)
 
-let bigor = function
+let bigor l = 
+    print_endline "bigor";
+    match l with
     |[] -> []
     |ll -> [disjoin (List.map (fun s -> conjoin s#elements) ll)]
 
@@ -144,10 +146,6 @@ let rec special (vars,ab,d) =
 let parentisspecial (s,p) =
     (s#hd)#elements = [formula ( Special )] && 
     (p#hd)#elements = [formula ( Special )]
-
-(* union x y
-   returns the union of the setofsets or sets x and y.
-*)
 
 let union (x,y) = x#union y ;;
 

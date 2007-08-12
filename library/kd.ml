@@ -16,7 +16,7 @@ END
 PP := List.map nnf
 NEG := List.map neg
 
-let saturation = tactic ( (And ! Or ! Id)* )
-STRATEGY tactic ( ( saturation ; Kd )* )
+let saturation = tactic ( (And ! Or ! Id) )
+STRATEGY tactic ( ( saturation ! Kd )* )
 
 MAIN

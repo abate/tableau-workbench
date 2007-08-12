@@ -41,7 +41,7 @@ SEQUENT
            => { Verum }
   END
 
-  RULE NegL X -> Falsum => === ! X => END
+  RULE NegL X -> Falsum => === { ! X } => END
   RULE NegR => A -> Falsum === => { ! A } END
 
   RULE AndL
@@ -75,9 +75,9 @@ SEQUENT
   END
 
   RULE ImpMP
-                A ; B  => 
+                a ; B  => 
            =====================
-           { A } ; { A -> B } => 
+           { a } ; { a -> B } => 
   END
 
   RULE ImpVerum
@@ -130,7 +130,7 @@ STRATEGY :=
      NegR ! NegL ! Id ! False ! True ! AndL ! ImpNeg ! ImpVerum ! 
      ImpOr ! ImpAnd ! OrL ! AndR ! ImpMP ! ImpR)
  in let hashimp = tactic ( Hash ; ImpImp )
- in tactic ( ( (saturate)* ; (OrR || hashimp) )* )
+ in tactic ( ( saturate ! (OrR || hashimp) )* )
 
 MAIN
 

@@ -42,7 +42,7 @@ END
 
 STRATEGY := 
     let sat = tactic ( (False ! Id ! And ! T ! Or) )
-    in tactic ( ( (sat)* ; S4 )* )
+    in tactic ( (sat ! S4 )* )
 
 PP := List.map nnf
 NEG := List.map neg

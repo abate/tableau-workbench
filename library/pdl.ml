@@ -73,7 +73,7 @@ RULE K
 END
 
 RULE Loop
-  < a > P ; [ a ] Y == Stop
+  { < a > P } ; [ a ] Y == Stop
   COND [ not_emptylist(< a > P) ]
   BACKTRACK [ uev := setuev_loop(P, Y, Fev, Br) ]
 END
@@ -98,7 +98,7 @@ END
 
 STRATEGY := 
     let sat = tactic ( (False ! Id ! And ! Or ! StarD ! StarB ! UnionD ! UnionB ! SeqB ! SeqD) )
-    in tactic ( ( (sat)* ; (K  !  Loop) )* )
+    in tactic ( (sat ! K ! Loop)* )
 
 let exit (uev) = match uev#elements with
     |[] -> "Open"

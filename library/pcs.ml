@@ -1,17 +1,14 @@
 
-CONNECTIVES
-  And, "_&_",  Two;
-  Or,  "_v_",  Two;
-  Imp, "_->_", One;
-  DImp, "_<->_", One;
-  Not, "~_",   Zero;
-  Falsum, Const;
-  Verum, Const
-END
+source Pc 
 
-SIMPLIFICATION := Pcopt.simpl
-let nnf_term l = ([], Pcopt.nnf (Basictype.unbox(List.hd l))) ;;
+open Twblib
+open Pclib
+open Pcopt
 
+let simpl(a,b) =
+    let b = nnf(List.hd b) in (* must be a single formula *)
+    List.map (fun x -> simpl nnf b x) a
+;;
 
 TABLEAU
 
@@ -20,30 +17,31 @@ TABLEAU
   ===============
     Close
   END
-  
+
   RULE False
-    Falsum
+  { Falsum }
   =========
     Close
   END
 
   RULE And
-  {a & b} ; x
- ============================
-     a[b]; b[a] ; x[a][b]
+  { A & B } ; X
+  ==============
+      simpl(A,B) ; simpl(B,A) ; simpl(simpl(X,A),B)
   END
   
   RULE Or
-  { a v b } ; x
- ===============================
-     a ; x[a] | b ; x[b][nnf_term(~ a)]
+  { A v B } ; X
+ =================================
+     A ; simpl(X,A) | simpl(B, ~ A) ; simpl(simpl(X,B),~ A)
   END
 
 END
 
-PP := Pcopt.nnf
-NEG := Pclib.neg
+PP := List.map nnf
+NEG := List.map neg
 
-STRATEGY := ( (Id|False|And|Or)* )
+let saturate = tactic ( False!Id!And!Or )
 
-
+STRATEGY := tactic ( ( saturate )* )
+MAIN

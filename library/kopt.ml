@@ -1,40 +1,33 @@
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  Not, "~_",   Zero;
-  Box, "Box_", Zero;
-  Dia, "Dia_", Zero;
-  Falsum, Const;
-  Verum, Const
-END
-
-let neg = function term ( a ) -> term ( ~ a ) ;;
+source K
 
 let rec boolean t = 
     let aux = function
-        |term (a & b) when a = b -> a
-        |term (a v b) when a = b -> a
-        |term (Verum & b)  |term (b & Verum)  -> b
-        |term (Falsum & b) |term (b & Falsum) -> term (Falsum)
-        |term (Verum v b)  |term (b v Verum)  -> term (Verum)
-        |term (Falsum v b) |term (b v Falsum) -> b
-        |term (Dia Falsum) -> term (Falsum)
-        |term (Box Falsum) -> term (Falsum)
-        |term (~ Verum)  -> term (Falsum)
-        |term (~ Falsum) -> term (Verum)
+        |formula (a & b) when a = b -> a
+        |formula (a v b) when a = b -> a
+        |formula (Verum & b)  -> b 
+        |formula (b & Verum)  -> b
+        |formula (Falsum & b) -> formula (Falsum)
+        |formula (b & Falsum) -> formula (Falsum)
+        |formula (Verum v b)  -> formula (Verum)
+        |formula (b v Verum)  -> formula (Verum)
+        |formula (Falsum v b) -> b
+        |formula (b v Falsum) -> b
+        |formula (<> Falsum)  -> formula (Falsum)
+        |formula ([] Falsum)  -> formula (Falsum)
+        |formula (~ Verum)    -> formula (Falsum)
+        |formula (~ Falsum)   -> formula (Verum)
         |a -> a
     in match t with
-    |term (a & b) -> aux term ( [boolean (aux a)] & [boolean (aux b)] )
-    |term (a v b) -> aux term ( [boolean (aux a)] v [boolean (aux b)] )
-    |term (Dia a) -> aux term ( Dia [boolean (aux a)] )
-    |term (Box a) -> aux term ( Box [boolean (aux a)] )
-    |term (~ a)   -> aux term ( ~ [boolean (aux a)] )
+    |formula (a & b) -> aux formula ( {boolean (aux a)} & {boolean (aux b)} )
+    |formula (a v b) -> aux formula ( {boolean (aux a)} v {boolean (aux b)} )
+    |formula (<> a) -> aux formula ( <> {boolean (aux a)} )
+    |formula ([] a) -> aux formula ( [] {boolean (aux a)} )
+    |formula (~ a)   -> aux formula ( ~ {boolean (aux a)} )
     |a -> aux a
 ;;
 
+(*
 let nnf f =
     let rec aux = function
         |term ( a & b ) as f -> Pcopt.order aux f
@@ -77,33 +70,35 @@ let rec cnf t =
         |_ -> t
 in conjnf t
 ;;
+*)
 
-let rec simpl phi a =
-(*    Printf.printf "Simplification ! %s[%s]\n" (Twblib.sof(a)) (Twblib.sof(phi)); *)
+let rec simpl nnf phi a =
+    (* Printf.printf "Simplification ! %s[%s]\n" (formula_printer a) 
+    (formula_printer phi); *)
     let rec aux phi a = match a with
-        |term (~ b) when b = a -> term(Falsum) 
-        |term (~ b)   -> term ( ~ [aux phi b] )
-        |term (b & c) -> term ( [aux phi b] & [aux phi c] )
-        |term (b v c) -> term ( [aux phi b] v [aux phi c] )
-        |term (Box b) ->
+        |formula (~ b) when b = a -> formula(Falsum) 
+        |formula (~ b)   -> formula ( ~ {aux phi b} )
+        |formula (b & c) -> formula ( {aux phi b} & {aux phi c} )
+        |formula (b v c) -> formula ( {aux phi b} v {aux phi c} )
+        |formula ([] b) ->
                 begin match phi with
-                |term (Box phi') -> term ( Box [aux phi' b] )
+                |formula ([] phi') -> formula ( [] {aux phi' b} )
                 |_ -> a
                 end
-        |term (Dia b) ->
+        |formula (<> b) ->
                 begin match phi with
-                |term (Box phi') -> term ( Dia [aux phi' b] )
+                |formula ([] phi') -> formula ( <> {aux phi' b} )
                 |_ -> a
                 end
-        |_ when phi = a -> term(Verum)
-        |_ when phi = (nnf (term ( ~ a ))) -> term(Falsum)
+        |_ when phi = a -> formula(Verum)
+        |_ when phi = (nnf (formula ( ~ a ))) -> formula(Falsum)
         |_ -> a
     in
     let r = boolean (aux phi a) in
-(*    Printf.printf "Result: %s\n\n" (Twblib.sof(r)) ;  *)
+    (* Printf.printf "Result: %s\n\n" (formula_printer r) ; *)
     r
 ;;
-
+(*
 let rec simpl4 phi a =
 (*    Printf.printf "Simplification ! %s[%s]\n" (Twblib.sof(a)) (Twblib.sof(phi)); *)
     let rec aux phi a = match a with
@@ -129,4 +124,4 @@ let rec simpl4 phi a =
 (*    Printf.printf "Result: %s\n\n" (Twblib.sof(r)) ;  *)
     r
 ;;
-
+*)

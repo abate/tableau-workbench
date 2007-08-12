@@ -28,5 +28,5 @@ NEG := neg
 
 let sat = tactic (False|Id|And|Or)
 
-STRATEGY tactic ( ( (sat)* ; K4G )* )
+STRATEGY tactic ( ( sat ! K4G )* )
 

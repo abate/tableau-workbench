@@ -34,9 +34,15 @@ TABLEAU
   RULE And {l : A & B} === l : A; l : B END
   
   RULE Or 
-      { l : A v B } 
+(*
+       { l : A v B } 
   =====================
    Idx :: l : A | Idx :: l : B
+*)
+
+       { l : A v B } 
+  =====================
+   addlabel( l : A ) | addlabel ( l : B )
 
   ACTION    [[ Idx := inc(Idx) ]; [ Idx := inc(Idx) ]]
   BRANCH    [ backjumping(Idx,bj@1) ]

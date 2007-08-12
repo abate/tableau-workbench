@@ -164,8 +164,8 @@ SEQUENT
                         G =>  D ; { A -< B }
 
        COND [ conjnotin(A,B,D,G) ]
-       BACKTRACK [  s := union(s@1, s@2) 
-               ; p := union(p@1, p@2) 
+       BACKTRACK [ s := union(s@1, s@2) 
+                 ; p := union(p@1, p@2) 
        ]
   END
 
@@ -175,8 +175,8 @@ SEQUENT
              => { A -> B } ; D 
 
        COND [ notin(B, D) ]
-       BACKTRACK [  s := s@1
-               ; p := p@1
+       BACKTRACK [ s := s@1
+                 ; p := p@1
        ]
   END
 
@@ -186,8 +186,8 @@ SEQUENT
             { A -< B } ; G    =>  
 
        COND [ notin(A, G) ]
-       BACKTRACK [  s := s@1
-               ; p := p@1
+       BACKTRACK [ s := s@1
+                 ; p := p@1
        ]
   END
 
@@ -219,10 +219,10 @@ SEQUENT
             =========================================================
                 { #(A -< B) } ; G => D
 
-       BRANCH [ isnotemptyandallsubsnotsub(s@1, A -< B, G) ]
+       BRANCH [ isnotemptyandallsubsnotsub(s@1, A -< B, G) ] 
        BACKTRACK [ s := special(s@all, A -< B, G)
-              ; p := special(p@all, D, [])
-       ]
+                 ; p := special(p@all, D, [])
+       ] 
   END
 
   RULE ExcL2a
@@ -233,7 +233,7 @@ SEQUENT
        COND   [ notin(B,D) ]
        BRANCH [ parentisspecial(s@1, p@1) ] 
        BACKTRACK [ s := compute(s@all, A -< B, G)
-              ; p := compute(p@all, D, [])
+                 ; p := compute(p@all, D, [])
        ]
 
   END
@@ -243,8 +243,8 @@ SEQUENT
             =============================================
                          {A + B}  => 
 
-       BACKTRACK [  s := union(s@1, s@2) 
-               ; p := union(p@1, p@2) 
+       BACKTRACK [ s := union(s@1, s@2) 
+                 ; p := union(p@1, p@2) 
        ]
   END
 
@@ -252,8 +252,8 @@ SEQUENT
                 => undisjoin(A)  |          => B
             =============================================
                          => {A ^ B}
-       BACKTRACK [  s := union(s@1, s@2) 
-               ; p := union(p@1, p@2) 
+       BACKTRACK [ s := union(s@1, s@2) 
+                 ; p := union(p@1, p@2) 
        ]
   END
 
@@ -281,6 +281,6 @@ STRATEGY :=
  in
  let impjump     = tactic (ImpR2a ; ImpR2b) in
  let excjump     = tactic (ExcL2a ; ExcL2b) in 
- tactic ( ( (saturate)* ; ( impjump ||  excjump ) )* ; Ret ) 
+ tactic ( (saturate ! ( impjump ||  excjump ) )* ; Ret ) 
 
 MAIN

@@ -1,4 +1,46 @@
 
+source Pc
+
+let rec boolean t = 
+    let aux = function
+        |formula (a & b) when a = b -> a
+        |formula (a v b) when a = b -> a
+        |formula (Verum & b)  -> b 
+        |formula (b & Verum)  -> b
+        |formula (Falsum & b) -> formula (Falsum)
+        |formula (b & Falsum) -> formula (Falsum)
+        |formula (Verum v b)  -> formula (Verum)
+        |formula (b v Verum)  -> formula (Verum)
+        |formula (Falsum v b) -> b
+        |formula (b v Falsum) -> b
+        |formula (~ Verum)    -> formula (Falsum)
+        |formula (~ Falsum)   -> formula (Verum)
+        |a -> a
+    in match t with
+    |formula (a & b) -> aux formula ( {boolean (aux a)} & {boolean (aux b)} )
+    |formula (a v b) -> aux formula ( {boolean (aux a)} v {boolean (aux b)} )
+    |formula (~ a)   -> aux formula ( ~ {boolean (aux a)} )
+    |a -> aux a
+;;
+
+let rec simpl nnf phi a =
+    (* Printf.printf "Simplification ! %s[%s]\n" (formula_printer a) 
+    (formula_printer phi); *)
+    let rec aux phi a = match a with
+        |formula (~ b) when b = a -> formula(Falsum) 
+        |formula (~ b)   -> formula ( ~ {aux phi b} )
+        |formula (b & c) -> formula ( {aux phi b} & {aux phi c} )
+        |formula (b v c) -> formula ( {aux phi b} v {aux phi c} )
+        |_ when phi = a -> formula(Verum)
+        |_ when phi = (nnf (formula ( ~ a ))) -> formula(Falsum)
+        |_ -> a
+    in
+    let r = boolean (aux phi a) in
+    (* Printf.printf "Result: %s\n\n" (formula_printer r) ; *)
+    r
+;;
+
+(*
 source Pcbj
 
 (* workd if f is in nnf *)
@@ -131,4 +173,5 @@ let backjumping (idx,intlist) = List.mem idx intlist ;;
 let mergelabel (intll, status) =
     if status = "Open" then [] else ExtList.list_uniq(List.flatten intll)
 
+*)
 *)
