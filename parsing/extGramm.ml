@@ -508,7 +508,8 @@ let extgramm gramms =
         ) rules;
         DebugOptions.print (Printf.sprintf "\n");
     ) gramms;
-    DebugOptions.print (PattSchemaEntry.entries_to_string ())
+    DebugOptions.print (PattSchemaEntry.entries_to_string ());
+    DebugOptions.print (ExprEntry.entries_to_string ())
 
 let expand_constructors = 
     List.iter (fun (id,_) -> expand_expr_constructor id )

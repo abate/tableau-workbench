@@ -1,9 +1,10 @@
 
 CONNECTIVES
-[ "~";"&";"v";"<";">";"U";"*";",";"->";"<->";"[";"]";";" ]
+[ "~";"&";"v";"<";">";"U";"*";",";"->";"<->";"[";"]";";";"?"]
 GRAMMAR
 program := 
       * program
+    | ? program
     | program U program
     | program ; program
     | ATOM
@@ -29,7 +30,9 @@ open PdlFunctions
 
 HISTORIES
   Fev : FormulaSet.set := new FormulaSet.set;
-  Br  : ListFormulaSet.olist := new ListFormulaSet.olist
+  Br  : ListFormulaSet.olist := new ListFormulaSet.olist;
+  SB   : FormulaSet.set := new FormulaSet.set;
+  SD   : FormulaSet.set := new FormulaSet.set
 END
 
 VARIABLES
@@ -39,6 +42,15 @@ VARIABLES
 END
 
 TABLEAU
+(*
+RULE TestD
+  { < ? a > P } === a -> B
+END
+
+RULE TestB
+  { [ ? a ] P } === a -> B
+END
+*)
 
 RULE Or 
   { A v B } === A ||| B
@@ -54,10 +66,10 @@ RULE UnionD
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
 END
 
-
 RULE StarD
   { < * A > P } === P ||| < A > < * A > P
-
+  COND   [ notin(P,SD) ]
+  ACTION [ []; SD := add(< * A > P,SD) ] 
   BRANCH [ [ not_emptyset(uev@1) ] ]
   BACKTRACK [ uev := setuev_beta(uev@1, uev@2, Br) ]
 END
@@ -66,7 +78,11 @@ RULE K
   { < a > P }  ; [ a ] Y ; Z --- P ; Y
 
   COND [ loop_check(P, Y, Br) ]
-  ACTION [ Br  := push(P, Y, Fev, Br); Fev := emptyset(Fev) ]
+  ACTION [ Br  := push(P, Y, Fev, Br);
+           Fev := emptyset(Fev);
+           SB := emptyset(SB);
+           SD := emptyset(SD)
+  ]
   BRANCH [ not_false(uev@1) ]
   BACKTRACK [ uev := setuev_pi(uev@1, uev@2, Br) ]
 
@@ -78,11 +94,16 @@ RULE Loop
   BACKTRACK [ uev := setuev_loop(P, Y, Fev, Br) ]
 END
 
-RULE And { A & B } === A ; B END
-RULE StarB { [ * A ] P } === P ; [ A ] [ * A ] P END
+RULE StarB 
+  { [ * A ] P } === P ; [ A ] [ * A ] P
+  COND   [ notin(P,SB) ]
+  ACTION [ SB := add([ * A ] P,SB) ]
+END
+
 RULE UnionB { [ A U B ] P } === [ A ] P ;  [ B ] P END
 RULE SeqB { [ A ; B ] P } === [ A ] [ B ] P END
 RULE SeqD { < A ; B > P } === < A > < B > P END
+RULE And { A & B } === A ; B END
 
 RULE Id
   { P } ; { ~ P } == Stop
