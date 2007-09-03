@@ -95,6 +95,7 @@ let ctyp_to_method_expr m ctyp =
         |MLast.TyTup(_,l)  ->
                 <:expr< ($list:List.map aux l$) >>
         |MLast.TyLid(_,"int")
+        |MLast.TyLid(_,"bool")
         |MLast.TyLid(_,"string") -> 
                 incr counter; 
                 <:expr< $lid:"__t"^string_of_int !counter$ >>
@@ -115,6 +116,7 @@ let expand_history_type histlist =
         let rec aux1 s = function
             |MLast.TyLid(_,"int") -> <:expr< string_of_int $lid:s$ >>
             |MLast.TyLid(_,"string") -> <:expr< $lid:s$ >>
+            |MLast.TyLid(_,"bool") -> <:expr< string_of_bool $lid:s$ >>
             |MLast.TyLid(_,_) -> <:expr< $lid:s$#to_string >>
             |MLast.TyApp(_,MLast.TyLid(_,"list"),ctyp) ->
                     <:expr< List.fold_left (fun s e -> 
