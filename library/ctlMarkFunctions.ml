@@ -42,7 +42,6 @@ let rec filter_map f = function
             |Some(a) -> a :: filter_map f tl
             end
 
-
 let index flist hcore = 
   let hcore = hcore#elements in
   let len = List.length hcore in
@@ -54,9 +53,7 @@ let index flist hcore =
   in
   if len > 0 then search 0 else None
 
-
 let uevundef () = new FormulaIntSet.set
-
 
 let doNextChild_disj (mrk, uev) = mrk || (not uev#is_empty)
 
@@ -107,13 +104,28 @@ let loop_check (dia, box, hcore) =
 let push (dia, box, hcore) = 
   let nodeset = (new FormulaSet.set)#addlist (dia@box) 
   in hcore#add nodeset
+;;
+
+let memo f =
+    let cache = Hashtbl.create 8 in
+    let contains = Hashtbl.mem cache in
+    let get = Hashtbl.find cache in
+    let put = Hashtbl.replace cache in
+    fun arg ->
+        if not (contains arg) then
+            put arg (f arg);
+        get arg
+;;
 
 let isMarked mrk uevl dia box hcore =
-  if mrk then true
-  else 
-    let len = hcore#length in
-    let chkloop f (x, i) = (x = f) && (i >= len) in
-    List.exists (fun f -> List.exists (chkloop f) uevl) (dia@box)
+    let aux (mrk,uevl,dia,box,hcore) =
+        if mrk then true
+        else
+            let len = hcore#length in
+            let chkloop f (x, i) = (x = f) && (i >= len) in
+            List.exists (fun f -> List.exists (chkloop f) uevl) (dia@box)
+    in memo aux (mrk,uevl,dia,box,hcore)
+;;
 
 let test_ext (mrk, uev, dia, box, hcore) = not (isMarked mrk (uev#elements) dia box hcore)
 
