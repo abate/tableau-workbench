@@ -1,4 +1,3 @@
-
 CONNECTIVES [
     "~";"&";"v";"->";"<->";
     "E";"A";"U";"B";
@@ -6,6 +5,7 @@ CONNECTIVES [
     "EG";"AF";
     "AX";"EX"
 ]
+
 GRAMMAR
 formula :=
      ATOM | Verum | Falsum
@@ -29,9 +29,8 @@ formula :=
 expr := formula ;;
 END
 
-open Twblib
 open CtlMarkFunctions
-open CtlRewrite
+open CtlMarkRewrite
 
 HISTORIES
   HCore  : ListFormulaSet.olist := new ListFormulaSet.olist
@@ -43,20 +42,21 @@ VARIABLES
 END
 
 let nnf = List.map nnf_term 
-let id x = x
 
 TABLEAU
 
   RULE Id { P } ; { ~ P } == Stop 
-  BACKTRACK [ mrk := true ]
-  END
-  RULE False { Falsum } == Stop 
-  BACKTRACK [ mrk := true ]
+  BACKTRACK [ 
+      uev := uevundef ();
+      mrk := true 
+  ]
   END
 
-  RULE D
-  EX Y ;  (AX P) == EX Verum ; AX P
-  COND [ is_emptylist(EX Y) ]
+  RULE False { Falsum } == Stop 
+  BACKTRACK [ 
+      uev := uevundef ();
+      mrk := true 
+  ]
   END
 
   RULE And P & Q == P ; Q END
@@ -68,10 +68,10 @@ TABLEAU
   =========
    P ||| Q
 
-  BRANCH [ [ id(mrk@1) ] ] 
+  BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ] 
   BACKTRACK [ 
       uev := uev_disj(mrk@all, uev@all, P v Q);
-      mrk := mrk_disj(mrk@all, uev@all, P v Q)
+      mrk := mrk_disj(mrk@all)
   ]
   END
 
@@ -80,10 +80,10 @@ TABLEAU
   ===================
   Q ||| P ; EX (E P U Q)
 
-  BRANCH [ [ id(mrk@1) ] ] 
+  BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ] 
   BACKTRACK [ 
       uev := uev_disj(mrk@all, uev@all, E P U Q);
-      mrk := mrk_disj(mrk@all, uev@all, E P U Q)
+      mrk := mrk_disj(mrk@all)
   ]
   END 
 
@@ -92,12 +92,17 @@ TABLEAU
   ===================
   Q ||| P ; AX (A P U Q)
 
-  BRANCH    [ id(mrk@1) ]
+  BRANCH    [ doNextChild_disj(mrk@1, uev@1) ]
   BACKTRACK [ 
       uev := uev_disj(mrk@all, uev@all, A P U Q);
-      mrk := mrk_disj(mrk@all, uev@all, A P U Q)
+      mrk := mrk_disj(mrk@all)
   ]
   END 
+
+  RULE D
+  EX Y ;  P == EX Verum ; P
+  COND [ is_emptylist(EX Y) ]
+  END
 
   RULE Exx
   { EX P } ; EX X ; AX Y ; Z 
@@ -106,7 +111,7 @@ TABLEAU
 
   COND   [ loop_check(P, Y, HCore) ]
   ACTION [ [ HCore := push(P, Y, HCore) ] ; [] ] 
-  BRANCH [ [ not(mrk@1) ; not_emptylist(EX X) ] ]
+  BRANCH [ [ test_ext(mrk@1, uev@1, P, Y, HCore) ; not_emptylist(EX X) ] ]
   BACKTRACK [
       uev := uev_ext(mrk@all, uev@all, P, Y, HCore);
       mrk := mrk_ext(mrk@all, uev@all, P, Y, HCore)
@@ -119,10 +124,9 @@ TABLEAU
   ==========================
            Stop
 
-  COND [ not_emptylist(EX X) ]
   BACKTRACK [
       uev := uev_loop(X, Y, HCore);
-      mrk := mrk_loop(X, Y, HCore)
+      mrk := false
   ]
   CACHE := true
   END
@@ -137,7 +141,7 @@ PP := List.map nnf_term
 NEG := List.map neg_term
 EXIT := exit (mrk@1)
   
-let saturation = tactic ( (Id ! False ! And ! Or ! Axu ! Exu ! Exb ! Axb ) )
+let saturation = tactic ( (Id ! False ! And ! Exb ! Axb ! Or ! Axu ! Exu ) )
 let modal = tactic ( (saturation ! D ! Exx ! Loop ) )
 STRATEGY := tactic ( (modal)* )
 
