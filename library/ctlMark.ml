@@ -48,7 +48,7 @@ TABLEAU
   RULE Id { P } ; { ~ P } == Stop 
   BACKTRACK [ 
       uev := uevundef ();
-      mrk := true 
+      mrk := true
   ]
   END
 
@@ -100,7 +100,7 @@ TABLEAU
   END 
 
   RULE D
-  EX Y ;  P == EX Verum ; P
+  EX Y ; Z  == EX Verum ; Z
   COND [ is_emptylist(EX Y) ]
   END
 

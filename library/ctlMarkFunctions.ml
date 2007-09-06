@@ -92,9 +92,6 @@ let mrk_disj mrks =
   | [mrk1; mrk2] -> mrk1 && mrk2
   | _ -> failwith "mrk_disj"
 
-
-
-
 (* true if there is not an element in the list equal to (dia@box) *)
 let loop_check (dia, box, hcore) = 
   match index (dia@box) hcore with
@@ -112,28 +109,32 @@ let memo f =
     let get = Hashtbl.find cache in
     let put = Hashtbl.replace cache in
     fun arg ->
-        if not (contains arg) then
-            put arg (f arg);
+        if not (contains arg) then put arg (f arg);
         get arg
 ;;
 
-let isMarked mrk uevl dia box hcore =
-    let aux (mrk,uevl,dia,box,hcore) =
-        if mrk then true
-        else
-            let len = hcore#length in
-            let chkloop f (x, i) = (x = f) && (i >= len) in
-            List.exists (fun f -> List.exists (chkloop f) uevl) (dia@box)
-    in memo aux (mrk,uevl,dia,box,hcore)
+let isMarked ((mrk,uevl,dia,box,hcore) :
+    bool * (GrammTypes.formula * int) list *
+    GrammTypes.formula list *
+    GrammTypes.formula list *
+    ListFormulaSet.olist) =
+    if mrk then true
+    else
+        let len = hcore#length in
+        let chkloop f (x, i) = (x = f) && (i >= len) in
+        List.exists (fun f -> List.exists (chkloop f) uevl) (dia@box)
 ;;
 
-let test_ext (mrk, uev, dia, box, hcore) = not (isMarked mrk (uev#elements) dia box hcore)
+let isMarked = memo isMarked ;;
+
+let test_ext (mrk, uev, dia, box, hcore) =
+    not (isMarked (mrk, (uev#elements), dia, box, hcore))
 
 let uev_ext (mrks, uevs, diax, box, hcore) =
   let dia = List.hd diax in
   let mrk1 = List.hd mrks in
   let l1 = (List.hd uevs)#elements in
-  if isMarked mrk1 l1 diax box hcore then uevundef ()
+  if isMarked (mrk1, l1, diax, box, hcore) then uevundef ()
   else if List.length uevs = 1 then
     (new FormulaIntSet.set)#addlist
       (filter_map 
@@ -179,10 +180,9 @@ let uev_ext (mrks, uevs, diax, box, hcore) =
 let mrk_ext (mrks, uevs, dia, box, hcore) = 
   let mrk1 = List.hd mrks in
   let l1 = (List.hd uevs)#elements in
-  if isMarked mrk1 l1 dia box hcore then true
+  if isMarked (mrk1, l1, dia, box, hcore) then true
   else if List.length mrks = 1 then false
   else List.nth mrks 1
-
 
 let uev_loop (diax, box, hcore) = 
   let getindex dia =
