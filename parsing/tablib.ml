@@ -1150,13 +1150,13 @@ let expand_source m =
     ExtGramm.extgramm withoutnode;
     ExtGramm.expand_constructors withoutnode;
     ExtGramm.extend_node_type (ExtGramm.select_node_entry gramms);
-    let ty = ExtGramm.expand_grammar_type_list withoutnode in
+    let ty = List.flatten ( ExtGramm.expand_grammar_type_list withoutnode ) in
     let pr = ExtGramm.expand_printer withoutnode in
     let ast = ExtGramm.expand_ast2input withoutnode in
     let sl  = ExtGramm.expand_grammar_syntax_list gramms in
-    let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
+    let sty = <:str_item< type $list:ty$ >> in
     <:str_item< declare
-    module GrammTypes = struct $list:sty@[pr;ast;sl]$ end ;
+    module GrammTypes = struct $list:[sty;pr;ast;sl]$ end ;
     open GrammTypes;
     end
     >>

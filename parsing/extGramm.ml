@@ -659,10 +659,9 @@ let expand_printer gramm =
                         ) <:expr< Printf.sprintf $str:"("^f^")"$  >> exl
                         )
         in
-        <:str_item<
-        value rec $lid:name^"_printer"$ = fun [ $list:filter_map gen_pel rules$ ]
-        >>
-    in <:str_item< declare $list:List.map aux gramm$ end >>
+        (<:patt< $lid:name^"_printer"$ >>,
+        <:expr< fun [ $list:filter_map gen_pel rules$ ] >>)
+    in <:str_item< value rec $list:List.map aux gramm$ >>
 
 let expand_ast2input gramm =
     let aux (name,rules) = 
@@ -706,11 +705,9 @@ let expand_ast2input gramm =
             ) const_table []
         in
         let def = <:patt< _ >>, None, <:expr< assert(False) >> in
-        <:str_item<
-        value rec $lid:name^"_ast2input"$ = 
-            fun [ $list:(filter_map gen_pel rules)@const@[def]$ ]
-        >>
-    in <:str_item< declare $list:List.map aux gramm$ end >>
+        (<:patt< $lid:name^"_ast2input"$ >>,
+        <:expr< fun [ $list:(filter_map gen_pel rules)@const@[def]$ ] >>)
+    in <:str_item< value rec $list:List.map aux gramm$ >>
 
 let remove_node_entry = List.filter (fun (l,_) -> not(l = "node"))
 let select_node_entry = List.filter (fun (l,_) -> l = "node")
@@ -756,12 +753,12 @@ Pcaml.str_item: [[
             let _   = expand_constructors withoutnode in
             let _   = extend_node_type (select_node_entry gramms) in 
             let sl  = expand_grammar_syntax_list gramms in
-            let ty  = expand_grammar_type_list withoutnode in
-            let sty = List.map (fun t -> <:str_item< type $list:t$ >>) ty in
+            let ty  = List.flatten (expand_grammar_type_list withoutnode) in
+            let sty = <:str_item< type $list:ty$ >>in
             let pr  = expand_printer withoutnode in
             let ast = expand_ast2input withoutnode in
             <:str_item< declare
-            module GrammTypes = struct $list:sty@[pr;ast;sl]$ end;
+            module GrammTypes = struct $list:[sty;pr;ast;sl]$ end;
             open GrammTypes;
             end >>
 ]];
