@@ -25,7 +25,7 @@ expr := formula ;;
 END
 
 (* the warning : Warning U: this match case is unused. 
- * is innocuous and can be ignored *)
+ * this warning is innocuous and it can be ignored *)
 
 open Twblib
 open PdlMarkRewrite
@@ -37,7 +37,8 @@ END
 
 VARIABLES
   uev : FormulaIntSet.set := new FormulaIntSet.set;
-  mrk : bool := false
+  mrk : bool := false;
+  status : string := "Undef"
 END
 
 let nnf = List.map nnf_term
@@ -57,57 +58,68 @@ TABLEAU
   ]
   END
 
-  RULE And { A & B } === A ; B END
-  RULE UnionBox { [ A U B ] P } === [ A ] P ;  [ B ] P END
-  RULE SeqBox { [ A ; B ] P } === [ A ] [ B ] P END
-  RULE StarBox { [ * A ] P } === P ; [ A ] [ * A ] P END
-
-  RULE TestDia { < ? F > P } === F ; P 
-  BACKTRACK [ uev := set_uev_TestDia(uev@1) ]
+  RULE And { A & B } ; Z === A ; B ; Z 
+  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
   END
 
-  RULE SeqDia { < A ; B > P } === < A > < B > P 
-  BACKTRACK [ uev := set_uev_SeqDia(uev@1) ]
+  RULE UnionBox { [ A U B ] P } ; Z === [ A ] P ;  [ B ] P ; Z
+  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
+  END
+
+  RULE SeqBox { [ A ; B ] P } ; Z === [ A ] [ B ] P ; Z
+  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
+  END
+
+  RULE StarBox { [ * A ] P } ; Z === P ; [ A ] [ * A ] P ; Z 
+  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
+  END
+
+  RULE TestDia { < ? F > P } ; Z === F ; P ; Z
+  BACKTRACK [ uev := set_uev_TestDia(uev@1,< ? F > P,Z) ]
+  END
+
+  RULE SeqDia { < A ; B > P } ; Z === < A > < B > P ; Z
+  BACKTRACK [ uev := set_uev_SeqDia(uev@1,< A ; B > P,Z) ]
   END
 
   RULE Or
-  { P v Q }
-  =========
-   P ||| Q
+        { P v Q } ; Z 
+  ====================
+      P ; Z ||| Q ; Z
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, uev@all);
+      uev := uev_disj(mrk@all, concat(set_uev_All(uev@1,Z), set_uev_All(uev@2,Z)));
       mrk := mrk_disj(mrk@all)
   ]
   END
 
   RULE TestBox
-    { [ ? F ] P } === nnf ( ~ F ) ||| P
+  { [ ? F ] P } ; Z === nnf ( ~ F ) ; Z ||| P ; Z
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, uev@all);
+      uev := uev_disj(mrk@all, concat(set_uev_All(uev@1,Z), set_uev_All(uev@2,Z)));
       mrk := mrk_disj(mrk@all)
   ]
   END
 
   RULE UnionDia
-    { < A U B > P } === < A > P ||| < B > P
+  { < A U B > P } ; Z === < A > P ; Z ||| < B > P ; Z
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, set_uev_UnionDia (< A U B > P, uev@all));
+      uev := uev_disj(mrk@all, set_uev_UnionDia (uev@all, < A U B > P, Z));
       mrk := mrk_disj(mrk@all)
   ]
   END
 
   RULE StarDia
-    { < * A > P } === P ||| < A > < * A > P
+  { < * A > P } ; Z === P ; Z ||| < A > < * A > P ; Z 
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, set_uev_StarDia(< * A > P , uev@all));
+      uev := uev_disj(mrk@all, set_uev_StarDia(uev@all, < * A > P , Z));
       mrk := mrk_disj(mrk@all)
   ]
   END
@@ -142,10 +154,9 @@ TABLEAU
 END
 
 STRATEGY := 
-    let sat = tactic ( (False ! Id ! And ! Or ! 
-                        StarDia ! StarBox ! UnionDia !
-                        UnionBox ! SeqBox ! SeqDia ! 
-                        TestDia ! TestBox) )
+    let sat = tactic ( (  False ! Id
+                        ! And ! StarBox ! UnionBox ! SeqDia ! TestDia ! SeqBox
+                        ! Or ! StarDia ! UnionDia ! TestBox) )
     in tactic ( (sat ! K ! Loop)* )
 
 let exit = function

@@ -38,7 +38,8 @@ END
 
 VARIABLES
   uev : FormulaIntSet.set := new FormulaIntSet.set;
-  mrk : bool := false
+  mrk : bool := false;
+  status : string := "Undef"
 END
 
 let nnf = List.map nnf_term 
