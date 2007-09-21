@@ -1,6 +1,7 @@
 
 CONNECTIVES
-[ "~";"&";"v";"<";">";"U";"*";",";"->";"<->";"[";"]";";";"?"]
+[ "~";"&";"v";"->";"<->";"<";">";"[";"]";"U";"*";";";"?"]
+
 GRAMMAR
 program := 
       * program
@@ -21,15 +22,13 @@ formula :=
     | ~ formula
 ;;
 
-expr := formula ;;
+expr := formula;;
 END
 
-(* the warning : Warning U: this match case is unused. 
- * this warning is innocuous and it can be ignored *)
 
-open Twblib
 open PdlMarkRewrite
 open PdlMarkFunctions
+
 
 HISTORIES
   HCore  : ListFormulaSet.olist := new ListFormulaSet.olist
@@ -37,8 +36,7 @@ END
 
 VARIABLES
   uev : FormulaIntSet.set := new FormulaIntSet.set;
-  mrk : bool := false;
-  status : string := "Undef"
+  mrk : bool := false
 END
 
 let nnf = List.map nnf_term
@@ -59,27 +57,27 @@ TABLEAU
   END
 
   RULE And { A & B } ; Z === A ; B ; Z 
-  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
+  BACKTRACK [ uev := set_uev_All(uev@1, Z) ]
   END
 
   RULE UnionBox { [ A U B ] P } ; Z === [ A ] P ;  [ B ] P ; Z
-  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
+  BACKTRACK [ uev := set_uev_All(uev@1, Z) ]
   END
 
   RULE SeqBox { [ A ; B ] P } ; Z === [ A ] [ B ] P ; Z
-  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
+  BACKTRACK [ uev := set_uev_All(uev@1, Z) ]
   END
 
   RULE StarBox { [ * A ] P } ; Z === P ; [ A ] [ * A ] P ; Z 
-  BACKTRACK [ uev := set_uev_All(uev@1,Z) ]
+  BACKTRACK [ uev := set_uev_All(uev@1, Z) ]
   END
 
   RULE TestDia { < ? F > P } ; Z === F ; P ; Z
-  BACKTRACK [ uev := set_uev_TestDia(uev@1,< ? F > P,Z) ]
+  BACKTRACK [ uev := set_uev_Inh(uev@1, < ? F > P, P, Z) ]
   END
 
   RULE SeqDia { < A ; B > P } ; Z === < A > < B > P ; Z
-  BACKTRACK [ uev := set_uev_SeqDia(uev@1,< A ; B > P,Z) ]
+  BACKTRACK [ uev := set_uev_Inh(uev@1, < A ; B > P, < A > < B > P, Z) ]
   END
 
   RULE Or
@@ -89,7 +87,7 @@ TABLEAU
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, concat(set_uev_All(uev@1,Z), set_uev_All(uev@2,Z)));
+      uev := uev_disj_all(mrk@all, uev@all, Z);
       mrk := mrk_disj(mrk@all)
   ]
   END
@@ -99,7 +97,7 @@ TABLEAU
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, concat(set_uev_All(uev@1,Z), set_uev_All(uev@2,Z)));
+      uev := uev_disj_all(mrk@all, uev@all, Z);
       mrk := mrk_disj(mrk@all)
   ]
   END
@@ -109,7 +107,7 @@ TABLEAU
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, set_uev_UnionDia (uev@all, < A U B > P, Z));
+      uev := uev_disj_union(mrk@all, uev@all, < A U B > P, < A > P, < B > P, Z);
       mrk := mrk_disj(mrk@all)
   ]
   END
@@ -119,33 +117,33 @@ TABLEAU
 
   BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ]
   BACKTRACK [
-      uev := uev_disj(mrk@all, set_uev_StarDia(uev@all, < * A > P , Z));
+      uev := uev_disj_star(mrk@all, uev@all, < * A > P , P, < A > < * A > P, Z);
       mrk := mrk_disj(mrk@all)
   ]
   END
 
   RULE K 
-  { < a > P }  ; [ a ] Y ; < B > E ; [ C ] F ; Z 
-   =============================================
-       P ; Y ||| < B > E ; [ C ] F
+  { < A > P } ; Z
+  ==============================================
+       P ; filterbox(A, Z) ||| Z
 
-  COND   [ loop_check(P, Y, HCore) ]
-  ACTION [ [ HCore := push(P, Y, HCore) ] ; [] ]
-  BRANCH [ [ test_ext(mrk@1, uev@1, P, Y, HCore) ; not_emptylist(< B > E) ] ]
+  COND   [ loop_check(P, filterbox(A, Z), HCore) ]
+  ACTION [ [ HCore := push(P, filterbox(A, Z), HCore) ] ; [] ]
+  BRANCH [ [ test_ext(mrk@1, uev@1, P, HCore) ] ]
   BACKTRACK [
-      uev := uev_ext(mrk@all, uev@all, < a > P, Y, HCore);
-      mrk := mrk_ext(mrk@all, uev@all, < a > P, Y, HCore)
+      uev := uev_ext(mrk@all, uev@all, < A > P, P);
+      mrk := mrk_ext(mrk@all)
   ]
   CACHE := true
   END
 
   RULE Loop
        < A > X ; [ B ] Y
-    =====================
+       ==================
              Stop
 
   BACKTRACK [
-      uev := uev_loop(<A>X, [B]Y, HCore);
+      uev := uev_loop(< A > X, [ B ] Y, HCore);
       mrk := false
   ]
   CACHE := true
@@ -155,15 +153,15 @@ END
 
 STRATEGY := 
     let sat = tactic ( (  False ! Id
-                        ! And ! StarBox ! UnionBox ! SeqDia ! TestDia ! SeqBox
+                        ! And ! StarBox ! UnionBox ! SeqDia ! SeqBox ! TestDia
                         ! Or ! StarDia ! UnionDia ! TestBox) )
     in tactic ( (sat ! K ! Loop)* )
 
 let exit = function
-    |true -> "Closed"
-    |false -> "Open"
+  | true -> "Closed"
+  | false -> "Open"
 
-PP := nnf
+PP := List.map nnf_snf_term
 NEG := List.map neg_term
 EXIT := exit (mrk@1)
 
