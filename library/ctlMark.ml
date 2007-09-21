@@ -38,8 +38,7 @@ END
 
 VARIABLES
   uev : FormulaIntSet.set := new FormulaIntSet.set;
-  mrk : bool := false;
-  status : string := "Undef"
+  mrk : bool := false
 END
 
 let nnf = List.map nnf_term 
@@ -49,7 +48,7 @@ TABLEAU
   RULE Id { P } ; { ~ P } == Stop 
   BACKTRACK [ 
       uev := uevundef ();
-      mrk := true
+      mrk := true 
   ]
   END
 
@@ -69,7 +68,7 @@ TABLEAU
   =========
    P ||| Q
 
-  BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ] 
+  BRANCH [ [ doNextChild_disj(mrk@1, uev@1, P v Q) ] ] 
   BACKTRACK [ 
       uev := uev_disj(mrk@all, uev@all, P v Q);
       mrk := mrk_disj(mrk@all)
@@ -81,7 +80,7 @@ TABLEAU
   ===================
   Q ||| P ; EX (E P U Q)
 
-  BRANCH [ [ doNextChild_disj(mrk@1, uev@1) ] ] 
+  BRANCH [ [ doNextChild_disj(mrk@1, uev@1, E P U Q) ] ] 
   BACKTRACK [ 
       uev := uev_disj(mrk@all, uev@all, E P U Q);
       mrk := mrk_disj(mrk@all)
@@ -93,7 +92,7 @@ TABLEAU
   ===================
   Q ||| P ; AX (A P U Q)
 
-  BRANCH    [ doNextChild_disj(mrk@1, uev@1) ]
+  BRANCH    [ doNextChild_disj(mrk@1, uev@1, A P U Q) ]
   BACKTRACK [ 
       uev := uev_disj(mrk@all, uev@all, A P U Q);
       mrk := mrk_disj(mrk@all)
@@ -101,21 +100,21 @@ TABLEAU
   END 
 
   RULE D
-  EX Y ; Z  == EX Verum ; Z
-  COND [ is_emptylist(EX Y) ]
+  EX Y ;  AX Z ; P == EX Verum ; AX Z ; P
+  COND [ condD(EX Y, AX Z) ]
   END
 
   RULE Exx
-  { EX P } ; EX X ; AX Y ; Z 
-  ==========================
-      P ; Y ||| EX X ; AX Y
+         { EX P } ; EX X ; AX Y ; Z 
+  ===========================================
+    P ; Y ||| EX X ; emptycheck(EX X, AX Y)
 
   COND   [ loop_check(P, Y, HCore) ]
   ACTION [ [ HCore := push(P, Y, HCore) ] ; [] ] 
-  BRANCH [ [ test_ext(mrk@1, uev@1, P, Y, HCore) ; not_emptylist(EX X) ] ]
+  BRANCH [ [ test_ext(mrk@1, uev@1, P, Y, HCore) ] ]
   BACKTRACK [
-      uev := uev_ext(mrk@all, uev@all, P, Y, HCore);
-      mrk := mrk_ext(mrk@all, uev@all, P, Y, HCore)
+      uev := uev_ext(mrk@all, uev@all, P, Y);
+      mrk := mrk_ext(mrk@all)
   ]
   CACHE := true
   END
@@ -135,8 +134,8 @@ TABLEAU
 END
 
 let exit = function
-    |true -> "Closed"
-    |false -> "Open"
+  | true -> "Closed"
+  | false -> "Open"
  
 PP := List.map nnf_term
 NEG := List.map neg_term

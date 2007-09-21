@@ -25,61 +25,37 @@ module ListFormulaSet = TwbList.Make(
  )
 
 
-let is_emptylist  = function 
-  | [] -> true  
-  | _ -> false
-
-let not_emptylist = function
-  | [] -> false 
-  | _ -> true
-
-
-let rec filter_map f = function
-    | [] -> []
-    | hd :: tl ->
-            begin match f hd with
-            |None -> filter_map f tl
-            |Some(a) -> a :: filter_map f tl
-            end
-
-let index flist hcore = 
-  let hcore = hcore#elements in
-  let len = List.length hcore in
-  let nodeset = (new FormulaSet.set)#addlist flist in
-  let rec search n =
-    if nodeset#is_equal (List.nth hcore n) then Some n
-    else if n < (len - 1) then search (n+1)
-    else None
-  in
-  if len > 0 then search 0 else None
-
 let uevundef () = new FormulaIntSet.set
 
-let doNextChild_disj (mrk, uev) = mrk || (not uev#is_empty)
+
+let excl uev p =
+  let p = List.hd p in
+  try
+    let pair = List.find (fun (f, _) -> f = p) uev#elements in
+    uev#del pair
+  with Not_found -> uev
+
+let doNextChild_disj (mrk, uev, p) = 
+  if mrk then true
+  else
+    let uev = excl uev p in
+    not uev#is_empty
 
 let uev_disj (mrks, uevs, p) = 
-  let excl uev p = 
-    let p = List.hd p in
-    try
-      let pair = List.find (fun (f, _) -> f = p) uev#elements in
-      uev#del pair
-    with Not_found -> uev
-  in
   let takemin uev1 uev2 =
     let l1 = uev1#elements in
     let l2 = uev2#elements in
-    (new FormulaIntSet.set)#addlist
-      (filter_map 
-         (fun (x, i) ->
-           try
-             let (_, j) = List.find (fun (y,_) -> y = x) l2 in
-             Some(x, min i j)
-           with Not_found -> None
-         ) l1
-      )
+    let filter res (x, i) =
+      try
+        let (_, j) = List.find (fun (y, _) -> y = x) l2 in
+        (x, min i j)::res
+      with Not_found -> res
+    in
+    let lst = List.fold_left filter [] l1 in
+    new FormulaIntSet.set#addlist lst
   in
   match (mrks, uevs) with
-  | ([mrk1], [uev1])  -> uev1
+  | ([mrk1], _)  -> uevundef ()
   | ([mrk1; mrk2], _) when mrk1 && mrk2 -> uevundef ()
   | ([mrk1; mrk2], [uev1; _]) when (not mrk1) && mrk2 -> excl uev1 p
   | ([mrk1; mrk2], [_; uev2]) when mrk1 && (not mrk2) -> uev2
@@ -87,108 +63,86 @@ let uev_disj (mrks, uevs, p) =
   | _ -> failwith "uev_disj"
 
 let mrk_disj mrks =
-  match mrks with
-  | [mrk1] -> mrk1 (* must be false because of the branch condition *)
-  | [mrk1; mrk2] -> mrk1 && mrk2
-  | _ -> failwith "mrk_disj"
+  if List.length mrks = 1 then false
+  else List.nth mrks 1
 
-(* true if there is not an element in the list equal to (dia@box) *)
-let loop_check (dia, box, hcore) = 
-  match index (dia@box) hcore with
-  | None -> true
-  | Some _ -> false
+
+let condD (ex, ax) =
+  match (ex, ax) with
+  | ([], h::tl) -> true
+  | _ -> false
+
+
+let emptycheck(ex, ax) = if ex = [] then [] else ax
+
+let loop_check (diax, box, hcore) =
+  let nodeset = (new FormulaSet.set)#addlist (diax@box) in
+  not(List.exists (fun s -> nodeset#is_equal s) hcore#elements)
 
 let push (dia, box, hcore) = 
   let nodeset = (new FormulaSet.set)#addlist (dia@box) 
   in hcore#add nodeset
-;;
-
-let memo f =
-    let cache = Hashtbl.create 8 in
-    let contains = Hashtbl.mem cache in
-    let get = Hashtbl.find cache in
-    let put = Hashtbl.replace cache in
-    fun arg ->
-        if not (contains arg) then put arg (f arg);
-        get arg
-;;
-
-let isMarked ((mrk,uevl,dia,box,hcore) :
-    bool * (GrammTypes.formula * int) list *
-    GrammTypes.formula list *
-    GrammTypes.formula list *
-    ListFormulaSet.olist) =
-    if mrk then true
-    else
-        let len = hcore#length in
-        let chkloop f (x, i) = (x = f) && (i >= len) in
-        List.exists (fun f -> List.exists (chkloop f) uevl) (dia@box)
-;;
-
-let isMarked = memo isMarked ;;
 
 let test_ext (mrk, uev, dia, box, hcore) =
-    not (isMarked (mrk, (uev#elements), dia, box, hcore))
+  if mrk then false
+  else
+    let len = hcore#length in
+    let uevl = uev#elements in
+    let chkloop f (x, i) = (x = f) && (i >= len) in
+    not (List.exists (fun f -> List.exists (chkloop f) uevl) (dia@box))
 
-let uev_ext (mrks, uevs, diax, box, hcore) =
-  let dia = List.hd diax in
-  let mrk1 = List.hd mrks in
-  let l1 = (List.hd uevs)#elements in
-  if isMarked (mrk1, l1, diax, box, hcore) then uevundef ()
-  else if List.length uevs = 1 then
-    (new FormulaIntSet.set)#addlist
-      (filter_map 
-         (fun (x, i) ->
-           match x with
-           | formula (E a U d) when x = dia -> Some (x, i)
-           | formula (A a U d) when List.mem x box -> Some (x, i)
-           | _ -> None
-         ) l1
-      )
+let uev_ext (mrks, uevs, diax, box) =
+  if List.length mrks = 1 then uevundef()
   else
     let mrk2 = List.nth mrks 1 in
     if mrk2 then uevundef ()
     else
+      let dia = List.hd diax in
+      let l1 = (List.hd uevs)#elements in
       let l2 = (List.nth uevs 1)#elements in
-      let uev = 
-        (new FormulaIntSet.set)#addlist
-          (filter_map 
-             (fun (x, i) ->
-               match x with
-               | formula (E a U d) when x = dia -> Some (x, i)
-               | formula (A a U d) when List.mem x box ->
-                   begin try
-                     let (_, j) = List.find (fun (y, _) -> y = x) l2 in
-                     Some (x, max i j)
-                   with Not_found -> Some(x, i) end
-               | _ -> None
-             ) l1
-          )
+      let filter1 res (x, i) =
+        match x with
+        | formula (E a U d) when x = dia -> (x, i)::res
+        | formula (A a U d) when List.mem x box ->
+            begin 
+              try
+                let (_, j) = List.find (fun (y, _) -> y = x) l2 in
+                (x, max i j)::res
+              with Not_found -> (x, i)::res
+            end
+        | _ -> res
       in
-      uev#addlist
-        (filter_map 
-           (fun (x, i) ->
-             match x with
-             | formula (E a U d) -> Some (x, i)
-             | formula (A a U d) ->
-                 if List.exists (fun (y, _) -> y = x) l1 then None
-                 else Some (x, i)
-             | _ -> failwith "uev_ext"
-           ) l2
-        )
+      let filter2 res (x, i) =
+        match x with
+        | formula (E a U d) -> (x, i)::res
+        | formula (A a U d) ->
+            if List.exists (fun (y, _) -> y = x) l1 then res
+            else (x, i)::res
+        | _ -> failwith "uev_ext"
+      in
+      let lst1 = List.fold_left filter1 [] l1 in
+      let uev = new FormulaIntSet.set#addlist lst1 in
+      let lst2 = List.fold_left filter2 [] l2 in
+      uev#addlist lst2
 
-let mrk_ext (mrks, uevs, dia, box, hcore) = 
-  let mrk1 = List.hd mrks in
-  let l1 = (List.hd uevs)#elements in
-  if isMarked (mrk1, l1, dia, box, hcore) then true
-  else if List.length mrks = 1 then false
+let mrk_ext mrks = 
+  if List.length mrks = 1 then true
   else List.nth mrks 1
 
+
 let uev_loop (diax, box, hcore) = 
-  let getindex dia =
-    match index (dia::box) hcore with
-    | None -> failwith "uev_loop checkuev"
-    | Some i -> (dia, i)
+  let hcore = hcore#elements in
+  let rec index nodeset hcore n = 
+    match hcore with
+    | [] -> failwith "index"
+    | h::tl -> 
+        if nodeset#is_equal h then n
+        else index nodeset tl (n+1)
+  in
+  let getindex dia = 
+    let nodeset = (new FormulaSet.set)#addlist (dia::box) in
+    let i = index nodeset hcore 0 in
+    (dia, i)
   in
   let fltrEU (x, _) =
     match x with

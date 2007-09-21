@@ -1,4 +1,3 @@
-
 source CtlMark
 
 let rec nnf_term f = 
