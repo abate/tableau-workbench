@@ -69,9 +69,9 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
             let enum =
                 match plzero,plone with
                 |[],[] -> Partition.match_node_set (build_sbl (),map) sl
-                |[],pl1 -> Partition.match_node_one (build_sbl (),map) (pl1, sl)
-                |pl0,[] -> Partition.match_node_zero (build_sbl (),map) (pl0, sl)
-                |pl0,pl1 -> Partition.match_node_trail (build_sbl (),map) (pl0,pl1, sl)
+                |[],pl1 -> Partition.match_node_one (build_sbl (),map) (pl1,sl)
+                |pl0,[] -> Partition.match_node_zero (build_sbl (),map) (pl0,sl)
+                |pl0,pl1 -> Partition.match_node_trail (build_sbl (),map) (pl0,pl1,sl)
             in
             let (enum, sbl, newmap) =
                 let rec check_hist e =
@@ -255,49 +255,105 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
         exception Different_list_size of string
         let map = List.map
         let map1 = List.map
-        let map2 f (l1,l2) =
-            let rec aux acc = function
-                |h1::t1,h2::t2 -> aux (f (h1,h2)::acc) (t1,t2)
-                |[],[] -> List.rev acc
-                |_ -> raise (Different_list_size "map2")
-            in aux [] (l1,l2)
+        let bind m f = List.flatten (List.map f m)
+        let return x = [x]
 
-        let map3 f (l1,l2,l3) =
-            let rec aux acc = function
-                |h1::t1,h2::t2,h3::t3 -> aux (f (h1,h2,h3)::acc) (t1,t2,t3)
-                |[],[],[] -> List.rev acc
-                |_ -> raise (Different_list_size "map3")
-            in aux [] (l1,l2,l3)
+        let combine2 f (l1,l2) =
+            bind l1 (fun e1 ->
+                bind l2 (fun e2 ->
+                    return (f (e1,e2))
+                )
+            )
 
-        let map4 f (l1,l2,l3,l4) =
-            let rec aux acc = function
-                |h1::t1,h2::t2,h3::t3,h4::t4 -> aux (f (h1,h2,h3,h4)::acc) (t1,t2,t3,t4)
-                |[],[],[],[] -> List.rev acc
-                |_ -> raise (Different_list_size "map4")
-            in aux [] (l1,l2,l3,l4)
+        let combine3 f (l1,l2,l3) =
+            bind l1 (fun e1 ->
+                bind l2 (fun e2 ->
+                    bind l3 (fun e3 ->
+                        return (f (e1,e2,e3))
+                    )
+                )
+            )
 
-        let map5 f (l1,l2,l3,l4,l5) =
-            let rec aux acc = function
-                |h1::t1,h2::t2,h3::t3,h4::t4,h5::t5 ->
-                        aux (f (h1,h2,h3,h4,h5)::acc) (t1,t2,t3,t4,t5)
-                |[],[],[],[],[] -> List.rev acc
-                |_ -> raise (Different_list_size "map5")
-            in aux [] (l1,l2,l3,l4,l5)
+        let combine4 f (l1,l2,l3,l4) =
+            bind l1 (fun e1 ->
+                bind l2 (fun e2 ->
+                    bind l3 (fun e3 ->
+                        bind l4 (fun e4 ->
+                            return (f (e1,e2,e3,e4))
+                        )
+                    )
+                )
+            )
+
+        let combine5 f (l1,l2,l3,l4,l5) =
+            bind l1 (fun e1 ->
+                bind l2 (fun e2 ->
+                    bind l3 (fun e3 ->
+                        bind l4 (fun e4 ->
+                            bind l5 (fun e5 ->
+                                return (f (e1,e2,e3,e4,e5))
+                            )
+                        )
+                    )
+                )
+            )
+
+        let rec zip2 = function
+            |(h1::t1,h2::t2) -> (h1,h2)::(zip2 (t1,t2))
+            |([],[]) -> []
+            |_ -> failwith "Different_list_size (zip 2)"
+
+        let rec zip3 = function
+            |(h1::t1,h2::t2,h3::t3) ->
+                    (h1,h2,h3)::(zip3 (t1,t2,t3))
+            |([],[],[]) -> []
+            |_ -> failwith "Different_list_size (zip 3)"
+
+        let rec zip4 = function
+            |(h1::t1,h2::t2,h3::t3,h4::t4) ->
+                    (h1,h2,h3,h4)::(zip4 (t1,t2,t3,t4))
+            |([],[],[],[]) -> []
+            |_ -> failwith "Different_list_size (zip 4)"
+
+        let rec zip5 = function
+            |(h1::t1,h2::t2,h3::t3,h4::t4,h5::t5) ->
+                    (h1,h2,h3,h4,h5)::(zip5 (t1,t2,t3,t4,t5))
+            |([],[],[],[],[]) -> []
+            |_ -> failwith "Different_list_size (zip 5)"
+
+        let check f1 f2 ll = 
+            let lenl = List.map List.length ll in
+            if List.exists (fun len -> len = 0 ) lenl then [] else
+            if List.exists (fun len -> not(len = List.hd lenl)) lenl
+            then f1 ()
+            else f2 ()
+
+        let map2 f ((l1,l2) as l) =
+            check (fun () -> combine2 f l) (fun () -> List.map f (zip2 l)) [l1;l2]
+
+        let map3 f ((l1,l2,l3) as l) =
+            check (fun () -> combine3 f l) (fun () -> List.map f (zip3 l)) [l1;l2;l3]
+
+        let map4 f ((l1,l2,l3,l4) as l) =
+            check (fun () -> combine4 f l) (fun () -> List.map f (zip4 l)) [l1;l2;l3;l4]
+
+        let map5 f ((l1,l2,l3,l4,l5) as l) =
+            check (fun () -> combine5 f l) (fun () -> List.map f (zip5 l)) [l1;l2;l3;l4;l5]
 
         let fold f fl sl =
             let rec def acc = function
                 |0 -> acc
                 |i -> def ([]::acc) (i-1)
             in
-            let rec aux acc = function
+            let rec aux f (matched,acc) = function
                 |h::tl ->
                         begin match f h with
-                        |[] -> aux acc tl
-                        |rl -> aux (List.map2 (fun e l -> e::l) rl acc) tl end
-                |[] -> acc
-            in match aux (def [] (List.length sl)) fl with
-            |[] -> []
-            |rl -> List.map2 (fun e l  -> (e,l)) sl rl
+                        |[] -> aux f (matched,acc) tl
+                        |rl -> aux f (h::matched,(List.map2 (fun e l -> e::l) rl acc)) tl end
+                |[] -> (matched,acc)
+            in
+            let (matched,rl) = aux f ([],(def [] (List.length sl))) fl in
+            (matched,List.map2 (fun e l  -> (e,l)) sl rl)
 
         let rec list_uniq = function 
           | [] -> []

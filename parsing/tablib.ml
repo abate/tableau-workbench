@@ -234,8 +234,8 @@ let expand_principal pa_expr =
     fun sbl -> fun fl ->
         let __rec = fun [ $list:l$ ] in
         match (* $heuristic$ *) fl with
-        [[] -> sbl#add (List.combine $list_to_exprlist idlist$ [[]])
-        |[ h::_ ] -> sbl#add (List.combine $list_to_exprlist idlist$ (__rec h))
+        [[] -> ([],sbl#add (List.combine $list_to_exprlist idlist$ [[]]))
+        |[ h::_ ] -> ([h],sbl#add (List.combine $list_to_exprlist idlist$ (__rec h)))
         ]
     >>
 
@@ -267,8 +267,9 @@ let expand_set pa_expr =
     in
     <:expr<
     fun sbl fl ->
-        let __rec = fun [ $list:exl$ ]
-        in sbl#add (ExtList.fold __rec fl $list_to_exprlist idlist$)
+        let __rec = fun [ $list:exl$ ] in
+        let (matched, l) = ExtList.fold __rec fl $list_to_exprlist idlist$ 
+        in (matched, sbl#add l)
     >>
 
 let expand_arity_pa_expr t = function

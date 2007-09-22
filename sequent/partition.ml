@@ -29,7 +29,7 @@ module Make(P: NodePattern.S) =
      * the store if it matches *)
     let check (sbl,store) pcid pmatch f =
             try
-                let s = pmatch sbl [f] in
+                let (_,s) = pmatch sbl [f] in
                 Some(s,store#set pcid ((store#get pcid)#del f))
             with FailedMatch -> None
         
@@ -59,18 +59,21 @@ module Make(P: NodePattern.S) =
      * formulae that have been selected to be principal formulae.
      *  
      * XXX : This could faster. I know that a formula can be 
-     * in the htbl only is the patt is similar to the pattern of 
+     * in the htbl only if the patt is similar to the pattern of 
      * the principal formulae
      *)
     let getset store pattlist =
         List.fold_left (
             fun (subl,ns) patt ->
                 let s = (ns#get patt.P.pcid)#find patt.P.pid in
-                let l = s#elements in
-                let sbl' = patt.P.pmatch subl l in
-                let m =
-                    List.fold_left (fun st e -> st#del e) (ns#get patt.P.pcid) l
-                in (sbl',ns#set patt.P.pcid m)
+                match s#elements with
+                |[] -> (snd(patt.P.pmatch subl []),ns)
+                |l  ->
+                    let (matched,sbl') = patt.P.pmatch subl l in
+                    let m =
+                        List.fold_left (fun st e -> st#del e) 
+                        (ns#get patt.P.pcid) matched
+                    in (sbl',ns#set patt.P.pcid m)
         ) store pattlist
     
     let removepl store pattlist =
@@ -78,8 +81,8 @@ module Make(P: NodePattern.S) =
             fun (subl,ns) patt ->
                 let s = (ns#get patt.P.pcid)#find patt.P.pid in
                 match s#elements with
-                |[] -> (patt.P.pmatch subl [],ns)
-                |l ->
+                |[] -> (snd(patt.P.pmatch subl []),ns)
+                |l  ->
                     List.fold_left (fun (in_s,in_m) e ->
                         match check (in_s,in_m) patt.P.pcid patt.P.pmatch e with
                         |Some(res_s,res_m) -> (res_s,res_m)
