@@ -123,12 +123,12 @@ TABLEAU
   END
 
   RULE K 
-  { < A > P } ; Z
+  { < A > P } ; [ A ] Y ; < B > E ; [ C ] F ; Z
   ==============================================
-       P ; filterbox(A, Z) ||| Z
+       P ; Y ||| [ A ] Y ; < B > E ; [ C ] F
 
-  COND   [ loop_check(P, filterbox(A, Z), HCore) ]
-  ACTION [ [ HCore := push(P, filterbox(A, Z), HCore) ] ; [] ]
+  COND   [ loop_check(P, Y, HCore) ]
+  ACTION [ [ HCore := push(P, Y, HCore) ] ; [] ]
   BRANCH [ [ test_ext(mrk@1, uev@1, P, HCore) ] ]
   BACKTRACK [
       uev := uev_ext(mrk@all, uev@all, < A > P, P);

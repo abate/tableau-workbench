@@ -164,12 +164,12 @@ TABLEAU
   END
 
   RULE K 
-  { < A > P } ; Z
+  { < A > P } ; [ A ] Y ; < B > E ; [ C ] F ; Z
   ==============================================
-       P ; filterbox(A, Z) ||| Z
+      P ; Y ||| [ A ] Y ; < B > E ; [ C ] F
 
-  COND   [ loop_check(P, filterbox(A, Z), HCr) ]
-  ACTION [ [ HCr := push(P, filterbox(A, Z), HCr);
+  COND   [ loop_check(P, Y, HCr) ]
+  ACTION [ [ HCr := push(P, Y, HCr);
              HNx := testchain_HNx(P);
              HBB := emptySet();
              HBD := emptySet() ]; [] ]
