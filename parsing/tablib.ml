@@ -932,6 +932,7 @@ let expand_preamble () =
             <:expr< $lid:ss^"_printer"$ f >>)::acc
         ) [] l
     in
+    let mainmodule = if !Options.cgi then "TwbCgi" else "TwbCli" in
     <:str_item< declare
     $hist$;
     $vars$;
@@ -961,7 +962,7 @@ let expand_preamble () =
 
     (* MapContMSet in TwbMain is used only to provide the base type, but it is
      * not instantiated anywhere... XXX *)
-    module TwbMain  = TwbMain.Make(MapContSet)(SblCont)(HistType)(VarType);
+    module TwbMain  = $uid:mainmodule$.Make(MapContSet)(SblCont)(HistType)(VarType);
     open TwbMain;
     open TwbMain.UserRule;
     open TwbMain.UserRule.DataType;
@@ -1124,7 +1125,6 @@ let expand_main () =
         <:expr< TwbMain.main >>
         [histlist;varlist;neg;pp;mapcont;inputparser;strategy;exitfun]
     in <:str_item< $exp:ex$ >>
-
 
 let expand_exit ex_expr =
     let (id,ex) = expand_ex_expr [] `Obj ex_expr in

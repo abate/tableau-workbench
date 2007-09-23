@@ -2,13 +2,16 @@
 
 let _loc = Token.dummy_loc
 
-module DebugOptions =
+module Options =
     struct
         let debug = ref false
+        let cgi   = ref false
         let print s = if !debug then Printf.eprintf "%s" s else ()
     end
 ;;
-Pcaml.add_option "--debug" (Arg.Set DebugOptions.debug) "Enable Pre-Processor debug"
+
+Pcaml.add_option "--debug"  (Arg.Set Options.debug) "Enable Pre-Processor debug";;
+Pcaml.add_option "--cgi"    (Arg.Set Options.cgi  ) "Compile Cgi support" ;;
 
 let rec unique = function
     |[] -> []

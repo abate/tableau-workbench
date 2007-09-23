@@ -502,14 +502,14 @@ let extgramm gramms =
     ) gramms;
     (* DEBUG stuff *)
     List.iter (fun (id,rules) ->
-        DebugOptions.print (Printf.sprintf "%s_patt_schema:\n" id);
+        Options.print (Printf.sprintf "%s_patt_schema:\n" id);
         List.iter (fun tl ->
-            DebugOptions.print (PcamlGramm.stype_list_to_string tl)
+            Options.print (PcamlGramm.stype_list_to_string tl)
         ) rules;
-        DebugOptions.print (Printf.sprintf "\n");
+        Options.print (Printf.sprintf "\n");
     ) gramms;
-    DebugOptions.print (PattSchemaEntry.entries_to_string ());
-    DebugOptions.print (ExprEntry.entries_to_string ())
+    Options.print (PattSchemaEntry.entries_to_string ());
+    Options.print (ExprEntry.entries_to_string ())
 
 let expand_constructors = 
     List.iter (fun (id,_) -> expand_expr_constructor id )
