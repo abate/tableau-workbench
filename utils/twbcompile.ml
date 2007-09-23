@@ -10,7 +10,7 @@ module Options = struct
     let compileonly = ref false
     let output = ref ""
     let bytecode = ref false
-    let custom = ref ""
+    let cgi = ref false
     
     let clean = ref false
     
@@ -22,11 +22,11 @@ let options = [
     ("-c",  Arg.Set Options.compileonly, "compile only (do not link)");
 (*    ("-b",  Arg.Set Options.bytecode, "bytecode"); *)
     ("-o",  Arg.Set_string Options.output,  "<file> Set output file name to <file>");
-(*    ("--custom", Arg.Set_string Options.custom, "<obj> custom init"); *)
     ("-d", Arg.Set Options.debug, "print the generated grammar");
     
     ("-t",  Arg.Set_string Options.tmp,  "temporary directory");
     
+    ("--cgi", Arg.Set Options.cgi, "Compile the cgi interface");
     ("--clean", Arg.Set Options.clean, "clean the temporary directory")
 ]
 
@@ -74,7 +74,7 @@ let tmp_dir =
             let _ = 
                 try ignore(Unix.stat str) with
                 |Unix.Unix_error(_) -> 
-                        begin Printf.printf "Notice: create directory %s" str;
+                        begin Printf.printf "Notice: create directory %s\n" str;
                         ignore(Unix.mkdir str 0o755) end
             in str ^ "/"
     |s -> s ^ "/"
@@ -95,6 +95,7 @@ let read_lines fc =
 (* pre-processing *)
 let pp filename =
    let debug = if !Options.debug then " --debug " else "" in
+   let cgi = if !Options.cgi then " --cgi " else "" in
    print_verbose "Pre-processing: %s\n" filename;
    let cmd = 
        "camlp4o "^
@@ -104,6 +105,7 @@ let pp filename =
        "pr_o.cmo "^ 
        filename ^ 
        debug ^
+       cgi ^
        " > "^
        tmp_dir ^ filename
    in
@@ -163,22 +165,18 @@ let compile elem =
 let link l filename =
     let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
     let ext = if !Options.bytecode then ".cmo " else ".cmx " in
+    let main =
+        if !Options.cgi
+        then "pcre,netstring,pxp,netclient,xmlrpc,unix,camlp4.gramlib,twb.thelot,twb.cgi" 
+        else "camlp4.gramlib,twb.thelot,twb.cli"
+    in
     let c = Printf.sprintf
-        "ocamlfind %s -package camlp4.gramlib,twb.thelot,twb.cli -linkpkg -o %s "
-        ocaml filename
+        "ocamlfind %s -package %s -linkpkg -o %s " ocaml main filename
     in
     let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ext) c l in
-    if !Options.custom = "" then begin
-        print_verbose "Linking: %s\n" cmd;
-        ignore(system cmd);
-        print_verbose "Done.\n"
-        end
-    else
-        begin
-            print_verbose "Linking: %s\n" (cmd ^ !Options.custom);
-            ignore(system (cmd ^ " " ^ !Options.custom));
-            print_verbose "Done.\n"
-        end
+    print_verbose "Linking: %s\n" cmd;
+    ignore(system cmd);
+    print_verbose "Done.\n"
 
 let remove_files () =
     let cmd = "rm -f "^tmp_dir^"*.cm*" in
@@ -198,6 +196,7 @@ let main () =
             List.iter compile deplist;
             if not(!Options.compileonly) then begin
                 let output =
+                    if !Options.cgi then (noext(filename)^".cgi") else
                     if !Options.output = "" then (noext(filename)^".twb")
                     else !Options.output
                 in link deplist output;
