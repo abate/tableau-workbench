@@ -2,7 +2,7 @@
 USE_CAMLP4 = yes
 SOURCES := \
 	timer.ml \
-	twbMain.ml
+	twbCli.ml
 RESULT := twbcli
 export PACKS := unix str twb.parser twb.core twb.types twb.sequent
 

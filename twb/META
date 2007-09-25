@@ -42,16 +42,15 @@ package "cli" (
 	archive(native) = "twbcli.cmxa"
 )
 
+package "cgi" (
+	version = "[distributed with TWB]"
+	description = "twb cgi interface"
+#	archive(byte) = "twbcgi.cma"
+	archive(native) = "twbcgi.cmxa"
+)
+
 package "thelot" (
 	version = "[distributed with TWB]"
 	description = "all"
 	requires = "unix str twb.core twb.types twb.parser twb.sequent twb.cli"
-)
-
-package "tableau" (
-	version = "[distributed with TWB]"
-	description = "generic tableau interface"
-	requires = "camlp4"
-	archive(syntax,preprocessor) = "str.cma extLib.cma tableau.cma pr_o.cmo"
-	archive(syntax,toploop)      = "str.cma extLib.cma tableau.cmo pr_o.cmo"
 )

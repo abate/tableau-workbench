@@ -30,34 +30,43 @@ echo "ocaml library path is $OCAMLLIB"
 
 
 #if test $OCAMLVERSION in
-#    3.0[9].2 )
+#    3.0[9].* )
 #	AC_MSG_RESULT(ok)
 #    *)
-#	AC_MSG_ERROR(Version of ocaml is too old.)
+#	AC_MSG_ERROR(Version of ocaml too old or too recent : 3.09.x required.)
 #esac
 
 AC_CHECK_PROG(OCAMLOPT,ocamlopt,ocamlopt,no)
 if test "$OCAMLOPT" = no ; then
-    	AC_MSG_ERROR(Cannot find ocamlopt.)
-	AC_MSG_WARN(Cannot find ocamlopt; You can try to compile bytecode manually)
+    AC_MSG_ERROR(Cannot find ocamlopt.)
 fi
 
 AC_CHECK_PROG(OCAMLDEP,ocamldep,ocamldep,no)
 if test "$OCAMLDEP" = no ; then
-	AC_MSG_ERROR(Cannot find ocamldep.)
+    AC_MSG_ERROR(Cannot find ocamldep.)
 fi
 
 AC_CHECK_PROG(OCAMLFIND,ocamlfind,ocamlfind,no)
 if test "$OCAMLFIND" = no ; then
-	AC_MSG_ERROR(ocamlfind not found.)
+    AC_MSG_ERROR(Cannot find ocamlfind.)
 fi
 
 echo -n "Checking for extlib ... "
-EXTLIB=`ocamlfind query extlib`
-if test "$EXTLIB" = ""; then
-	AC_MSG_ERROR(extlib not found.)
+LIB=`ocamlfind query extlib`
+if test "$LIB" = ""; then
+    AC_MSG_ERROR(Cannot find the extlib package.)
 else
-    	AC_MSG_RESULT(ok)
+    AC_MSG_RESULT(ok)
+fi
+
+echo -n "Checking for cgi support (pcre netstring pxp netclient xmlrpc unix xmlrpc) ... "
+LIB=`ocamlfind query pcre netstring pxp netclient xmlrpc unix xmlrpc`
+if test "$LIB" = ""; then
+    AC_MSG_WARN(Cannot compile Cgi iterface.)
+    CGI=""
+else
+    CGI="true"
+    AC_MSG_RESULT(ok)
 fi
 
 OCAMLPATH=`pwd`
@@ -68,6 +77,7 @@ AC_SUBST(OCAMLDEP)
 AC_SUBST(OCAMLVERSION)
 AC_SUBST(OCAMLLIB)
 AC_SUBST(OCAMLPATH)
+AC_SUBST(CGI)
 
 # Finally create the Makefile from Makefile.in
 AC_OUTPUT(Makefile)
