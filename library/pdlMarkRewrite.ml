@@ -16,16 +16,22 @@ let rec nnf_term = function
   | formula ( a -> b ) -> nnf_term formula ( (~ a) v b )
   | formula ( ~ (a -> b) ) -> nnf_term formula ( a & (~ b) )
   | formula ( ~ ~ a ) -> nnf_term a
-  | formula ( < p > a ) -> formula ( < p > {nnf_term a} )
-  | formula ( ~ ( < p > a ) ) -> formula ( [ p ] {nnf_term ( formula ( ~ a ) )} )
-  | formula ( [ p ] a ) -> formula ( [ p ] {nnf_term a} )
-  | formula ( ~ ( [ p ] a ) ) -> formula ( < p > {nnf_term ( formula ( ~ a ) )} )
+  | formula ( < p > a ) -> formula ( < {nnf_prog p} > {nnf_term a} )
+  | formula ( ~ ( < p > a ) ) -> formula ( [ {nnf_prog p} ] {nnf_term ( formula ( ~ a ) )} )
+  | formula ( [ p ] a ) -> formula ( [ {nnf_prog p} ] {nnf_term a} )
+  | formula ( ~ ( [ p ] a ) ) -> formula ( < {nnf_prog p} > {nnf_term ( formula ( ~ a ) )} )
   | formula (Verum) as f -> f
   | formula (Falsum) as f -> f
   | formula (~ Verum) -> formula (Falsum)
   | formula (~ Falsum) -> formula (Verum)
   | formula ( ~ A ) as f -> f
   | formula ( A ) as f -> f
+and nnf_prog = function
+  | program ( * a ) -> program ( * {nnf_prog a} )
+  | program ( ? f ) -> program ( ? {nnf_term f} )
+  | program ( a U b ) -> program ( {nnf_prog a} U {nnf_prog b} )
+  | program ( a ; b ) -> program ( {nnf_prog a} ; {nnf_prog b} )
+  | _ as p -> p
 
 let rec eps_free = function
   | program ( * a ) -> false
@@ -83,5 +89,5 @@ and ef_prog = function
 let nnf_snf_term f =
   let nnf = nnf_term f in
   let snf = snf_term nnf in
-  print_endline (formula_printer snf);
+  (* print_endline (formula_printer snf); *)
   snf
