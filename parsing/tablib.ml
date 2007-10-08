@@ -954,7 +954,7 @@ let expand_preamble () =
      * but it shouldn't hurt run time performances *)
     module MapSet         = TwbSet.Make(BaseType);
     module MapMSet        = TwbMSet.Make(BaseType);
-    module SblSet         = TwbSet.Make(SblType);
+    module SblSet         = TwbMSet.Make(SblType);
 
     module MapContSet  = struct type t = BaseType.t; class set = MapSet.set; end;
     module MapContMSet  = struct type t = BaseType.t; class set = MapMSet.set; end;
