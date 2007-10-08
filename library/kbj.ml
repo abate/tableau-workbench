@@ -1,22 +1,37 @@
 
-CONNECTIVES
-  DImp, "_<->_", Two;
-  And, "_&_",  One;
-  Or,  "_v_",  One;
-  Imp, "_->_", One;
-  Not, "~_",   Zero;
-  Box, "Box_", Zero;
-  Dia, "Dia_", Zero;
-  Falsum, Const;
-  Verum, Const
+CONNECTIVES [ "~";"&";"v";"->";"<->";"<>";"[]" ]
+GRAMMAR
+
+formula :=
+     ATOM | Verum | Falsum
+    | formula & formula
+    | formula v formula
+    | formula -> formula
+    | formula <-> formula
+    | [] formula
+    | <> formula
+    | ~ formula
+;;
+
+expr := int list : formula ;;
 END
+
+module ListInt = TwbList.Make(
+    struct
+        type t = int
+        let to_string s = Printf.sprintf "%d" s
+        let copy s = s
+    end
+)
+
 
 HISTORIES
-(Idx : Int := new Set.set default 0);
-(bj : ListInt := new Set.set default [])
+  Idx    : int := 0
 END
 
-let nnf_term l = Basictype.map Kopt.nnf l ;; 
+VARIABLES
+  bj     : ListInt.olist := new ListInt.olist
+END
 
 open Twblib
 open Klib
@@ -25,7 +40,7 @@ open Pcopt
 TABLEAU
 
   RULE K
-  { Dia a } ; Box x ; z
+  { <> a } ; [] x ; z
   ----------------------
     a ; x
 
@@ -68,7 +83,6 @@ END
 PP := Kopt.nnf
 NEG := neg
 
-let saturate = tactic ( (False|Id|And|Or)* )
-
-STRATEGY := ( ( saturate ; K )* )
+let saturate = tactic ( False!Id!And!Or )
+STRATEGY := ( ( saturate ! K )* )
 

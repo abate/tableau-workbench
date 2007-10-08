@@ -136,8 +136,9 @@ let rec simpl phi a =
 (*    Printf.printf "Result: %s\n\n" (Twblib.sof(r)) ;  *)
     r
 
-(*
-let inc (idx) = idx + 1 
+*)
+
+let inc idx = idx + 1 
 
 let addlabel (tl1,tl2) =
     match List.hd tl1,List.hd tl2 with
@@ -173,5 +174,3 @@ let backjumping (idx,intlist) = List.mem idx intlist ;;
 let mergelabel (intll, status) =
     if status = "Open" then [] else ExtList.list_uniq(List.flatten intll)
 
-*)
-*)
