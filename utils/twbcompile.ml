@@ -7,7 +7,6 @@ open Findlib
 module Options = struct
     let verbose = ref false
     let debug = ref false
-    let compileonly = ref false
     let output = ref ""
     let bytecode = ref false
     let cgi = ref false
@@ -19,10 +18,9 @@ end
 
 let options = [
     ("-v",  Arg.Set Options.verbose, "verbose");
-    ("-c",  Arg.Set Options.compileonly, "compile only (do not link)");
-(*    ("-b",  Arg.Set Options.bytecode, "bytecode"); *)
     ("-o",  Arg.Set_string Options.output,  "<file> Set output file name to <file>");
-    ("-d", Arg.Set Options.debug, "print the generated grammar");
+
+    ("-d", Arg.Set Options.debug, "save the pre-processor output");
     
     ("-t",  Arg.Set_string Options.tmp,  "temporary directory");
     
@@ -98,7 +96,7 @@ let pp filename =
    let cgi = if !Options.cgi then " --cgi " else "" in
    print_verbose "Pre-processing: %s\n" filename;
    let cmd = 
-       "camlp4o "^
+       "camlp5o "^
        str_lib_loc ^ "/str.cma "^
        str_lib_loc ^ "/unix.cma "^
        twb_lib_loc ^ "/pa_sequent.cma "^
@@ -152,35 +150,40 @@ let rec deps deplist filename =
     let ol = List.map (fun f -> deps (f::deplist) (f^".ml") ) l in
     List.append deplist (List.flatten ol)
 
-let compile elem =
-    let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
+let remove_files ?(mask=[]) dir =
+    let l =
+        if mask = [] then "/*.cm* *.o"
+        else
+            List.fold_left (fun s ss -> s^ss) "/" (
+            List.map (fun s -> s^".cm* "^s^".o ") mask
+            )
+    in
+    let cmd = "rm -f "^dir^l in
+    print_verbose "Cleaning: %s\n" cmd;
+    ignore(system cmd);
+    print_verbose "Done.\n"
+
+let compile_quite filename deplist =
+    let dl = List.fold_left (fun s ss ->
+        Printf.sprintf "%s %s" s ss) "" 
+        (List.map (fun s -> s^".ml") deplist)
+    in
+    let pkgs =
+        if !Options.cgi
+        then "pcre,netstring,pxp,netclient,xmlrpc,twb,twb.cgi" 
+        else "twb,twb.cli"
+    in
+    let output =
+        if !Options.cgi then (noext(filename)^".cgi") else
+        if !Options.output = "" then (noext(filename)^".twb")
+        else !Options.output
+    in
+    let cgi = if !Options.cgi then " --cgi " else "" in
     let cmd = Printf.sprintf
-        "ocamlfind %s -package twb.core -c -I %s %s%s.ml"
-        ocaml tmp_dir tmp_dir elem
+    "ocamlfind ocamlopt -syntax twb -package %s %s -linkpkg %s -o %s"
+    pkgs dl cgi output
     in
     print_verbose "Compiling: %s\n" cmd;
-    ignore(system cmd);
-    print_verbose "Done.\n"
-
-let link l filename =
-    let ocaml = if !Options.bytecode then "ocamlc" else "ocamlopt" in
-    let ext = if !Options.bytecode then ".cmo " else ".cmx " in
-    let main =
-        if !Options.cgi
-        then "pcre,netstring,pxp,netclient,xmlrpc,unix,camlp4.gramlib,twb.thelot,twb.cgi" 
-        else "camlp4.gramlib,twb.thelot,twb.cli"
-    in
-    let c = Printf.sprintf
-        "ocamlfind %s -package %s -linkpkg -o %s " ocaml main filename
-    in
-    let cmd = List.fold_left (fun s f -> s^ tmp_dir ^ f ^ ext) c l in
-    print_verbose "Linking: %s\n" cmd;
-    ignore(system cmd);
-    print_verbose "Done.\n"
-
-let remove_files () =
-    let cmd = "rm -f "^tmp_dir^"*.cm*" in
-    print_verbose "Cleaning: %s\n" cmd;
     ignore(system cmd);
     print_verbose "Done.\n"
 
@@ -189,18 +192,17 @@ let main () =
         try Arg.parse options file usage
         with Arg.Bad s -> failwith s
     in
-    if !Options.clean then ( remove_files (); exit(1) )
+    if !Options.clean then
+        begin
+            remove_files tmp_dir;
+            remove_files (Unix.getcwd ());
+            exit(1)
+        end
     else
         List.iter( fun filename ->
             let deplist = List.rev(uniq(deps [noext(filename)] filename)) in
-            List.iter compile deplist;
-            if not(!Options.compileonly) then begin
-                let output =
-                    if !Options.cgi then (noext(filename)^".cgi") else
-                    if !Options.output = "" then (noext(filename)^".twb")
-                    else !Options.output
-                in link deplist output;
-            end;
+            compile_quite filename deplist;
+            remove_files ~mask:deplist (Unix.getcwd ());
         ) !input_filelist ;
         print_endline "Done."
 

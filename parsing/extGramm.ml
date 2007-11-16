@@ -1,11 +1,11 @@
-(*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
+(*pp camlp5o -I . pa_extend.cmo q_MLast.cmo *)
 
 open Parselib
 open Keywords
 open Genlex 
 open PcamlGramm
 
-let _loc = Token.dummy_loc
+let loc = Stdpp.dummy_loc
 let create_gramm = PcamlGramm.create_gramm
 let create_obj = PcamlGramm.create_obj
 
@@ -281,7 +281,7 @@ let extend_schema =
             [pa = Pcaml.patt; $sep$; sc = formula_patt -> <:patt< ($pa$,$sc$) >>]];
 
         expr_expr_schema: [[ex = Pcaml.expr; $sep$; sc = formula_expr_schema ->
-                    Ast.ExLabt(_loc,(s,ex),sc)]];
+                    Ast.ExLabt(loc,(s,ex),sc)]];
         expr_patt_schema: [[pa = Pcaml.patt; $sep$; sc = formula_patt_schema ->
                     Ast.PaLabt((s,pa),sc)]];
         END
@@ -291,7 +291,7 @@ let extend_schema =
         expr_expr: [[sc = formula_expr -> sc]];
         expr_patt: [[sc = formula_patt -> sc]];
 
-        expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(_loc,sc)]];
+        expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(loc,sc)]];
         expr_patt_schema: [[sc = formula_patt_schema -> Ast.PaTerm(sc)]];
         END
     in function
@@ -514,20 +514,27 @@ let extgramm gramms =
 let expand_constructors = 
     List.iter (fun (id,_) -> expand_expr_constructor id )
 
+let make_type_decl loc tyv cty ctyl =
+  { MLast.tdNam = loc;
+    MLast.tdPrm = tyv;
+    MLast.tdPrv = true;
+    MLast.tdDef = cty;
+    MLast.tdCon = ctyl }
+
 let expand_grammar_type (id,rules) =
-    let typevars = ref [(id,(true,true))] in
+    let typevars = ref [(id,(false,false))] in
     let exptype = function
         |Lid(s)  when s = id -> <:ctyp< '$lid:s$ >>
         |List(s) when s = id -> <:ctyp< list '$lid:s$ >>
-        |Lid(s)  -> typevars := (s,(true,true))::!typevars ; <:ctyp< '$lid:s$ >>
-        |List(s) -> typevars := (s,(true,true))::!typevars ; <:ctyp< list '$lid:s$ >>
+        |Lid(s)  -> typevars := (s,(false,false))::!typevars ; <:ctyp< '$lid:s$ >>
+        |List(s) -> typevars := (s,(false,false))::!typevars ; <:ctyp< list '$lid:s$ >>
         |Atom -> <:ctyp< [= `Atom of string ] >>
         |Const(s) -> <:ctyp< [= `$uid:s$ ] >>
         |_ -> assert(false)
     in
     let aux = function
         |[Lid("")] -> None
-        |[Lid(s)] -> typevars := (s,(true,true))::!typevars ; (* XXX  don't like this *)
+        |[Lid(s)] -> typevars := (s,(false,false))::!typevars ; (* XXX  don't like this *)
                      Some("",[<:ctyp< $lid:s^"_open"$ '$lid:s$ >>])
         |[Type(t);Symbol(":");Lid(s)]  -> Some("",[<:ctyp< ($exptype t$ * '$lid:s$) >>])
         |[Atom] -> Some("Atom",[<:ctyp< string >>])
@@ -542,17 +549,15 @@ let expand_grammar_type (id,rules) =
     in
     let fields = 
         match List.rev (filter_map aux rules) with
-        (id, args)::tl ->
-            let aux = function
-                |("", [t]) -> t
-                |(id, []) -> <:ctyp< [= `$uid:id$ ] >>
-                |(id, args) -> <:ctyp< [= `$uid:id$ of ($list:args$) ] >>
-            in
-            List.fold_left (fun acc (id,args) ->
-                let c = (aux (id, args))
-                in <:ctyp< [= $acc$ | $c$ ] >>
-            ) (aux (id, args)) tl
         |[] -> assert(false)
+        |l ->
+            let aux = function
+                |("", [t]) -> MLast.PvInh t
+                |(id, []) -> MLast.PvInh <:ctyp< [= `$uid:id$ ] >>
+                |(id, args) -> MLast.PvInh <:ctyp< [= `$uid:id$ of ($list:args$) ] >>
+            in
+            let l = List.map aux l
+            in <:ctyp< [= $list:l$ ] >>
     in
     let closetype =
         let tvl = List.map(function
@@ -565,7 +570,9 @@ let expand_grammar_type (id,rules) =
             ) <:ctyp< $lid:id^"_open"$ >> tvl
         in <:ctyp< ( $t$ as '$lid:id$) >>
     in
-    [((_loc,id^"_open"),unique !typevars,fields,[]);((_loc,id),[],closetype,[])]
+    let t1 = make_type_decl (loc,id^"_open") (unique !typevars) fields [] in
+    let t2 = make_type_decl (loc,id) [] closetype [] in
+    [t1;t2]
 
 let rec expand_grammar_expr_type = function
     |[[Lid(s)]] ->   <:ctyp< $lid:s$ >>
@@ -580,7 +587,7 @@ let rec expand_grammar_expr_type = function
 let expand_grammar_type_list gramms =
     List.map (function
         |("expr",rules) -> 
-                [((_loc,"expr"),[], expand_grammar_expr_type rules ,[])]
+                [make_type_decl (loc,"expr") [] (expand_grammar_expr_type rules) []]
         |(id,rules) -> expand_grammar_type (id,rules)
     ) gramms
 
@@ -754,7 +761,7 @@ Pcaml.str_item: [[
             let _   = extend_node_type (select_node_entry gramms) in 
             let sl  = expand_grammar_syntax_list gramms in
             let ty  = List.flatten (expand_grammar_type_list withoutnode) in
-            let sty = <:str_item< type $list:ty$ >>in
+            let sty = <:str_item< type $list:ty$ >> in
             let pr  = expand_printer withoutnode in
             let ast = expand_ast2input withoutnode in
             <:str_item< declare

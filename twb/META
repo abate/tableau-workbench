@@ -1,56 +1,48 @@
-
-requires = ""
-version = "3.2"
-description = "Base for Camlp4 syntax extensions"
-browse_interfaces = "Llist Data"
+# Specifications for the Tableau WorkBench (TWB)
+version = "3.4"
+description = "Runtime support for the TWB"
+requires = "str unix twb.core twb.sequent"
+archive(syntax,preprocessor) = "pa_sequent.cma pr_o.cmo"
+preprocessor = "camlp5o"
+#directory = "+twb"
 
 package "core" (
 	version = "[distributed with TWB]"
 	description = "twb core"
-	browse_interfaces = "Llist Data"
-#	archive(byte) = "twbcore.cma"
 	archive(native) = "twbcore.cmxa"
 )
 
 package "types" (
 	version = "[distributed with TWB]"
 	description = "twb data structures"
-#	archive(byte) = "twbtypes.cma"
 	archive(native) = "twbtypes.cmxa"
 )
 
 package "parser" (
 	version = "[distributed with TWB]"
 	description = "input parser"
-#	requires = "camlp4.gramlib"
-#	archive(byte) = "inputParser.cma"
+	requires = "camlp5.gramlib"
 	archive(native) = "inputParser.cmxa"
 )
 
 package "sequent" (
 	version = "[distributed with TWB]"
 	description = "twb sequent/tableau library"
-	requires = "extlib"
-#	archive(byte) = "twbseq.cma"
+	requires = "twb.types extlib"
 	archive(native) = "twbseq.cmxa"
 )
 
 package "cli" (
 	version = "[distributed with TWB]"
 	description = "twb command line interface"
-#	archive(byte) = "twbcli.cma"
+	requires = "twb.sequent twb.parser"
 	archive(native) = "twbcli.cmxa"
 )
 
 package "cgi" (
 	version = "[distributed with TWB]"
 	description = "twb cgi interface"
-#	archive(byte) = "twbcgi.cma"
+	#requires = "pcre netstring pxp netclient xmlrpc twb.sequent twb.parser"
+	requires = "twb.sequent twb.parser"
 	archive(native) = "twbcgi.cmxa"
-)
-
-package "thelot" (
-	version = "[distributed with TWB]"
-	description = "all"
-	requires = "unix str twb.core twb.types twb.parser twb.sequent twb.cli"
 )

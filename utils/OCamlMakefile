@@ -271,7 +271,7 @@ export NOIDLHEADER
 export NO_CUSTOM
 
 ifndef CAMLP4
-  CAMLP4 := camlp4
+  CAMLP4 := camlp5
 endif
 export CAMLP4
 

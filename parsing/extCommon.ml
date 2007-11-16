@@ -1,4 +1,4 @@
-(*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
+(*pp camlp5o -I . pa_extend.cmo q_MLast.cmo *)
 
 open Genlex
 open Parselib
@@ -138,16 +138,16 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
   ]];
 
   funargs: [
-      [x = test_variable; e = varindex -> Ast.ExTerm(_loc,Ast.ExVari(x, e))
-      |s = test_history  -> Ast.ExTerm(_loc,Ast.ExHist s)
+      [x = test_variable; e = varindex -> Ast.ExTerm(loc,Ast.ExVari(x, e))
+      |s = test_history  -> Ast.ExTerm(loc,Ast.ExHist s)
    ]];
 
   userfunction: [
       [f  = LIDENT; "("; args = LIST0 assignfun SEP ","; ")" ->
-              Ast.ExAppl(_loc,f, Ast.ExTupl(_loc,args))
-      |t  = ExtGramm.formula_expr_schema -> Ast.ExTerm(_loc,t)
+              Ast.ExAppl(loc,f, Ast.ExTupl(loc,args))
+      |t  = ExtGramm.formula_expr_schema -> Ast.ExTerm(loc,t)
       |ex = ExtGramm.expr_expr_schema -> ex
-      |ex = Pcaml.expr -> Ast.ExExpr(_loc,ex)
+      |ex = Pcaml.expr -> Ast.ExExpr(loc,ex)
     ]];
 
   varindex: [[
@@ -188,25 +188,25 @@ ExtGramm.denseq ExtGramm.numseq ExtGramm.bladenseq ExtGramm.blanumseq;
   
   denformula: [
       [v = test_variable; "@"; i = INT ->
-          Ast.ExTerm (_loc, Ast.ExVari (v, Ast.Int (int_of_string i)))
-      |v = test_history -> Ast.ExTerm(_loc, Ast.ExHist(v))
+          Ast.ExTerm (loc, Ast.ExVari (v, Ast.Int (int_of_string i)))
+      |v = test_history -> Ast.ExTerm(loc, Ast.ExHist(v))
       |f = LIDENT; "("; l = LIST0 args SEP ","; ")" ->
-              Ast.ExAppl(_loc, f,Ast.ExTupl(_loc,l))
+              Ast.ExAppl(loc, f,Ast.ExTupl(loc,l))
       |t = ExtGramm.expr_expr_schema; sl = LIST0 simplification ->
               if sl = [] then t
-              else Ast.ExAppl(_loc, "__simpl",Ast.ExTupl(_loc,t::sl))
+              else Ast.ExAppl(loc, "__simpl",Ast.ExTupl(loc,t::sl))
       ]
   ];
 
   args: [
       [f = denformula -> f
-      |"["; l = LIST0 denformula SEP ";"; "]" -> Ast.ExTupl(_loc,l)
-      |e = Pcaml.expr -> Ast.ExExpr(_loc, e)
+      |"["; l = LIST0 denformula SEP ";"; "]" -> Ast.ExTupl(loc,l)
+      |e = Pcaml.expr -> Ast.ExExpr(loc, e)
       ]
   ];
 
   simplification: [[
-       "["; t = denformula; "]" -> Ast.ExAppl(_loc,"__simplarg",t)
+       "["; t = denformula; "]" -> Ast.ExAppl(loc,"__simplarg",t)
   ]];
 
 END

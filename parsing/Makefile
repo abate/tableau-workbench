@@ -11,7 +11,7 @@ define PROJ_input
   USE_CAMLP4 = yes
   SOURCES := ast.ml entrylib.ml inputParser.ml
   RESULT := inputParser
-  export PACKS := str unix camlp4.gramlib
+  export PACKS := str unix camlp5.gramlib
 endef
 export PROJ_input
 

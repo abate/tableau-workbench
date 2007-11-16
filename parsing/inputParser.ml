@@ -1,4 +1,4 @@
-(*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
+(*pp camlp5o -I . pa_extend.cmo q_MLast.cmo *)
 
 module PcamlGramm = Entrylib.Make(struct
     let gram = Grammar.gcreate (Plexer.gmake ()) end
@@ -100,7 +100,7 @@ module Make(T:S) = struct
 
     let extend_schema () =  
         EXTEND
-            expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(_loc,sc)]];
+            expr_expr_schema: [[sc = formula_expr_schema -> Ast.ExTerm(loc,sc)]];
         END
 
     let rec create_levels label (l1,l2,l3) = function

@@ -1,6 +1,6 @@
-(*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
+(*pp camlp5o -I . pa_extend.cmo q_MLast.cmo *)
 
-let _loc = Token.dummy_loc
+let loc = Stdpp.dummy_loc
 
 module Options =
     struct

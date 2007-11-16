@@ -49,11 +49,11 @@ and pa_expr =
     |PaPatt of MLast.patt
 
 and ex_expr =
-    |ExAppl of Token.flocation * string * ex_expr
-    |ExLabt of Token.flocation * (label * MLast.expr) * ex_term
-    |ExTerm of Token.flocation * ex_term
-    |ExTupl of Token.flocation * ex_expr list
-    |ExExpr of Token.flocation * MLast.expr
+    |ExAppl of Stdpp.location * string * ex_expr
+    |ExLabt of Stdpp.location * (label * MLast.expr) * ex_term
+    |ExTerm of Stdpp.location * ex_term
+    |ExTupl of Stdpp.location * ex_expr list
+    |ExExpr of Stdpp.location * MLast.expr
 
 and ex_term =
     |ExConn  of string * ex_term list

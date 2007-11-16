@@ -1,4 +1,4 @@
-(*pp camlp4o -I . pa_extend.cmo q_MLast.cmo *)
+(*pp camlp5o -I . pa_extend.cmo q_MLast.cmo *)
 
 open Parselib
 open Keywords
