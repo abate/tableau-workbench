@@ -170,7 +170,7 @@ let compile_quite filename deplist =
     in
     let pkgs =
         if !Options.cgi
-        then "pcre,netstring,pxp,netclient,xmlrpc,twb,twb.cgi" 
+        then "xmlrpc-light,twb,twb.cgi" 
         else "twb,twb.cli"
     in
     let output =
@@ -178,7 +178,7 @@ let compile_quite filename deplist =
         if !Options.output = "" then (noext(filename)^".twb")
         else !Options.output
     in
-    let cgi = if !Options.cgi then " --cgi " else "" in
+    let cgi = if !Options.cgi then " -ppopt --cgi " else "" in
     let cmd = Printf.sprintf
     "ocamlfind ocamlopt -syntax twb -package %s %s -linkpkg %s -o %s"
     pkgs dl cgi output

@@ -28,7 +28,6 @@ echo "ocaml version is $OCAMLVERSION"
 OCAMLLIB=`$OCAMLC -v | tail -1 | cut -f 4 -d " "`
 echo "ocaml library path is $OCAMLLIB"
 
-
 #if test $OCAMLVERSION in
 #    3.0[9].* )
 #	AC_MSG_RESULT(ok)
@@ -59,13 +58,21 @@ else
     AC_MSG_RESULT(ok)
 fi
 
-echo -n "Checking for cgi support (pcre netstring pxp netclient xmlrpc unix xmlrpc) ... "
-LIB=`ocamlfind query pcre netstring pxp netclient xmlrpc unix xmlrpc`
+echo -n "Checking for camlp5 ... "
+LIB=`ocamlfind query camlp5`
+if test "$LIB" = ""; then
+    AC_MSG_ERROR(Cannot find the camlp5 package.)
+else
+    AC_MSG_RESULT(ok)
+fi
+
+echo -n "Checking for cgi support ... "
+LIB=`ocamlfind query xmlrpc-light`
 if test "$LIB" = ""; then
     AC_MSG_WARN(Cannot compile Cgi iterface.)
-    CGI=""
+    TARGETS=nc
 else
-    CGI="true"
+    TARGETS="nc cgi"
     AC_MSG_RESULT(ok)
 fi
 
@@ -77,8 +84,9 @@ AC_SUBST(OCAMLDEP)
 AC_SUBST(OCAMLVERSION)
 AC_SUBST(OCAMLLIB)
 AC_SUBST(OCAMLPATH)
-AC_SUBST(CGI)
+AC_SUBST(TARGETS)
 
 # Finally create the Makefile from Makefile.in
-AC_OUTPUT(Makefile)
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
 chmod a-w Makefile

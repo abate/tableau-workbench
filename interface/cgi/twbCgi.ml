@@ -65,13 +65,24 @@ module Make(MapCont : sig type t class set : [t] TwbSet.ct end)
 let main ?(histlist=[]) ?(varlist=[])
         ?(pp=fun x -> x) ?(neg=fun x -> x)
         ~inputparser ~exitfun ~strategy ~mapcont =
-        let input = main_aux ~histlist:histlist ~varlist:varlist
-        ~pp:pp ~neg:neg ~inputparser:inputparser
-        ~exitfun:exitfun ~strategy:strategy ~mapcont:mapcont in
-        try
-            let server = CgiSource.make () in
-            Prover.prover server input;
-            XmlRPCServer.run server
-        with CgiSource.Done -> exit 0
+
+        let input =
+            main_aux ~histlist:histlist ~varlist:varlist
+            ~pp:pp ~neg:neg ~inputparser:inputparser
+            ~exitfun:exitfun ~strategy:strategy ~mapcont:mapcont in
+
+        let server =
+            (* for testing purposes a cgi can be run as a server *) 
+            if false then new XmlRpcServer.netplex ()
+            else new XmlRpcServer.cgi ()
+        in
+        server#register "prover"
+        ~help:"Run the TWB prover"
+        ~signatures:[[`String; `String]]
+        (function
+            |[`String s] -> `String (input s)
+            |_ -> XmlRpcServer.invalid_params ()
+        );
+        server#run () 
 
 end

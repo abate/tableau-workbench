@@ -1,19 +1,15 @@
 
 USE_CAMLP4 = yes
 SOURCES := \
-        prover.ml \
+        ../timer.ml \
         twbCgi.ml
 RESULT := twbcgi
-export PACKS := unix str twb.parser twb.core twb.types twb.sequent xmlrpc
+export PACKS := twb xmlrpc-light
 
 OCAMLDOC := ocamlfind ocamldoc -package $(PACKS)
 DOC_FILES := $(SOURCES)
 
-all: prover ncl
-
-prover: prover.idl
-	oxridl prover.idl
-
+all: ncl
 
 include $(OCAMLMAKEFILE)
 

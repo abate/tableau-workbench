@@ -621,7 +621,7 @@ OCAMLFIND
 OCAMLVERSION
 OCAMLLIB
 OCAMLPATH
-CGI
+TARGETS
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -1664,7 +1664,6 @@ echo "ocaml version is $OCAMLVERSION"
 OCAMLLIB=`$OCAMLC -v | tail -1 | cut -f 4 -d " "`
 echo "ocaml library path is $OCAMLLIB"
 
-
 #if test $OCAMLVERSION in
 #    3.0[9].* )
 #	AC_MSG_RESULT(ok)
@@ -1815,14 +1814,25 @@ else
 echo "${ECHO_T}ok" >&6; }
 fi
 
-echo -n "Checking for cgi support (pcre netstring pxp netclient xmlrpc unix xmlrpc) ... "
-LIB=`ocamlfind query pcre netstring pxp netclient xmlrpc unix xmlrpc`
+echo -n "Checking for camlp5 ... "
+LIB=`ocamlfind query camlp5`
+if test "$LIB" = ""; then
+    { { echo "$as_me:$LINENO: error: Cannot find the camlp5 package." >&5
+echo "$as_me: error: Cannot find the camlp5 package." >&2;}
+   { (exit 1); exit 1; }; }
+else
+    { echo "$as_me:$LINENO: result: ok" >&5
+echo "${ECHO_T}ok" >&6; }
+fi
+
+echo -n "Checking for cgi support ... "
+LIB=`ocamlfind query xmlrpc-light`
 if test "$LIB" = ""; then
     { echo "$as_me:$LINENO: WARNING: Cannot compile Cgi iterface." >&5
 echo "$as_me: WARNING: Cannot compile Cgi iterface." >&2;}
-    CGI=""
+    TARGETS=nc
 else
-    CGI="true"
+    TARGETS="nc cgi"
     { echo "$as_me:$LINENO: result: ok" >&5
 echo "${ECHO_T}ok" >&6; }
 fi
@@ -2512,7 +2522,7 @@ OCAMLFIND!$OCAMLFIND$ac_delim
 OCAMLVERSION!$OCAMLVERSION$ac_delim
 OCAMLLIB!$OCAMLLIB$ac_delim
 OCAMLPATH!$OCAMLPATH$ac_delim
-CGI!$CGI$ac_delim
+TARGETS!$TARGETS$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
