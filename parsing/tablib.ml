@@ -4,8 +4,8 @@ open Parselib
 open Keywords
 
 let rec expand_pa_term = function
-    |Ast.PaConn(_,id,l) -> <:patt< `$uid:id$($list:List.map expand_pa_term l$) >>
-    |Ast.PaCons(_,id)   -> <:patt< ( `$uid:id$ as $lid:String.lowercase id$ ) >>
+    |Ast.PaConn(_,id,l) -> <:patt< `$id$($list:List.map expand_pa_term l$) >>
+    |Ast.PaCons(_,id)   -> <:patt< ( `$id$ as $lid:String.lowercase id$ ) >>
     |Ast.PaAtom(_,s)    -> <:patt< ( `Atom _ as $lid:String.lowercase s$ ) >>
     |Ast.PaVar(_,s)     -> <:patt< $lid:String.lowercase s$ >>
     |Ast.PaVari(s,i)  -> assert(false)
@@ -48,17 +48,17 @@ let rec extract_expr_vars acc = function
 let rec extract_pa_expr_vars = function
     |Ast.PaTerm(t) ->
             List.map (fun (id,label) -> 
-                (<:expr< $str:id$ >>,<:expr< `$uid:label$ $lid:String.lowercase id$ >>) )
+                (<:expr< $str:id$ >>,<:expr< `$label$ $lid:String.lowercase id$ >>) )
             (extract_pa_term_vars [] t)
     |Ast.PaLabt((decolabel,deco),t) ->
             let ss = Str.global_substitute (Str.regexp " +") (fun _ -> "") decolabel in
             List.append
                 (List.map (fun id -> 
                     (<:expr< $str:id$ >>,
-                    <:expr< `$uid:String.capitalize ss$ $lid:String.lowercase id$ >>) )
+                    <:expr< `$String.capitalize ss$ $lid:String.lowercase id$ >>) )
                 (extract_patt_vars [] deco))
                 (List.map (fun (id,label) ->
-                    (<:expr< $str:id$ >>,<:expr< `$uid:label$ $lid:String.lowercase id$ >>) )
+                    (<:expr< $str:id$ >>,<:expr< `$label$ $lid:String.lowercase id$ >>) )
                 (extract_pa_term_vars [] t))
     |Ast.PaTupl(l) -> List.flatten (List.map extract_pa_expr_vars l)
     |Ast.PaPatt(pa) -> 
@@ -145,7 +145,7 @@ let expand_history_type histlist =
     let tlist =
         let l =
             List.map (fun (id,var,ctyp,ex) ->
-                <:ctyp< [= `$uid:var$ of $ctyp$ ] >>
+                <:ctyp< [= `$var$ of $ctyp$ ] >>
             ) histlist
         in
         match l with
@@ -158,13 +158,13 @@ let expand_history_type histlist =
     in
     let copylist =
         List.map (fun (id,var,ctyp,ex) ->
-            (<:patt< `$uid:var$ $ctyp_to_patt ctyp$ >> , None, 
-            <:expr< `$uid:var$ $ctyp_to_method_expr "copy" ctyp$ >>)
+            (<:patt< `$var$ $ctyp_to_patt ctyp$ >> , None, 
+            <:expr< `$var$ $ctyp_to_method_expr "copy" ctyp$ >>)
         ) histlist
     in
     let to_stringlist = 
         List.map (fun (id,var,ctyp,ex) ->
-            (<:patt< `$uid:var$ $ctyp_to_patt ctyp$ >> , None, 
+            (<:patt< `$var$ $ctyp_to_patt ctyp$ >> , None, 
             <:expr< $ctyp_to_string_expr ctyp$ >>)
         ) histlist
     in 
@@ -187,7 +187,7 @@ let expand_histories_aux table =
         in
         let (tlist,copylist,to_stringlist) = expand_history_type l in
         let exl = List.map (fun (id,var,_,def) ->
-                <:expr< ($str:id$ , `$uid:var$ $def$) >>
+                <:expr< ($str:id$ , `$var$ $def$) >>
             ) l
         in
         Hashtbl.add expr_table vl (list_to_exprlist exl);
@@ -357,8 +357,8 @@ let rec expand_ex_term labels use = function
                 )
             in
             let rec aux = function
-                |Ast.ExConn(id,l) -> <:expr< `$uid:id$($list:List.map aux l$) >>
-                |Ast.ExCons(id)   -> <:expr< `$uid:id$ >>
+                |Ast.ExConn(id,l) -> <:expr< `$id$($list:List.map aux l$) >>
+                |Ast.ExCons(id)   -> <:expr< `$id$ >>
                 |Ast.ExAtom(s)    -> <:expr< `Atom $str:s$ >>
                 |Ast.ExVar(s)     -> <:expr< $lid:String.lowercase s$ >>
                 |Ast.ExVari(s,i)  -> assert(false) 
@@ -367,7 +367,7 @@ let rec expand_ex_term labels use = function
             let idlist =
                 List.rev (
                     List.map (fun s ->
-                        <:patt< `$uid:label_lookup s labels$ $lid:String.lowercase s$ >>) 
+                        <:patt< `$label_lookup s labels$ $lid:String.lowercase s$ >>) 
                     ( unique(extract_ex_term_vars [] ex_term) )
                 )
             in
@@ -385,14 +385,14 @@ let rec expand_ex_term labels use = function
                 (new_id "ex_term",
                 <:expr<
                 ExtList.map1 (fun
-                    [`$uid:label_lookup id labels$ e -> e
+                    [`$label_lookup id labels$ e -> e
                     |_ -> assert(False) 
                     ]
                 ) ( try (sbl#find $str:id$)#elements
                     with [Not_found -> assert(False)]) >>
                 )
             |`Term -> (new_id "ex_term",
-            <:expr< [`$uid:label_lookup id labels$ ( `Atom $str:id$ ) ] >>)
+            <:expr< [`$label_lookup id labels$ ( `Atom $str:id$ ) ] >>)
             end
     |Ast.ExCons(id) ->
             begin match use with
@@ -401,14 +401,14 @@ let rec expand_ex_term labels use = function
                 (new_id "ex_term",
                 <:expr<
                 ExtList.map1 (fun
-                    [`$uid:label_lookup id labels$ e -> e
+                    [`$label_lookup id labels$ e -> e
                     |_ -> assert(False) 
                     ]
                 ) ( try (sbl#find $str:id$)#elements
                     with [Not_found -> assert(False)]) >>
                 )
             |`Term -> (new_id "ex_term",
-            <:expr< [`$uid:label_lookup id labels$ `$uid:id$] >>)
+            <:expr< [`$label_lookup id labels$ `$id$] >>)
             end
     |Ast.ExVar(id) ->
             begin match use with
@@ -416,7 +416,7 @@ let rec expand_ex_term labels use = function
                 (new_id "ex_term",
                 <:expr<
                 ExtList.map1 (fun
-                    [`$uid:label_lookup id labels$ e -> e
+                    [`$label_lookup id labels$ e -> e
                     |_ -> assert(False)
                     ]
                 ) ( try (sbl#find $str:id$)#elements
@@ -440,7 +440,7 @@ let rec expand_ex_term labels use = function
                 try
                     let varhist = List.nth varl ($int:string_of_int i$ - 1) in 
                     match varhist#find $str:id$ with
-                    [`$uid:var$ $ctyp_to_patt ctyp$ ->
+                    [`$var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> assert(False)]
                 with [Failure "nth" -> [] ] >>
@@ -451,7 +451,7 @@ let rec expand_ex_term labels use = function
                 try
                     let varhist = List.nth varl ($int:string_of_int i$ - 1) in
                     match varhist#find $str:id$ with
-                    [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
+                    [`$var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> assert(False)]
                 with [Failure "nth" -> $def$ ] >>
                 )
@@ -467,7 +467,7 @@ let rec expand_ex_term labels use = function
                 try
                     let varhist = List.nth varl (List.length varl) in
                     match varhist#find $str:id$ with
-                    [`$uid:var$ $ctyp_to_patt ctyp$ ->
+                    [`$var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> assert(False)]
                 with [Failure "nth" -> [] ] >>
@@ -478,7 +478,7 @@ let rec expand_ex_term labels use = function
                 try
                     let varhist = List.nth varl (List.length varl) in
                     match varhist#find $str:id$ with
-                    [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
+                    [`$var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> assert(False)]
                 with [Failure "nth" -> $def$ ] >>
                 )
@@ -495,7 +495,7 @@ let rec expand_ex_term labels use = function
                 <:expr<
                 try List.map (fun varhist -> 
                     match varhist#find $str:id$ with
-                    [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
+                    [`$var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> assert(False)]
                     ) varl
                 with [Failure "nth" -> failwith $str:id^ ": index out of bound"$ ] >>
@@ -511,7 +511,7 @@ let rec expand_ex_term labels use = function
                 (new_id "ex_term",
                 <:expr< 
                 try match hist#find $str:id$ with
-                    [`$uid:var$ $ctyp_to_patt ctyp$ ->
+                    [`$var$ $ctyp_to_patt ctyp$ ->
                         $ctyp_to_method_expr "elements" ctyp$
                     | _ -> assert(False)]
                 with [Not_found -> assert(False)] >>
@@ -520,7 +520,7 @@ let rec expand_ex_term labels use = function
                 (new_id "ex_term",
                 <:expr< 
                 try match hist#find $str:id$ with
-                    [`$uid:var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
+                    [`$var$ $ctyp_to_patt ctyp$ -> $ctyp_to_method_expr "" ctyp$
                     | _ -> assert(False)]
                 with [Not_found -> assert(False)] >>
                 )
@@ -600,8 +600,8 @@ let expand_status s =
         <:expr<
         fun varhist ->
             match varhist#find "status" with
-            [`$uid:var$ $ctyp_to_patt ctyp$ ->
-                varhist#add "status" (`$uid:var$ $str:s$)
+            [`$var$ $ctyp_to_patt ctyp$ ->
+                varhist#add "status" (`$var$ $str:s$)
             | _ -> assert(False)]
         >>
     in (new_id "status", ex)
@@ -671,7 +671,7 @@ let expand_action labels name actionlist =
                 (new_id "action",
                 <:expr< let $lid:pa$ = $ex$ in
                 fun sbl hist varl ->
-                    ( $str:id$, `$uid:var$ ( $lid:pa$ sbl hist varl ) ) >>
+                    ( $str:id$, `$var$ ( $lid:pa$ sbl hist varl ) ) >>
                 )
         |Ast.Function(ex_expr) -> 
                 let (pa,ex) = expand_ex_expr labels `Obj ex_expr in
@@ -692,8 +692,8 @@ let expand_status_defaults () =
             with [ Failure "nth" -> failwith "status: index out of bound" ]
         in
         try match varhist#find "status" with
-            [`$uid:var$ t when s = t -> True
-            |`$uid:var$ _ -> False
+            [`$var$ t when s = t -> True
+            |`$var$ _ -> False
             |_ -> assert(False)]
         with [ Not_found -> assert(False) ]
     >>
@@ -707,8 +707,8 @@ let expand_tcond_defaults () =
     value tcond s node =
         let (_, _, varhist) = (UserRule.unbox_result node)#get in
         try match varhist#find "status" with
-            [`$uid:var$ t when s = t -> False
-            |`$uid:var$ _ -> True
+            [`$var$ t when s = t -> False
+            |`$var$ _ -> True
             |_ -> assert(False) ]
         with [ Not_found -> assert(False) ]
     >>
@@ -918,7 +918,7 @@ let expand_preamble () =
     let sbltype =
         let aux s = 
             let ss = Str.global_substitute (Str.regexp " +") (fun _ -> "") s in
-            <:ctyp< [= `$uid:String.capitalize ss$ of $lid:s$ ] >> in
+            <:ctyp< [= `$String.capitalize ss$ of $lid:s$ ] >> in
         match l with
         |[] -> assert(false)
         |[h] -> aux h
@@ -928,7 +928,7 @@ let expand_preamble () =
     let sblprint = 
         List.fold_left (fun acc s ->
             let ss = Str.global_substitute (Str.regexp " +") (fun _ -> "") s in
-            (<:patt< `$uid:String.capitalize ss$ f >>, None, 
+            (<:patt< `$String.capitalize ss$ f >>, None, 
             <:expr< $lid:ss^"_printer"$ f >>)::acc
         ) [] l
     in
@@ -995,8 +995,8 @@ let expand_matchpatt rulelist =
     let pa_expr_to_patt =
         let rec pa_term_to_patt = function
             |Ast.PaAtom(_,s) -> <:patt< `Atom _ >>
-            |Ast.PaCons(_,s) -> <:patt< `$uid:s$ >>
-            |Ast.PaConn(_,id,l) -> <:patt< `$uid:id$($list:List.map pa_term_to_patt l$) >>
+            |Ast.PaCons(_,s) -> <:patt< `$s$ >>
+            |Ast.PaConn(_,id,l) -> <:patt< `$id$($list:List.map pa_term_to_patt l$) >>
             |Ast.PaVar(_,_) -> <:patt< _ >>
             |_ -> assert(false)
         in function
@@ -1051,10 +1051,10 @@ let rec expand_tactic = function
     |Ast.TaFail -> <:expr< Fail >>
     |Ast.TaBasic(uid) ->
             let id = String.lowercase uid in
-            <:expr< Rule( new $lid:id^"_rule"$ ) >>
+            <:expr< Rule( new $list:[id^"_rule"]$ ) >>
     |Ast.TaModule(m,uid) ->
             let id = String.lowercase uid in
-            <:expr< Rule( new $uid:m$.$lid:id^"_rule"$ ) >>
+            <:expr< Rule( new $list:[m ; id^"_rule"]$ ) >>
     |Ast.TaSeq(t1,t2) ->
             let ext1 = expand_tactic t1 in
             let ext2 = expand_tactic t2 in
@@ -1111,7 +1111,7 @@ let expand_main () =
                 with Not_found -> assert(false)
             in
             let pel = 
-                let e = <:patt< `$uid:var$ s >>,None,<:expr< s >> in
+                let e = <:patt< `$var$ s >>,None,<:expr< s >> in
                 if Hashtbl.length vars_table > 1 then
                     [e;(<:patt< _ >>, None, <:expr< assert(False) >>)]
                 else [e]

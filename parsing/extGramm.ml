@@ -116,14 +116,14 @@ let make_token ttype self = function
 let make_entry_patt self token_list =
     let gen_action = function
         |[Atom] -> fun l ->      <:patt< `Atom($List.hd l$) >>
-        |[Const(s)] -> fun l ->  <:patt< `$uid:s$ >>
+        |[Const(s)] -> fun l ->  <:patt< `$s$ >>
         |[Lid(_)] -> fun l ->    <:patt< $List.hd l$ >>
         |[Type(_)] -> fun l ->   <:patt< $List.hd l$ >>
         |[Patt] -> fun l ->      <:patt< _ >>
         |[Expr] -> fun l ->      assert(false)
         |Type(_) :: Symbol(":") :: _ -> fun l -> <:patt< ($list:l$) >>
         |Symbol("(")::_ -> fun l -> <:patt< $List.hd l$ >>
-        |tl -> let id = new_conn tl in fun l -> <:patt< `$uid:id$($list:l$) >>
+        |tl -> let id = new_conn tl in fun l -> <:patt< `$id$($list:l$) >>
     in
     let actiontbl = Hashtbl.create 17 in
     let args : MLast.patt list ref = ref [] in
@@ -137,7 +137,7 @@ let make_entry_patt self token_list =
             match t with
             |Symbol(_) -> ()
             |Atom ->          args := <:patt< $lid:String.lowercase (Obj.magic x)$ >> :: !args
-            |Const(_) ->      args := <:patt< `$uid:(Obj.magic x)$ >> :: !args
+            |Const(_) ->      args := <:patt< `$(Obj.magic x)$ >> :: !args
             (* |Lid("int") ->    args := <:patt< $int:(Obj.magic x)$ >> :: !args 
             |Lid("string") -> args := <:patt< $str:(Obj.magic x)$ >> :: !args *)
             |List(_) ->       args := <:patt< $lid:(Obj.magic x)$ >> :: !args 
@@ -161,13 +161,13 @@ let make_entry_expr self token_list =
     let token_list = token_list in
     let gen_action = function
         |[Atom] -> fun l ->     <:expr< `Atom($List.hd l$) >>
-        |[Const(s)] -> fun l -> <:expr< `$uid:s$ >>
+        |[Const(s)] -> fun l -> <:expr< `$s$ >>
         |[Lid(_)] -> fun l ->   <:expr< $List.hd l$ >>
         |[Type(_)] -> fun l ->  <:expr< $List.hd l$ >>
         |Type(_) :: Symbol(":") :: _ -> fun l -> <:expr< ($list:l$) >>
         |Symbol("(")::_ -> fun l -> <:expr< $List.hd l$ >>
         |Symbol("{")::_ -> fun l -> <:expr< $List.hd l$ >>
-        |tl -> let id = new_conn tl in fun l -> <:expr< `$uid:id$($list:l$) >>
+        |tl -> let id = new_conn tl in fun l -> <:expr< `$id$($list:l$) >>
     in
     let actiontbl = Hashtbl.create 17 in
     let args : MLast.expr list ref = ref [] in
@@ -414,7 +414,7 @@ let expand_expr_constructor label =
         ]];
 
         Pcaml.patt: [
-            [ plid; "("; "_"; ")" -> <:patt< #$lid:label$ >>
+            [ plid; "("; "_"; ")" -> <:patt< #$list:[label]$ >>
             | plid; "("; p = px; ")" -> <:patt< $p$ >>
         ]];
     END
@@ -524,19 +524,19 @@ let make_type_decl loc tyv cty ctyl =
 let expand_grammar_type (id,rules) =
     let typevars = ref [(id,(false,false))] in
     let exptype = function
-        |Lid(s)  when s = id -> <:ctyp< '$lid:s$ >>
-        |List(s) when s = id -> <:ctyp< list '$lid:s$ >>
-        |Lid(s)  -> typevars := (s,(false,false))::!typevars ; <:ctyp< '$lid:s$ >>
-        |List(s) -> typevars := (s,(false,false))::!typevars ; <:ctyp< list '$lid:s$ >>
+        |Lid(s)  when s = id -> <:ctyp< '$s$ >>
+        |List(s) when s = id -> <:ctyp< list '$s$ >>
+        |Lid(s)  -> typevars := (s,(false,false))::!typevars ; <:ctyp< '$s$ >>
+        |List(s) -> typevars := (s,(false,false))::!typevars ; <:ctyp< list '$s$ >>
         |Atom -> <:ctyp< [= `Atom of string ] >>
-        |Const(s) -> <:ctyp< [= `$uid:s$ ] >>
+        |Const(s) -> <:ctyp< [= `$s$ ] >>
         |_ -> assert(false)
     in
     let aux = function
         |[Lid("")] -> None
         |[Lid(s)] -> typevars := (s,(false,false))::!typevars ; (* XXX  don't like this *)
-                     Some("",[<:ctyp< $lid:s^"_open"$ '$lid:s$ >>])
-        |[Type(t);Symbol(":");Lid(s)]  -> Some("",[<:ctyp< ($exptype t$ * '$lid:s$) >>])
+                     Some("",[<:ctyp< $lid:s^"_open"$ '$s$ >>])
+        |[Type(t);Symbol(":");Lid(s)]  -> Some("",[<:ctyp< ($exptype t$ * '$s$) >>])
         |[Atom] -> Some("Atom",[<:ctyp< string >>])
         |[Const(s)] -> Some(s,[])
         |Symbol("(") :: _ -> None
@@ -553,22 +553,22 @@ let expand_grammar_type (id,rules) =
         |l ->
             let aux = function
                 |("", [t]) -> MLast.PvInh t
-                |(id, []) -> MLast.PvInh <:ctyp< [= `$uid:id$ ] >>
-                |(id, args) -> MLast.PvInh <:ctyp< [= `$uid:id$ of ($list:args$) ] >>
+                |(id, []) -> MLast.PvInh <:ctyp< [= `$id$ ] >>
+                |(id, args) -> MLast.PvInh <:ctyp< [= `$id$ of ($list:args$) ] >>
             in
             let l = List.map aux l
             in <:ctyp< [= $list:l$ ] >>
     in
     let closetype =
         let tvl = List.map(function
-            |(t,_) when t = id -> <:ctyp< '$lid:t$ >>
+            |(t,_) when t = id -> <:ctyp< '$t$ >>
             |(t,_) -> <:ctyp< $lid:t$ >>
             ) (unique !typevars) 
         in 
         let t = List.fold_left (fun acc e ->
             <:ctyp< $acc$ $e$ >>
             ) <:ctyp< $lid:id^"_open"$ >> tvl
-        in <:ctyp< ( $t$ as '$lid:id$) >>
+        in <:ctyp< ( $t$ as '$id$) >>
     in
     let t1 = make_type_decl (loc,id^"_open") (unique !typevars) fields [] in
     let t2 = make_type_decl (loc,id) [] closetype [] in
@@ -577,7 +577,7 @@ let expand_grammar_type (id,rules) =
 let rec expand_grammar_expr_type = function
     |[[Lid(s)]] ->   <:ctyp< $lid:s$ >>
     |[[Atom]] ->     <:ctyp< string >>
-    |[[Const(s)]] -> <:ctyp< [= `$uid:s$ ] >>
+    |[[Const(s)]] -> <:ctyp< [= `$s$ ] >>
     |[[List(s)]] ->  <:ctyp< list $lid:s$ >>
     |[[Type(t);Symbol(":");r]]  -> 
             <:ctyp< ($expand_grammar_expr_type [[t]]$ *
@@ -622,12 +622,12 @@ let expand_printer gramm =
                     Some(<:patt< `Atom( a ) >>,None,
                     <:expr< Printf.sprintf "%s" a >>)
             |[Const(s)] -> 
-                    Some(<:patt< `$uid:s$ >>,None,
+                    Some(<:patt< `$s$ >>,None,
                     <:expr< Printf.sprintf $str:s$  >>)
             |[Lid("")] |[Type(_)] |[Patt] |[Expr] 
             |Symbol("("):: _ -> None
             |[Lid(id)] ->
-                    Some(<:patt< ( #$lid:id$ as f ) >>,None,
+                    Some(<:patt< ( #$list:[id]$ as f ) >>,None,
                      <:expr< $lid:id^"_printer"$ f >>)
             |Type(_) :: Symbol(":") :: Lid(id) :: _ ->
                     Some(<:patt< (_,f) >>,None,
@@ -660,7 +660,7 @@ let expand_printer gramm =
                     in 
                     let id = new_conn tl in
                     Some(
-                        <:patt< `$uid:id$($list:pal$) >>,None,
+                        <:patt< `$id$($list:pal$) >>,None,
                         List.fold_left (fun a e ->
                             <:expr< $a$ $e$ >>
                         ) <:expr< Printf.sprintf $str:"("^f^")"$  >> exl
@@ -701,13 +701,13 @@ let expand_ast2input gramm =
                     let id = new_conn tl in
                     Some(
                         <:patt< Ast.ExConn($str:id$,$list_to_pattlist pal$) >>,None,
-                        <:expr< `$uid:id$($list:exl$) >>
+                        <:expr< `$id$($list:exl$) >>
                         )
         in
         let const = Hashtbl.fold( fun k (l,o) acc ->
             if l = name && o = "formula" then
                 (<:patt< Ast.ExCons($str:k$) >>,
-                None,<:expr< `$uid:k$>>)::acc
+                None,<:expr< `$k$>>)::acc
             else acc
             ) const_table []
         in
