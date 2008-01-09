@@ -339,6 +339,7 @@ let rec expand_ex_term labels use = function
                 let rec aux = function
                     |Ast.ExConn(id,l) ->
                            List.flatten (List.map (fun e -> aux e) l ) 
+                    |Ast.ExAtom(s) -> [expand_ex_term labels `Term (Ast.ExVar(s))]
                     |e -> [expand_ex_term labels `Term e]
                 in List.flatten (List.map (fun e -> aux e) l )
             in
@@ -359,7 +360,7 @@ let rec expand_ex_term labels use = function
             let rec aux = function
                 |Ast.ExConn(id,l) -> <:expr< `$id$($list:List.map aux l$) >>
                 |Ast.ExCons(id)   -> <:expr< `$id$ >>
-                |Ast.ExAtom(s)    -> <:expr< `Atom $str:s$ >>
+                |Ast.ExAtom(s)    -> <:expr< $lid:String.lowercase s$ >>
                 |Ast.ExVar(s)     -> <:expr< $lid:String.lowercase s$ >>
                 |Ast.ExVari(s,i)  -> assert(false) 
                 |Ast.ExHist(s)    -> assert(false)
